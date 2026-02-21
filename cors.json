@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://albayt-sofra.web.app"],
+    "method": ["GET", "POST", "PUT", "HEAD", "DELETE"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "x-goog-meta-*"]
+  }
+]
