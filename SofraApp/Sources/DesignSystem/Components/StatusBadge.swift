@@ -1,33 +1,42 @@
 // StatusBadge.swift
-// Order status badge with localized Arabic labels
+// Flexible status badge — accepts text + color OR raw status string
 
 import SwiftUI
 
 struct StatusBadge: View {
-    let status: String
+    let text: String
+    let color: Color
+
+    /// Init with custom text and color
+    init(text: String, color: Color) {
+        self.text = text
+        self.color = color
+    }
+
+    /// Init from raw order status string (auto-localized + colored)
+    init(status: String) {
+        self.color = SofraColors.orderStatusColor(status)
+        switch status {
+        case "pending":          self.text = "بانتظار القبول"
+        case "accepted":         self.text = "تم القبول"
+        case "preparing":        self.text = "قيد التحضير"
+        case "ready":            self.text = "جاهز"
+        case "out_for_delivery": self.text = "في الطريق"
+        case "delivered":        self.text = "تم التوصيل"
+        case "cancelled":        self.text = "ملغي"
+        default:                 self.text = status
+        }
+    }
 
     var body: some View {
-        Text(localizedStatus)
+        Text(text)
             .font(SofraTypography.caption)
             .fontWeight(.semibold)
             .padding(.horizontal, SofraSpacing.sm)
             .padding(.vertical, SofraSpacing.xs)
             .foregroundStyle(.white)
-            .background(SofraColors.orderStatusColor(status))
+            .background(color)
             .clipShape(Capsule())
-    }
-
-    private var localizedStatus: String {
-        switch status {
-        case "pending":          return "بانتظار القبول"
-        case "accepted":         return "تم القبول"
-        case "preparing":        return "قيد التحضير"
-        case "ready":            return "جاهز"
-        case "out_for_delivery": return "في الطريق"
-        case "delivered":        return "تم التوصيل"
-        case "cancelled":        return "ملغي"
-        default:                 return status
-        }
     }
 }
 
@@ -35,7 +44,7 @@ struct StatusBadge: View {
     VStack(spacing: 12) {
         StatusBadge(status: "pending")
         StatusBadge(status: "preparing")
-        StatusBadge(status: "out_for_delivery")
+        StatusBadge(text: "مخصص", color: .purple)
         StatusBadge(status: "delivered")
         StatusBadge(status: "cancelled")
     }

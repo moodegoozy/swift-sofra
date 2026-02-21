@@ -332,7 +332,7 @@ struct CourierDashboardView: View {
                     .font(SofraTypography.priceSmall)
                     .foregroundStyle(SofraColors.success)
                 Spacer()
-                if let addr = order.address, !addr.isEmpty {
+            if let addr = order.address, !addr.isEmpty {
                     Label(addr, systemImage: "location.fill")
                         .font(SofraTypography.caption)
                         .foregroundStyle(SofraColors.textSecondary)

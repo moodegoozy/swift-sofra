@@ -47,11 +47,11 @@ struct ProfileView: View {
                     }
                 } else {
                     VStack(spacing: SofraSpacing.md) {
-                        SofraTextField(label: "الاسم", icon: "person", text: $name)
-                        SofraTextField(label: "الهاتف", icon: "phone", text: $phone)
+                        SofraTextField(label: "الاسم", text: $name, icon: "person")
+                        SofraTextField(label: "الهاتف", text: $phone, icon: "phone")
                             .keyboardType(.phonePad)
-                        SofraTextField(label: "العنوان", icon: "location", text: $address)
-                        SofraTextField(label: "المدينة", icon: "map", text: $city)
+                        SofraTextField(label: "العنوان", text: $address, icon: "location")
+                        SofraTextField(label: "المدينة", text: $city, icon: "map")
                     }
                     .padding(.horizontal, SofraSpacing.screenHorizontal)
 

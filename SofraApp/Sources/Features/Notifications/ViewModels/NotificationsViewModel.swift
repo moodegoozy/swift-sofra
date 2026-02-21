@@ -65,15 +65,10 @@ final class NotificationsViewModel: ObservableObject {
                 fields: ["read": true],
                 idToken: token
             )
+            // Update local state
             if let idx = notifications.firstIndex(where: { $0.id == notifId }) {
-                // Create a new notification with read = true
-                let old = notifications[idx]
-                notifications[idx] = AppNotification(from: FirestoreDocument(
-                    id: old.id,
-                    fields: [:],
-                    createTime: nil,
-                    updateTime: nil
-                ))
+                notifications.remove(at: idx)
+                // Reload to get fresh data
             }
         } catch {
             Logger.log("Mark read error: \(error)", level: .error)

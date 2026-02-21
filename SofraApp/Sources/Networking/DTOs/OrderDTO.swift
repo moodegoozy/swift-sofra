@@ -11,7 +11,7 @@ struct Order: Identifiable {
     var deliveryFee: Double
     var total: Double
     var status: OrderStatus
-    var address: String
+    var address: String?
     var deliveryType: String?    // "delivery" | "pickup"
     var courierId: String?
     var notes: String?
@@ -26,6 +26,37 @@ struct Order: Identifiable {
     var pickedUpAt: Date?
     var deliveredAt: Date?
 
+    // MARK: - Manual Init (for previews & checkout)
+    init(
+        id: String,
+        customerId: String,
+        restaurantId: String? = nil,
+        items: [OrderItem] = [],
+        subtotal: Double = 0,
+        deliveryFee: Double = 0,
+        total: Double = 0,
+        status: OrderStatus = .pending,
+        address: String? = nil,
+        restaurantName: String? = nil,
+        courierId: String? = nil,
+        notes: String? = nil,
+        createdAt: Date? = nil
+    ) {
+        self.id = id
+        self.customerId = customerId
+        self.restaurantId = restaurantId
+        self.items = items
+        self.subtotal = subtotal
+        self.deliveryFee = deliveryFee
+        self.total = total
+        self.status = status
+        self.address = address
+        self.restaurantName = restaurantName
+        self.courierId = courierId
+        self.notes = notes
+        self.createdAt = createdAt
+    }
+
     // MARK: - Init from Firestore
     init(from doc: FirestoreDocumentResponse) {
         let f = doc.fields ?? [:]
@@ -35,7 +66,7 @@ struct Order: Identifiable {
         self.deliveryFee = f["deliveryFee"]?.doubleVal ?? 0
         self.total = f["total"]?.doubleVal ?? 0
         self.status = OrderStatus(rawValue: f["status"]?.stringVal ?? "pending") ?? .pending
-        self.address = f["address"]?.stringVal ?? ""
+        self.address = f["address"]?.stringVal
         self.deliveryType = f["deliveryType"]?.stringVal
         self.courierId = f["courierId"]?.stringVal
         self.notes = f["notes"]?.stringVal

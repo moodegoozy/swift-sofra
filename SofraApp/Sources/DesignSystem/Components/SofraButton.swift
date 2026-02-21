@@ -13,6 +13,8 @@ struct SofraButton: View {
 
     enum Style {
         case primary, secondary, destructive, ghost
+        /// Alias for destructive
+        static let danger: Style = .destructive
     }
 
     var body: some View {

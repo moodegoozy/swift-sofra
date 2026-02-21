@@ -16,6 +16,9 @@ enum SofraTypography {
     static let callout    = Font.system(.callout, design: .rounded)
     static let subheadline = Font.system(.subheadline, design: .rounded)
 
+    // MARK: - Semibold variants
+    static let calloutSemibold = Font.system(.callout, design: .rounded).weight(.semibold)
+
     // MARK: - Small
     static let footnote   = Font.system(.footnote, design: .rounded)
     static let caption    = Font.system(.caption, design: .rounded)

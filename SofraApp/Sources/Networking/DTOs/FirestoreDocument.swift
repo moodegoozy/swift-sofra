@@ -15,6 +15,35 @@ struct FirestoreDocumentResponse: Decodable {
     var documentId: String? {
         name?.split(separator: "/").last.map(String.init)
     }
+
+    // MARK: - Convenience Field Accessors
+    func stringField(_ key: String) -> String? {
+        fields?[key]?.stringVal
+    }
+
+    func intField(_ key: String) -> Int? {
+        fields?[key]?.intVal
+    }
+
+    func doubleField(_ key: String) -> Double? {
+        fields?[key]?.doubleVal
+    }
+
+    func boolField(_ key: String) -> Bool? {
+        fields?[key]?.boolVal
+    }
+
+    func dateField(_ key: String) -> Date? {
+        fields?[key]?.dateVal
+    }
+
+    func mapField(_ key: String) -> [String: FirestoreValue]? {
+        fields?[key]?.mapVal
+    }
+
+    func arrayField(_ key: String) -> [FirestoreValue]? {
+        fields?[key]?.arrayVal
+    }
 }
 
 /// Firestore list response
