@@ -11,8 +11,8 @@ struct AppNotification: Identifiable {
     let read: Bool
     let createdAt: Date?
 
-    init(from doc: FirestoreDocument) {
-        self.id = doc.id
+    init(from doc: FirestoreDocumentResponse) {
+        self.id = doc.documentId ?? UUID().uuidString
         self.title = doc.stringField("title") ?? ""
         self.body = doc.stringField("body") ?? ""
         self.type = doc.stringField("type")
