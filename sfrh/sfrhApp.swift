@@ -7,11 +7,10 @@
 
 import SwiftUI
 
-@main
-struct sfrhApp: App {
+
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
     }
-}
+
