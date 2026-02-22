@@ -164,7 +164,7 @@ struct ProfileView: View {
         case .admin:        return "مشرف"
         case .developer:    return "مطور"
         case .supervisor:   return "مراقب"
-        case .socialMedia:  return "تواصل اجتماعي"
+        case .social_media: return "تواصل اجتماعي"
         case .support:      return "دعم فني"
         case .accountant:   return "محاسب"
         }
