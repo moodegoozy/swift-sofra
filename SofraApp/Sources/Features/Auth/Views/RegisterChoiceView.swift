@@ -19,8 +19,8 @@ struct RegisterChoiceView: View {
                 // Header
                 VStack(spacing: SofraSpacing.sm) {
                     Text("إنشاء حساب")
-                        .font(SofraTypography.title)
-                        .foregroundStyle(SofraColors.primaryDark)
+                        .font(SofraTypography.ramadanTitle)
+                        .foregroundStyle(SofraColors.gold300)
 
                     Text("اختر نوع حسابك")
                         .font(SofraTypography.body)
@@ -41,10 +41,12 @@ struct RegisterChoiceView: View {
                             HStack(spacing: SofraSpacing.lg) {
                                 Image(systemName: option.icon)
                                     .font(.title2)
-                                    .foregroundStyle(selectedRole == option.role ? .white : SofraColors.primary)
+                                    .foregroundStyle(selectedRole == option.role ? SofraColors.navy900 : SofraColors.gold400)
                                     .frame(width: 48, height: 48)
                                     .background(
-                                        selectedRole == option.role ? SofraColors.primary : SofraColors.sky100
+                                        selectedRole == option.role ?
+                                        AnyShapeStyle(SofraColors.goldGradient) :
+                                        AnyShapeStyle(SofraColors.surfaceElevated)
                                     )
                                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
@@ -63,7 +65,7 @@ struct RegisterChoiceView: View {
 
                                 Image(systemName: selectedRole == option.role ? "checkmark.circle.fill" : "circle")
                                     .font(.title3)
-                                    .foregroundStyle(selectedRole == option.role ? SofraColors.primary : SofraColors.sky200)
+                                    .foregroundStyle(selectedRole == option.role ? SofraColors.gold400 : SofraColors.navy300)
                             }
                             .padding(SofraSpacing.lg)
                             .background(SofraColors.cardBackground)
@@ -71,11 +73,11 @@ struct RegisterChoiceView: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
                                     .strokeBorder(
-                                        selectedRole == option.role ? SofraColors.primary : Color.clear,
-                                        lineWidth: 2
+                                        selectedRole == option.role ? SofraColors.gold400 : SofraColors.gold500.opacity(0.1),
+                                        lineWidth: selectedRole == option.role ? 1.5 : 0.5
                                     )
                             )
-                            .shadow(color: .black.opacity(0.04), radius: 8, y: 4)
+                            .shadow(color: selectedRole == option.role ? SofraColors.gold500.opacity(0.15) : .black.opacity(0.1), radius: 8, y: 4)
                         }
                         .buttonStyle(.plain)
                     }
@@ -94,7 +96,7 @@ struct RegisterChoiceView: View {
                 .padding(.top, SofraSpacing.md)
             }
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .navigationTitle("نوع الحساب")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $navigateToForm) {

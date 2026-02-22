@@ -63,7 +63,7 @@ struct OrdersView: View {
                 }
             }
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .navigationTitle("طلباتي")
         .navigationBarTitleDisplayMode(.large)
         .task { await loadData() }

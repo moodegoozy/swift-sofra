@@ -1,5 +1,5 @@
 // SofraSpacing.swift
-// Consistent spacing and sizing tokens
+// 🌙 مسافات وأحجام فخمة — Premium Spacing Tokens
 
 import SwiftUI
 
@@ -18,19 +18,19 @@ enum SofraSpacing {
     static let screenHorizontal: CGFloat = 16
     static let screenVertical: CGFloat = 16
 
-    // MARK: - Card
-    static let cardPadding: CGFloat = 16
-    static let cardRadius: CGFloat = 16
+    // MARK: - Card (larger radius for premium feel)
+    static let cardPadding: CGFloat = 18
+    static let cardRadius: CGFloat = 20
     static let cardSpacing: CGFloat = 12
 
     // MARK: - Button
-    static let buttonHeight: CGFloat = 50
-    static let buttonRadius: CGFloat = 14
+    static let buttonHeight: CGFloat = 52
+    static let buttonRadius: CGFloat = 16
     static let buttonHPadding: CGFloat = 24
 
     // MARK: - Input
-    static let inputHeight: CGFloat = 50
-    static let inputRadius: CGFloat = 12
+    static let inputHeight: CGFloat = 52
+    static let inputRadius: CGFloat = 14
     static let inputHPadding: CGFloat = 16
 
     // MARK: - Avatars

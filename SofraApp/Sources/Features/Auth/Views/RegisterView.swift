@@ -15,11 +15,11 @@ struct RegisterView: View {
                 VStack(spacing: SofraSpacing.sm) {
                     Image(systemName: roleIcon)
                         .font(.system(size: 48))
-                        .foregroundStyle(SofraColors.primary)
+                        .foregroundStyle(SofraColors.gold400)
 
                     Text(roleTitle)
                         .font(SofraTypography.title2)
-                        .foregroundStyle(SofraColors.primaryDark)
+                        .foregroundStyle(SofraColors.gold300)
                 }
                 .padding(.top, SofraSpacing.lg)
 
@@ -84,7 +84,7 @@ struct RegisterView: View {
                 Spacer(minLength: SofraSpacing.xxxl)
             }
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .navigationTitle("تسجيل جديد")
         .navigationBarTitleDisplayMode(.inline)
         .alert("خطأ", isPresented: $vm.showError) {

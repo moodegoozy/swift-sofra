@@ -31,7 +31,7 @@ struct OwnerDashboardView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            .background(SofraColors.background.ignoresSafeArea())
+            .ramadanBackground()
             .navigationTitle("لوحة المطعم")
             .navigationBarTitleDisplayMode(.inline)
             .task {

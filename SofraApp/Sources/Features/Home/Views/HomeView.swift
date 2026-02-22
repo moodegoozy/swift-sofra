@@ -1,6 +1,6 @@
 // HomeView.swift
-// Landing/home screen matching web / route (Landing.tsx)
-// Shows featured restaurants, daily specials, quick actions
+// 🌙 الشاشة الرئيسية — تصميم رمضاني فخم
+// Luxurious Ramadan-themed home screen
 
 import SwiftUI
 
@@ -11,6 +11,10 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: SofraSpacing.xl) {
+                // MARK: - Ramadan Banner
+                RamadanBannerView()
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+
                 // MARK: - Welcome Header
                 welcomeHeader
 
@@ -40,7 +44,7 @@ struct HomeView: View {
                 Spacer(minLength: SofraSpacing.xxxl)
             }
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .refreshable {
             await vm.loadData(token: try? await appState.validToken())
         }
@@ -51,6 +55,7 @@ struct HomeView: View {
         }
         .navigationTitle("سفرة البيت")
         .navigationBarTitleDisplayMode(.large)
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 
     // MARK: - Welcome Header
@@ -59,7 +64,7 @@ struct HomeView: View {
             HStack {
                 Spacer()
                 VStack(alignment: .trailing, spacing: SofraSpacing.xxs) {
-                    Text("مرحباً \(appState.currentUser?.displayName ?? "")! 👋")
+                    Text("مرحباً \(appState.currentUser?.displayName ?? "")! 🌙")
                         .font(SofraTypography.title3)
                         .foregroundStyle(SofraColors.textPrimary)
 
@@ -70,23 +75,22 @@ struct HomeView: View {
             }
         }
         .padding(.horizontal, SofraSpacing.screenHorizontal)
-        .padding(.top, SofraSpacing.md)
     }
 
     // MARK: - Quick Action Buttons
     private var quickActions: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: SofraSpacing.md) {
-                QuickActionCard(icon: "storefront.fill", title: "المطاعم", color: SofraColors.primary) {
+                QuickActionCard(icon: "storefront.fill", title: "المطاعم", color: SofraColors.gold500) {
                     appState.selectedMainTab = 1
                 }
-                QuickActionCard(icon: "flame.fill", title: "الأكثر طلباً", color: SofraColors.warning) {
+                QuickActionCard(icon: "flame.fill", title: "الأكثر طلباً", color: SofraColors.lanternOrange) {
                     appState.selectedMainTab = 1
                 }
-                QuickActionCard(icon: "tag.fill", title: "العروض", color: SofraColors.success) {
+                QuickActionCard(icon: "tag.fill", title: "العروض", color: SofraColors.emerald500) {
                     appState.selectedMainTab = 1
                 }
-                QuickActionCard(icon: "clock.fill", title: "آخر الطلبات", color: SofraColors.sky700) {
+                QuickActionCard(icon: "clock.fill", title: "آخر الطلبات", color: SofraColors.info) {
                     appState.selectedMainTab = 3
                 }
             }
@@ -97,10 +101,15 @@ struct HomeView: View {
     // MARK: - Restaurants List
     private var restaurantsList: some View {
         VStack(alignment: .trailing, spacing: SofraSpacing.md) {
-            Text("المطاعم القريبة")
-                .font(SofraTypography.title3)
-                .foregroundStyle(SofraColors.textPrimary)
-                .padding(.horizontal, SofraSpacing.screenHorizontal)
+            HStack {
+                Spacer()
+                Image(systemName: "moon.stars")
+                    .foregroundStyle(SofraColors.gold400)
+                Text("المطاعم القريبة")
+                    .font(SofraTypography.title3)
+                    .foregroundStyle(SofraColors.textPrimary)
+            }
+            .padding(.horizontal, SofraSpacing.screenHorizontal)
 
             ForEach(vm.featuredRestaurants) { restaurant in
                 NavigationLink(value: restaurant.id) {
@@ -116,7 +125,7 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Quick Action Card
+// MARK: - 🌙 Quick Action Card — Ramadan Style
 struct QuickActionCard: View {
     let icon: String
     let title: String
@@ -128,12 +137,26 @@ struct QuickActionCard: View {
             action?()
         } label: {
             VStack(spacing: SofraSpacing.sm) {
-                Image(systemName: icon)
-                    .font(.title2)
-                    .foregroundStyle(.white)
-                    .frame(width: 56, height: 56)
-                    .background(color.gradient)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                ZStack {
+                    // Glow behind icon
+                    Circle()
+                        .fill(color.opacity(0.15))
+                        .frame(width: 64, height: 64)
+
+                    Image(systemName: icon)
+                        .font(.title2)
+                        .foregroundStyle(color)
+                        .frame(width: 56, height: 56)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(SofraColors.surfaceElevated)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .strokeBorder(color.opacity(0.2), lineWidth: 0.8)
+                                )
+                        )
+                        .shadow(color: color.opacity(0.2), radius: 8, y: 3)
+                }
 
                 Text(title)
                     .font(SofraTypography.caption)

@@ -66,7 +66,7 @@ struct CartView: View {
                 }
             }
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .navigationTitle("السلة")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showCheckout) {

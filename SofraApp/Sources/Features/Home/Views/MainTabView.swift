@@ -81,7 +81,8 @@ struct MainTabView: View {
             }
             .tag(9)
         }
-        .tint(SofraColors.primary)
+        .tint(SofraColors.gold400)
+        .preferredColorScheme(.dark)
     }
 
     private var showCartTab: Bool {

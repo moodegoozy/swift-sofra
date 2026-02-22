@@ -1,5 +1,5 @@
 // SofraTextField.swift
-// Styled text input with icon, label, validation states
+// 🌙 حقل إدخال فخم بطابع رمضاني — Premium Dark Input
 
 import SwiftUI
 
@@ -19,13 +19,13 @@ struct SofraTextField: View {
             // Label
             Text(label)
                 .font(SofraTypography.subheadline)
-                .foregroundStyle(SofraColors.textSecondary)
+                .foregroundStyle(isFocused ? SofraColors.gold400 : SofraColors.textSecondary)
 
             // Input row
             HStack(spacing: SofraSpacing.sm) {
                 if let icon {
                     Image(systemName: icon)
-                        .foregroundStyle(isFocused ? SofraColors.primary : SofraColors.textMuted)
+                        .foregroundStyle(isFocused ? SofraColors.gold400 : SofraColors.textMuted)
                         .frame(width: 20)
                 }
 
@@ -39,19 +39,21 @@ struct SofraTextField: View {
                 }
                 .multilineTextAlignment(.trailing)
                 .focused($isFocused)
+                .foregroundStyle(SofraColors.textPrimary)
             }
             .padding(.horizontal, SofraSpacing.inputHPadding)
             .frame(height: SofraSpacing.inputHeight)
-            .background(SofraColors.sky50)
+            .background(SofraColors.surfaceElevated.opacity(0.6))
             .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.inputRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: SofraSpacing.inputRadius, style: .continuous)
                     .strokeBorder(
                         errorMessage != nil ? SofraColors.error :
-                            isFocused ? SofraColors.primary : SofraColors.sky200,
-                        lineWidth: 1.5
+                            isFocused ? SofraColors.gold400 : SofraColors.gold500.opacity(0.15),
+                        lineWidth: isFocused ? 1.5 : 0.8
                     )
             )
+            .shadow(color: isFocused ? SofraColors.gold500.opacity(0.15) : .clear, radius: 8)
 
             // Error
             if let errorMessage {
@@ -69,4 +71,5 @@ struct SofraTextField: View {
         SofraTextField(label: "كلمة المرور", text: .constant(""), icon: "lock", placeholder: "••••••••", isSecure: true, errorMessage: "كلمة المرور قصيرة جداً")
     }
     .padding()
+    .background(SofraColors.background)
 }

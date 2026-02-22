@@ -1,5 +1,5 @@
 // EmptyStateView.swift
-// Beautiful empty state for lists with no data
+// 🌙 حالة فارغة فخمة بتوهج ذهبي — Premium Empty State
 
 import SwiftUI
 
@@ -12,9 +12,21 @@ struct EmptyStateView: View {
 
     var body: some View {
         VStack(spacing: SofraSpacing.lg) {
-            Image(systemName: icon)
-                .font(.system(size: 56))
-                .foregroundStyle(SofraColors.sky300)
+            ZStack {
+                Circle()
+                    .fill(SofraColors.gold500.opacity(0.08))
+                    .frame(width: 100, height: 100)
+
+                Image(systemName: icon)
+                    .font(.system(size: 44))
+                    .foregroundStyle(
+                        .linearGradient(
+                            colors: [SofraColors.gold400, SofraColors.gold600],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
 
             Text(title)
                 .font(SofraTypography.title3)
@@ -42,4 +54,5 @@ struct EmptyStateView: View {
         message: "لم تقم بأي طلب بعد. تصفح المطاعم واطلب وجبتك المفضلة!",
         actionTitle: "تصفح المطاعم"
     ) {}
+    .background(SofraColors.background)
 }

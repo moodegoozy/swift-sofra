@@ -40,7 +40,7 @@ struct NotificationsView: View {
                 .refreshable { await loadData() }
             }
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .navigationTitle("الإشعارات")
         .navigationBarTitleDisplayMode(.large)
         .task { await loadData() }
@@ -82,7 +82,7 @@ struct NotificationsView: View {
                 .frame(width: 36, height: 36)
         }
         .padding(SofraSpacing.cardPadding)
-        .background(notif.read ? SofraColors.cardBackground : SofraColors.sky50)
+        .background(notif.read ? SofraColors.cardBackground : SofraColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
         .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
     }

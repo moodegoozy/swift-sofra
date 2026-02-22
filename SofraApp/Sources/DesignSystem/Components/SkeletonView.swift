@@ -1,5 +1,5 @@
 // SkeletonView.swift
-// Skeleton loading placeholders for premium feel
+// 🌙 هيكل تحميل فخم بتوهج ذهبي — Premium Gold Shimmer Skeleton
 
 import SwiftUI
 
@@ -12,12 +12,18 @@ struct SkeletonView: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .fill(SofraColors.sky100)
+            .fill(SofraColors.surfaceElevated)
             .frame(width: width, height: height)
             .overlay(
                 GeometryReader { geo in
                     LinearGradient(
-                        colors: [.clear, SofraColors.sky50.opacity(0.6), .clear],
+                        colors: [
+                            .clear,
+                            SofraColors.gold500.opacity(0.08),
+                            SofraColors.gold400.opacity(0.15),
+                            SofraColors.gold500.opacity(0.08),
+                            .clear
+                        ],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -28,14 +34,14 @@ struct SkeletonView: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .onAppear {
-                withAnimation(.linear(duration: 1.3).repeatForever(autoreverses: false)) {
+                withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
                     phase = 1
                 }
             }
     }
 }
 
-// MARK: - Skeleton Card (for list loading)
+// MARK: - Skeleton Card
 struct SkeletonCard: View {
     var body: some View {
         SofraCard {
@@ -58,5 +64,7 @@ struct SkeletonCard: View {
         SkeletonCard()
     }
     .padding()
+    .background(SofraColors.background)
+}
     .background(SofraColors.background)
 }

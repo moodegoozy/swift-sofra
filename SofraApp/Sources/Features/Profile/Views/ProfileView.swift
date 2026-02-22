@@ -23,12 +23,29 @@ struct ProfileView: View {
                 // Avatar & Info
                 VStack(spacing: SofraSpacing.sm) {
                     ZStack {
+                        // Gold glow
                         Circle()
-                            .fill(SofraColors.sky100)
+                            .fill(SofraColors.gold500.opacity(0.15))
+                            .frame(width: 96, height: 96)
+
+                        Circle()
+                            .fill(SofraColors.surfaceElevated)
                             .frame(width: 80, height: 80)
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(
+                                        LinearGradient(
+                                            colors: [SofraColors.gold400, SofraColors.gold600],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 2
+                                    )
+                            )
+
                         Image(systemName: "person.fill")
                             .font(.largeTitle)
-                            .foregroundStyle(SofraColors.primary)
+                            .foregroundStyle(SofraColors.gold400)
                     }
 
                     Text(vm.user?.name ?? appState.currentUser?.name ?? "")
@@ -115,7 +132,7 @@ struct ProfileView: View {
                 Spacer(minLength: SofraSpacing.xxxl)
             }
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .navigationTitle("الملف الشخصي")
         .navigationBarTitleDisplayMode(.large)
         .task { await loadAndPopulate() }

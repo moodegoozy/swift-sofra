@@ -39,7 +39,7 @@ struct RestaurantsListView: View {
             .padding(.horizontal, SofraSpacing.screenHorizontal)
             .padding(.top, SofraSpacing.md)
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .searchable(text: $searchText, prompt: "ابحث عن مطعم...")
         .refreshable {
             await vm.loadRestaurants(token: try? await appState.validToken())

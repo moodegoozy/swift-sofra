@@ -13,7 +13,13 @@ struct ErrorStateView: View {
         VStack(spacing: SofraSpacing.lg) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 48))
-                .foregroundStyle(SofraColors.warning)
+                .foregroundStyle(
+                    .linearGradient(
+                        colors: [SofraColors.gold400, SofraColors.lanternOrange],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
 
             Text("حدث خطأ")
                 .font(SofraTypography.title3)

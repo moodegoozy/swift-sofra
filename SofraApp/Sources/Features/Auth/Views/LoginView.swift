@@ -1,6 +1,5 @@
 // LoginView.swift
-// Login screen matching the web app's /login route
-// Premium Apple-like design with sky palette
+// 🌙 شاشة تسجيل دخول فخمة بطابع رمضاني
 
 import SwiftUI
 
@@ -12,21 +11,32 @@ struct LoginView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: SofraSpacing.xl) {
-                // MARK: - Header
-                VStack(spacing: SofraSpacing.md) {
-                    Image(systemName: "fork.knife.circle.fill")
-                        .font(.system(size: 72))
-                        .foregroundStyle(SofraColors.primary)
+                // MARK: - Header with Ramadan Decorations
+                ZStack {
+                    // Floating stars background
+                    FloatingStarsView(count: 15)
+                        .frame(height: 220)
 
-                    Text("سفرة البيت")
-                        .font(SofraTypography.largeTitle)
-                        .foregroundStyle(SofraColors.primaryDark)
+                    VStack(spacing: SofraSpacing.md) {
+                        // Crescent moon icon
+                        CrescentMoonView(size: 56, glowRadius: 15)
 
-                    Text("أهلاً بك! سجّل دخولك للمتابعة")
-                        .font(SofraTypography.body)
-                        .foregroundStyle(SofraColors.textSecondary)
+                        Text("سفرة البيت")
+                            .font(SofraTypography.ramadanTitle)
+                            .foregroundStyle(
+                                .linearGradient(
+                                    colors: [SofraColors.gold300, SofraColors.gold500],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+
+                        Text("أهلاً بك! سجّل دخولك للمتابعة")
+                            .font(SofraTypography.body)
+                            .foregroundStyle(SofraColors.textSecondary)
+                    }
                 }
-                .padding(.top, SofraSpacing.xxxl)
+                .padding(.top, SofraSpacing.xl)
 
                 // MARK: - Form
                 VStack(spacing: SofraSpacing.lg) {
@@ -73,7 +83,7 @@ struct LoginView: View {
                 Spacer(minLength: SofraSpacing.xxxl)
             }
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .navigationDestination(isPresented: $showRegister) {
             RegisterChoiceView()
         }

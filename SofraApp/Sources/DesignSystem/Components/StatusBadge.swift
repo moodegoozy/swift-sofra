@@ -1,5 +1,5 @@
 // StatusBadge.swift
-// Flexible status badge — accepts text + color OR raw status string
+// 🌙 شارة حالة فخمة بتوهج ذهبي — Premium Glowing Status Badge
 
 import SwiftUI
 
@@ -7,13 +7,11 @@ struct StatusBadge: View {
     let text: String
     let color: Color
 
-    /// Init with custom text and color
     init(text: String, color: Color) {
         self.text = text
         self.color = color
     }
 
-    /// Init from raw order status string (auto-localized + colored)
     init(status: String) {
         self.color = SofraColors.orderStatusColor(status)
         switch status {
@@ -32,11 +30,18 @@ struct StatusBadge: View {
         Text(text)
             .font(SofraTypography.caption)
             .fontWeight(.semibold)
-            .padding(.horizontal, SofraSpacing.sm)
-            .padding(.vertical, SofraSpacing.xs)
+            .padding(.horizontal, SofraSpacing.md)
+            .padding(.vertical, SofraSpacing.xs + 2)
             .foregroundStyle(.white)
-            .background(color)
-            .clipShape(Capsule())
+            .background(
+                Capsule()
+                    .fill(color.opacity(0.85))
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(color.opacity(0.4), lineWidth: 0.5)
+                    )
+            )
+            .shadow(color: color.opacity(0.3), radius: 6, y: 2)
     }
 }
 
@@ -44,8 +49,10 @@ struct StatusBadge: View {
     VStack(spacing: 12) {
         StatusBadge(status: "pending")
         StatusBadge(status: "preparing")
-        StatusBadge(text: "مخصص", color: .purple)
+        StatusBadge(text: "مميز", color: SofraColors.gold500)
         StatusBadge(status: "delivered")
         StatusBadge(status: "cancelled")
     }
+    .padding()
+    .background(SofraColors.background)
 }

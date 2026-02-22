@@ -33,7 +33,7 @@ struct CourierDashboardView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            .background(SofraColors.background.ignoresSafeArea())
+            .ramadanBackground()
             .navigationTitle("لوحة المندوب")
             .navigationBarTitleDisplayMode(.inline)
             .task {

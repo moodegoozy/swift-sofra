@@ -134,7 +134,7 @@ struct OrderDetailView: View {
                 Spacer(minLength: SofraSpacing.xxxl)
             }
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .navigationTitle("تفاصيل الطلب")
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("هل تريد إلغاء هذا الطلب؟", isPresented: $showCancelConfirm) {

@@ -74,7 +74,7 @@ struct CheckoutView: View {
                         .frame(minHeight: 60)
                         .font(SofraTypography.body)
                         .scrollContentBackground(.hidden)
-                        .background(SofraColors.sky50)
+                        .background(SofraColors.surfaceElevated)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
@@ -128,7 +128,7 @@ struct CheckoutView: View {
             }
             .padding(.top, SofraSpacing.md)
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .navigationTitle("إتمام الطلب")
         .navigationBarTitleDisplayMode(.inline)
         .alert("تم إنشاء الطلب بنجاح! 🎉", isPresented: $showSuccess) {

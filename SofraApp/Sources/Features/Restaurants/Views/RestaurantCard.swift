@@ -1,5 +1,5 @@
 // RestaurantCard.swift
-// Premium restaurant card for list views
+// 🌙 بطاقة مطعم فخمة بطابع رمضاني — Premium Restaurant Card
 
 import SwiftUI
 
@@ -11,17 +11,15 @@ struct RestaurantCard: View {
             // Info (RTL: info on the right)
             VStack(alignment: .trailing, spacing: SofraSpacing.xs) {
                 HStack(spacing: SofraSpacing.xs) {
-                    // Verification badge
                     if restaurant.isVerified {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.caption)
-                            .foregroundStyle(SofraColors.primary)
+                            .foregroundStyle(SofraColors.gold400)
                     }
-                    // Tier badge
                     if restaurant.sellerTier != .bronze {
                         Image(systemName: restaurant.tierIcon)
                             .font(.caption)
-                            .foregroundStyle(restaurant.sellerTier == .gold ? .yellow : .gray)
+                            .foregroundStyle(restaurant.sellerTier == .gold ? SofraColors.gold400 : SofraColors.textMuted)
                     }
 
                     Text(restaurant.name)
@@ -42,7 +40,6 @@ struct RestaurantCard: View {
                 }
 
                 HStack(spacing: SofraSpacing.sm) {
-                    // Status
                     HStack(spacing: 2) {
                         Circle()
                             .fill(restaurant.isOpen ? SofraColors.success : SofraColors.error)
@@ -52,25 +49,23 @@ struct RestaurantCard: View {
                             .foregroundStyle(restaurant.isOpen ? SofraColors.success : SofraColors.error)
                     }
 
-                    // Rating
                     HStack(spacing: 2) {
                         Text(restaurant.ratingText)
                             .font(SofraTypography.caption)
                             .foregroundStyle(SofraColors.textSecondary)
                         Image(systemName: "star.fill")
                             .font(.caption2)
-                            .foregroundStyle(.yellow)
+                            .foregroundStyle(SofraColors.gold400)
                     }
 
-                    // Package
                     if restaurant.packageType == .premium {
                         Text("مميز")
                             .font(SofraTypography.caption2)
                             .fontWeight(.semibold)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(SofraColors.warning.opacity(0.15))
-                            .foregroundStyle(SofraColors.warning)
+                            .background(SofraColors.gold500.opacity(0.2))
+                            .foregroundStyle(SofraColors.gold400)
                             .clipShape(Capsule())
                     }
                 }
@@ -88,7 +83,7 @@ struct RestaurantCard: View {
                 case .failure:
                     Image(systemName: "storefront.fill")
                         .font(.title2)
-                        .foregroundStyle(SofraColors.sky300)
+                        .foregroundStyle(SofraColors.gold400.opacity(0.5))
                 default:
                     SkeletonView(width: 64, height: 64, radius: 14)
                 }
@@ -97,13 +92,21 @@ struct RestaurantCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(SofraColors.sky100, lineWidth: 1)
+                    .strokeBorder(SofraColors.gold500.opacity(0.15), lineWidth: 0.8)
             )
+            .shadow(color: SofraColors.gold500.opacity(0.1), radius: 6)
         }
         .padding(SofraSpacing.cardPadding)
-        .background(SofraColors.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 4)
+        .background(
+            RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .environment(\.colorScheme, .dark)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
+                .strokeBorder(SofraColors.gold500.opacity(0.1), lineWidth: 0.5)
+        )
+        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 4)
     }
 }
 
@@ -122,4 +125,5 @@ struct RestaurantCard: View {
         createTime: nil, updateTime: nil
     )))
     .padding()
+    .background(SofraColors.background)
 }

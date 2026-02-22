@@ -56,7 +56,7 @@ struct MenuView: View {
                 Spacer(minLength: 80)
             }
         }
-        .background(SofraColors.background.ignoresSafeArea())
+        .ramadanBackground()
         .navigationTitle(vm.restaurant?.name ?? "القائمة")
         .navigationBarTitleDisplayMode(.inline)
         .task {

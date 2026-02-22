@@ -1,5 +1,5 @@
 // SofraButton.swift
-// Reusable premium button component
+// 🌙 زر فخم بتأثيرات ذهبية رمضانية — Premium Ramadan Button
 
 import SwiftUI
 
@@ -13,7 +13,6 @@ struct SofraButton: View {
 
     enum Style {
         case primary, secondary, destructive, ghost
-        /// Alias for destructive
         static let danger: Style = .destructive
     }
 
@@ -39,12 +38,13 @@ struct SofraButton: View {
             .frame(maxWidth: .infinity)
             .frame(height: SofraSpacing.buttonHeight)
             .foregroundStyle(foregroundColor)
-            .background(backgroundColor)
+            .background(backgroundView)
             .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.buttonRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: SofraSpacing.buttonRadius, style: .continuous)
-                    .strokeBorder(borderColor, lineWidth: style == .ghost ? 1.5 : 0)
+                    .strokeBorder(borderGradient, lineWidth: borderWidth)
             )
+            .shadow(color: shadowColor, radius: 10, y: 4)
         }
         .disabled(isLoading || isDisabled)
         .opacity(isDisabled ? 0.5 : 1)
@@ -53,26 +53,62 @@ struct SofraButton: View {
     // MARK: - Style Helpers
     private var foregroundColor: Color {
         switch style {
-        case .primary:     return .white
-        case .secondary:   return SofraColors.primary
+        case .primary:     return SofraColors.navy900
+        case .secondary:   return SofraColors.gold400
         case .destructive: return .white
-        case .ghost:       return SofraColors.primary
+        case .ghost:       return SofraColors.gold400
         }
     }
 
-    private var backgroundColor: Color {
+    @ViewBuilder
+    private var backgroundView: some View {
         switch style {
-        case .primary:     return SofraColors.primary
-        case .secondary:   return SofraColors.sky100
-        case .destructive: return SofraColors.error
-        case .ghost:       return .clear
+        case .primary:
+            SofraColors.goldGradient
+        case .secondary:
+            SofraColors.surfaceElevated.opacity(0.8)
+        case .destructive:
+            LinearGradient(
+                colors: [SofraColors.error, SofraColors.error.opacity(0.8)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .ghost:
+            Color.clear
         }
     }
 
-    private var borderColor: Color {
+    private var borderGradient: LinearGradient {
         switch style {
-        case .ghost: return SofraColors.sky200
-        default:     return .clear
+        case .ghost:
+            return LinearGradient(
+                colors: [SofraColors.gold500.opacity(0.4), SofraColors.gold400.opacity(0.2)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .secondary:
+            return LinearGradient(
+                colors: [SofraColors.gold500.opacity(0.3), SofraColors.gold400.opacity(0.1)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        default:
+            return LinearGradient(colors: [.clear], startPoint: .top, endPoint: .bottom)
+        }
+    }
+
+    private var borderWidth: CGFloat {
+        switch style {
+        case .ghost, .secondary: return 1.2
+        default: return 0
+        }
+    }
+
+    private var shadowColor: Color {
+        switch style {
+        case .primary: return SofraColors.gold500.opacity(0.3)
+        case .destructive: return SofraColors.error.opacity(0.3)
+        default: return .clear
         }
     }
 }
@@ -86,4 +122,5 @@ struct SofraButton: View {
         SofraButton(title: "جاري التحميل...", isLoading: true, action: {})
     }
     .padding()
+    .background(SofraColors.background)
 }
