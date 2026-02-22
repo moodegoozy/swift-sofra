@@ -19,6 +19,7 @@ final class AppState {
     var currentUser: AppUser?
     var role: UserRole?
     var idToken: String?
+    var selectedMainTab = 0
 
     // MARK: - Services
     private let authService = FirebaseAuthService()

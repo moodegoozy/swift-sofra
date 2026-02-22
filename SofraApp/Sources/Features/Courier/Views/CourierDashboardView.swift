@@ -9,8 +9,7 @@ struct CourierDashboardView: View {
     @State private var selectedTab = 0
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
                 // Tab Bar
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: SofraSpacing.sm) {
@@ -41,7 +40,6 @@ struct CourierDashboardView: View {
                 guard let uid = appState.currentUser?.uid else { return }
                 await vm.loadDashboard(courierId: uid, token: try? await appState.validToken())
             }
-        }
     }
 
     // MARK: - Tab Button

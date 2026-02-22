@@ -21,6 +21,7 @@ final class CartViewModel {
     private static let storageKey = "broast_cart"
 
     var items: [CartItem] = []
+    var restaurantName: String = ""
 
     var subtotal: Double {
         items.reduce(0) { $0 + $1.lineTotal }
@@ -33,7 +34,8 @@ final class CartViewModel {
     }
 
     // MARK: - Add Item
-    func addItem(_ menuItem: MenuItem, qty: Int = 1) {
+    func addItem(_ menuItem: MenuItem, qty: Int = 1, restaurantName: String? = nil) {
+        if let rn = restaurantName { self.restaurantName = rn }
         if let idx = items.firstIndex(where: { $0.id == menuItem.id }) {
             items[idx].qty += qty
         } else {
@@ -65,6 +67,7 @@ final class CartViewModel {
     // MARK: - Clear
     func clear() {
         items = []
+        restaurantName = ""
         saveToStorage()
     }
 

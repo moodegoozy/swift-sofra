@@ -43,7 +43,7 @@ struct MenuView: View {
 
                             ForEach(group.items) { item in
                                 MenuItemCard(item: item) {
-                                    cartVM.addItem(item)
+                                    cartVM.addItem(item, restaurantName: vm.restaurant?.name)
                                     let impact = UINotificationFeedbackGenerator()
                                     impact.notificationOccurred(.success)
                                 }

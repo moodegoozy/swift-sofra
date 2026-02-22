@@ -16,7 +16,9 @@ struct CartView: View {
                     title: "السلة فارغة",
                     message: "أضف وجباتك المفضلة من قائمة المطعم",
                     actionTitle: "تصفح المطاعم"
-                ) {}
+                ) {
+                    appState.selectedMainTab = 1
+                }
             } else {
                 ScrollView {
                     VStack(spacing: SofraSpacing.md) {

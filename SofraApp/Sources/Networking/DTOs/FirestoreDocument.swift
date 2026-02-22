@@ -172,14 +172,14 @@ enum FirestoreEncoder {
 
     static func encodeValue(_ value: Any) -> [String: Any] {
         switch value {
+        case let v as Bool:
+            return ["booleanValue": v]
         case let v as String:
             return ["stringValue": v]
         case let v as Int:
             return ["integerValue": String(v)]
         case let v as Double:
             return ["doubleValue": v]
-        case let v as Bool:
-            return ["booleanValue": v]
         case let v as [String: Any]:
             return ["mapValue": ["fields": encode(v)]]
         case let v as [Any]:

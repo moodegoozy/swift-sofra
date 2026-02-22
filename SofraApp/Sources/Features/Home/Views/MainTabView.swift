@@ -6,10 +6,10 @@ import SwiftUI
 struct MainTabView: View {
     @Environment(AppState.self) var appState
     @Environment(CartViewModel.self) var cartVM
-    @State private var selectedTab = 0
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        @Bindable var appState = appState
+        TabView(selection: $appState.selectedMainTab) {
             // Common tabs visible to all roles
             NavigationStack {
                 HomeView()

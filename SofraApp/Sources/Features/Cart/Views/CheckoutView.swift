@@ -6,7 +6,9 @@ import SwiftUI
 struct CheckoutView: View {
     @Environment(CartViewModel.self) var cartVM
     @Environment(AppState.self) var appState
+    @Environment(\.dismiss) var dismiss
     @State private var notes = ""
+    @State private var address = ""
     @State private var deliveryType = "delivery"
     @State private var isSubmitting = false
     @State private var showSuccess = false
@@ -77,6 +79,18 @@ struct CheckoutView: View {
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
 
+                // Delivery Address
+                if deliveryType == "delivery" {
+                    SofraCard {
+                        Text("عنوان التوصيل")
+                            .font(SofraTypography.headline)
+                        TextField("أدخل عنوان التوصيل", text: $address)
+                            .font(SofraTypography.body)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                }
+
                 // Payment info
                 SofraCard {
                     HStack(spacing: SofraSpacing.sm) {
@@ -118,7 +132,13 @@ struct CheckoutView: View {
         .navigationTitle("إتمام الطلب")
         .navigationBarTitleDisplayMode(.inline)
         .alert("تم إنشاء الطلب بنجاح! 🎉", isPresented: $showSuccess) {
-            Button("حسناً") {}
+            Button("حسناً") { dismiss() }
+        }
+        .task {
+            // Auto-populate address from user profile
+            if let user = appState.currentUser {
+                address = user.savedLocation?.address ?? user.address ?? ""
+            }
         }
     }
 
@@ -141,11 +161,12 @@ struct CheckoutView: View {
             "deliveryFee": deliveryFee,
             "total": total,
             "status": "pending",
-            "address": user.savedLocation?.address ?? user.address ?? "",
+            "address": address.isEmpty ? (user.savedLocation?.address ?? user.address ?? "") : address,
             "deliveryType": deliveryType,
             "notes": notes,
             "restaurantId": cartVM.restaurantOwnerId ?? "",
-            "restaurantName": ""
+            "restaurantName": cartVM.restaurantName,
+            "createdAt": ISO8601DateFormatter().string(from: Date())
         ]
 
         do {

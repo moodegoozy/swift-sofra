@@ -12,6 +12,10 @@ struct ProfileView: View {
     @State private var address = ""
     @State private var city = ""
     @State private var showLogoutConfirm = false
+    @State private var showNotifications = false
+    @State private var showPrivacy = false
+    @State private var showTerms = false
+    @State private var showSupport = false
 
     var body: some View {
         ScrollView {
@@ -80,10 +84,24 @@ struct ProfileView: View {
                 // Settings Section
                 SofraCard {
                     VStack(spacing: SofraSpacing.md) {
-                        settingsRow(icon: "bell", label: "الإشعارات") {}
-                        settingsRow(icon: "shield", label: "سياسة الخصوصية") {}
-                        settingsRow(icon: "doc.text", label: "الشروط والأحكام") {}
-                        settingsRow(icon: "questionmark.circle", label: "الدعم الفني") {}
+                        NavigationLink {
+                            NotificationsView()
+                        } label: {
+                            HStack {
+                                Image(systemName: "chevron.left")
+                                    .foregroundStyle(SofraColors.textMuted)
+                                Spacer()
+                                Text("الإشعارات")
+                                    .font(SofraTypography.body)
+                                    .foregroundStyle(SofraColors.textPrimary)
+                                Image(systemName: "bell")
+                                    .foregroundStyle(SofraColors.primary)
+                                    .frame(width: 28)
+                            }
+                        }
+                        settingsRow(icon: "shield", label: "سياسة الخصوصية") { showPrivacy = true }
+                        settingsRow(icon: "doc.text", label: "الشروط والأحكام") { showTerms = true }
+                        settingsRow(icon: "questionmark.circle", label: "الدعم الفني") { showSupport = true }
                     }
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)

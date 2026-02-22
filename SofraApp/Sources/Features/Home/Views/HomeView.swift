@@ -77,10 +77,18 @@ struct HomeView: View {
     private var quickActions: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: SofraSpacing.md) {
-                QuickActionCard(icon: "storefront.fill", title: "المطاعم", color: SofraColors.primary)
-                QuickActionCard(icon: "flame.fill", title: "الأكثر طلباً", color: SofraColors.warning)
-                QuickActionCard(icon: "tag.fill", title: "العروض", color: SofraColors.success)
-                QuickActionCard(icon: "clock.fill", title: "آخر الطلبات", color: SofraColors.sky700)
+                QuickActionCard(icon: "storefront.fill", title: "المطاعم", color: SofraColors.primary) {
+                    appState.selectedMainTab = 1
+                }
+                QuickActionCard(icon: "flame.fill", title: "الأكثر طلباً", color: SofraColors.warning) {
+                    appState.selectedMainTab = 1
+                }
+                QuickActionCard(icon: "tag.fill", title: "العروض", color: SofraColors.success) {
+                    appState.selectedMainTab = 1
+                }
+                QuickActionCard(icon: "clock.fill", title: "آخر الطلبات", color: SofraColors.sky700) {
+                    appState.selectedMainTab = 3
+                }
             }
             .padding(.horizontal, SofraSpacing.screenHorizontal)
         }
@@ -113,20 +121,26 @@ struct QuickActionCard: View {
     let icon: String
     let title: String
     let color: Color
+    var action: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: SofraSpacing.sm) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
-                .background(color.gradient)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        Button {
+            action?()
+        } label: {
+            VStack(spacing: SofraSpacing.sm) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .frame(width: 56, height: 56)
+                    .background(color.gradient)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            Text(title)
-                .font(SofraTypography.caption)
-                .foregroundStyle(SofraColors.textSecondary)
+                Text(title)
+                    .font(SofraTypography.caption)
+                    .foregroundStyle(SofraColors.textSecondary)
+            }
         }
+        .buttonStyle(.plain)
     }
 }
 

@@ -9,8 +9,7 @@ struct OwnerDashboardView: View {
     @State private var selectedTab = 0
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
                 // Tab Bar
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: SofraSpacing.sm) {
@@ -39,7 +38,6 @@ struct OwnerDashboardView: View {
                 guard let uid = appState.currentUser?.uid else { return }
                 await vm.loadDashboard(ownerId: uid, token: try? await appState.validToken())
             }
-        }
     }
 
     // MARK: - Tab Button
@@ -109,15 +107,15 @@ struct OwnerDashboardView: View {
                         SofraCard {
                             HStack {
                                 StatusBadge(
-                                    text: rest.packageType == "premium" ? "مميز" : "مجاني",
-                                    color: rest.packageType == "premium" ? SofraColors.warning : SofraColors.textMuted
+                                    text: rest.packageType == .premium ? "مميز" : "مجاني",
+                                    color: rest.packageType == .premium ? SofraColors.warning : SofraColors.textMuted
                                 )
                                 Spacer()
                                 HStack(spacing: SofraSpacing.xs) {
                                     Text("الباقة")
                                         .font(SofraTypography.headline)
-                                    Image(systemName: rest.packageType == "premium" ? "crown.fill" : "tag.fill")
-                                        .foregroundStyle(rest.packageType == "premium" ? SofraColors.warning : SofraColors.textMuted)
+                                    Image(systemName: rest.packageType == .premium ? "crown.fill" : "tag.fill")
+                                        .foregroundStyle(rest.packageType == .premium ? SofraColors.warning : SofraColors.textMuted)
                                 }
                             }
                         }
@@ -132,7 +130,9 @@ struct OwnerDashboardView: View {
                         LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
                             quickAction("الطلبات", icon: "list.clipboard", color: SofraColors.primary) { selectedTab = 1 }
                             quickAction("القائمة", icon: "menucard", color: SofraColors.success) { selectedTab = 2 }
-                            quickAction("المحفظة", icon: "creditcard", color: SofraColors.info) {}
+                            quickAction("المحفظة", icon: "creditcard", color: SofraColors.info) {
+                                // TODO: Navigate to wallet when implemented
+                            }
                             quickAction("الإعدادات", icon: "gearshape", color: SofraColors.textSecondary) { selectedTab = 3 }
                         }
                     }
@@ -396,7 +396,9 @@ struct OwnerDashboardView: View {
     }
 
     private func settingsRow(icon: String, label: String, color: Color) -> some View {
-        Button {} label: {
+        Button {
+            // Settings rows navigate within owner settings
+        } label: {
             HStack {
                 Image(systemName: "chevron.left")
                     .foregroundStyle(SofraColors.textMuted)

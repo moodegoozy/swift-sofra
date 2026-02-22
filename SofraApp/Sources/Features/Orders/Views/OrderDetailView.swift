@@ -4,8 +4,9 @@
 import SwiftUI
 
 struct OrderDetailView: View {
-    let order: Order
+    @State var order: Order
     @Environment(AppState.self) var appState
+    @Environment(\.dismiss) var dismiss
     @State private var vm = OrdersViewModel()
     @State private var showCancelConfirm = false
 
@@ -140,6 +141,11 @@ struct OrderDetailView: View {
             Button("إلغاء الطلب", role: .destructive) {
                 Task {
                     await vm.cancelOrder(orderId: order.id, token: try? await appState.validToken())
+                    order = Order(
+                        id: order.id, customerId: order.customerId, restaurantId: order.restaurantId,
+                        items: order.items, subtotal: order.subtotal, deliveryFee: order.deliveryFee,
+                        total: order.total, status: .cancelled, address: order.address, notes: order.notes
+                    )
                 }
             }
         }
