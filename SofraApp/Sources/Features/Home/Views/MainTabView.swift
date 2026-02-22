@@ -4,8 +4,8 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @EnvironmentObject var appState: AppState
-    @EnvironmentObject var cartVM: CartViewModel
+    @Environment(AppState.self) var appState
+    @Environment(CartViewModel.self) var cartVM
     @State private var selectedTab = 0
 
     var body: some View {
@@ -92,6 +92,6 @@ struct MainTabView: View {
 
 #Preview {
     MainTabView()
-        .environmentObject(AppState())
-        .environmentObject(CartViewModel())
+        .environment(AppState())
+        .environment(CartViewModel())
 }

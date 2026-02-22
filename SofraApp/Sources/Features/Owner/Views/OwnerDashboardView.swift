@@ -4,8 +4,8 @@
 import SwiftUI
 
 struct OwnerDashboardView: View {
-    @EnvironmentObject var appState: AppState
-    @StateObject private var vm = OwnerDashboardViewModel()
+    @Environment(AppState.self) var appState
+    @State private var vm = OwnerDashboardViewModel()
     @State private var selectedTab = 0
 
     var body: some View {
@@ -414,6 +414,6 @@ struct OwnerDashboardView: View {
 
 #Preview {
     OwnerDashboardView()
-        .environmentObject(AppState())
-        .environmentObject(CartViewModel())
+        .environment(AppState())
+        .environment(CartViewModel())
 }

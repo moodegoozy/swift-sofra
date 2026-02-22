@@ -5,8 +5,8 @@
 import SwiftUI
 
 struct LoginView: View {
-    @EnvironmentObject var appState: AppState
-    @StateObject private var vm = AuthViewModel()
+    @Environment(AppState.self) var appState
+    @State private var vm = AuthViewModel()
     @State private var showRegister = false
 
     var body: some View {
@@ -88,6 +88,6 @@ struct LoginView: View {
 #Preview {
     NavigationStack {
         LoginView()
-            .environmentObject(AppState())
+            .environment(AppState())
     }
 }

@@ -2,7 +2,7 @@
 // Central app state: auth status, current user, role
 
 import SwiftUI
-import Combine
+import Observation
 
 /// Roles matching the web app's union type exactly
 enum UserRole: String, Codable, CaseIterable {
@@ -11,13 +11,14 @@ enum UserRole: String, Codable, CaseIterable {
 }
 
 /// Central observable state shared across the entire app
-final class AppState: ObservableObject {
-    // MARK: - Published State
-    @Published var isAuthenticated = false
-    @Published var isLoading = true
-    @Published var currentUser: AppUser?
-    @Published var role: UserRole?
-    @Published var idToken: String?
+@Observable
+final class AppState {
+    // MARK: - State
+    var isAuthenticated = false
+    var isLoading = true
+    var currentUser: AppUser?
+    var role: UserRole?
+    var idToken: String?
 
     // MARK: - Services
     private let authService = FirebaseAuthService()

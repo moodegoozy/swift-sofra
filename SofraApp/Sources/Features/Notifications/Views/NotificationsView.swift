@@ -4,8 +4,8 @@
 import SwiftUI
 
 struct NotificationsView: View {
-    @EnvironmentObject var appState: AppState
-    @StateObject private var vm = NotificationsViewModel()
+    @Environment(AppState.self) var appState
+    @State private var vm = NotificationsViewModel()
 
     var body: some View {
         Group {
@@ -107,6 +107,6 @@ struct NotificationsView: View {
 #Preview {
     NavigationStack {
         NotificationsView()
-            .environmentObject(AppState())
+            .environment(AppState())
     }
 }

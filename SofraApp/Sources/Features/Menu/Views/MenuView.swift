@@ -5,9 +5,9 @@ import SwiftUI
 
 struct MenuView: View {
     let restaurantId: String
-    @EnvironmentObject var appState: AppState
-    @EnvironmentObject var cartVM: CartViewModel
-    @StateObject private var vm = MenuViewModel()
+    @Environment(AppState.self) var appState
+    @Environment(CartViewModel.self) var cartVM
+    @State private var vm = MenuViewModel()
 
     var body: some View {
         ScrollView {
@@ -161,7 +161,7 @@ struct MenuView: View {
 #Preview {
     NavigationStack {
         MenuView(restaurantId: "test")
-            .environmentObject(AppState())
-            .environmentObject(CartViewModel())
+            .environment(AppState())
+            .environment(CartViewModel())
     }
 }

@@ -4,7 +4,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject var appState: AppState
+    @Environment(AppState.self) var appState
 
     var body: some View {
         Group {
@@ -59,6 +59,6 @@ struct SplashView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(AppState())
-        .environmentObject(CartViewModel())
+        .environment(AppState())
+        .environment(CartViewModel())
 }

@@ -4,8 +4,8 @@
 import SwiftUI
 
 struct RestaurantsListView: View {
-    @EnvironmentObject var appState: AppState
-    @StateObject private var vm = RestaurantsViewModel()
+    @Environment(AppState.self) var appState
+    @State private var vm = RestaurantsViewModel()
     @State private var searchText = ""
 
     var body: some View {
@@ -68,6 +68,6 @@ struct RestaurantsListView: View {
 #Preview {
     NavigationStack {
         RestaurantsListView()
-            .environmentObject(AppState())
+            .environment(AppState())
     }
 }

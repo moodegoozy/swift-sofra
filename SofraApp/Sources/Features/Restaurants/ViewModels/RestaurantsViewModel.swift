@@ -2,11 +2,13 @@
 // Loads and manages restaurant list data
 
 import Foundation
+import Observation
 
-final class RestaurantsViewModel: ObservableObject {
-    @Published var restaurants: [Restaurant] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+@Observable
+final class RestaurantsViewModel {
+    var restaurants: [Restaurant] = []
+    var isLoading = false
+    var errorMessage: String?
 
     private let firestoreService = FirestoreService()
 

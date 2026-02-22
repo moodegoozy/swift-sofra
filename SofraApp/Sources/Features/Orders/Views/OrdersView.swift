@@ -4,8 +4,8 @@
 import SwiftUI
 
 struct OrdersView: View {
-    @EnvironmentObject var appState: AppState
-    @StateObject private var vm = OrdersViewModel()
+    @Environment(AppState.self) var appState
+    @State private var vm = OrdersViewModel()
     @State private var selectedTab = 0
 
     var body: some View {
@@ -127,6 +127,6 @@ struct OrderRowView: View {
 #Preview {
     NavigationStack {
         OrdersView()
-            .environmentObject(AppState())
+            .environment(AppState())
     }
 }

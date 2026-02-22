@@ -2,18 +2,20 @@
 // Manages courier dashboard data (availability, orders, earnings)
 
 import Foundation
+import Observation
 
-final class CourierDashboardViewModel: ObservableObject {
-    @Published var isAvailable = false
-    @Published var readyOrders: [Order] = []
-    @Published var activeOrders: [Order] = []
-    @Published var deliveredOrders: [Order] = []
-    @Published var totalDeliveries = 0
-    @Published var rating: Double = 0
-    @Published var totalEarnings: Double = 0
-    @Published var todayEarnings: Double = 0
-    @Published var documentsStatus = "pending"
-    @Published var isLoading = false
+@Observable
+final class CourierDashboardViewModel {
+    var isAvailable = false
+    var readyOrders: [Order] = []
+    var activeOrders: [Order] = []
+    var deliveredOrders: [Order] = []
+    var totalDeliveries = 0
+    var rating: Double = 0
+    var totalEarnings: Double = 0
+    var todayEarnings: Double = 0
+    var documentsStatus = "pending"
+    var isLoading = false
 
     private let firestoreService = FirestoreService()
     private var courierId: String = ""

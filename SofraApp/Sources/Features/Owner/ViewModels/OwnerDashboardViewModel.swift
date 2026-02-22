@@ -2,18 +2,20 @@
 // Manages owner dashboard data (restaurant info, orders, menu items, stats)
 
 import Foundation
+import Observation
 
-final class OwnerDashboardViewModel: ObservableObject {
-    @Published var restaurant: Restaurant?
-    @Published var orders: [Order] = []
-    @Published var menuItems: [MenuItem] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+@Observable
+final class OwnerDashboardViewModel {
+    var restaurant: Restaurant?
+    var orders: [Order] = []
+    var menuItems: [MenuItem] = []
+    var isLoading = false
+    var errorMessage: String?
 
     // Stats
-    @Published var todayOrders = 0
-    @Published var totalRevenue: Double = 0
-    @Published var menuItemsCount = 0
+    var todayOrders = 0
+    var totalRevenue: Double = 0
+    var menuItemsCount = 0
 
     private let firestoreService = FirestoreService()
 

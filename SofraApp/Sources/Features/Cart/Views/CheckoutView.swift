@@ -4,8 +4,8 @@
 import SwiftUI
 
 struct CheckoutView: View {
-    @EnvironmentObject var cartVM: CartViewModel
-    @EnvironmentObject var appState: AppState
+    @Environment(CartViewModel.self) var cartVM
+    @Environment(AppState.self) var appState
     @State private var notes = ""
     @State private var deliveryType = "delivery"
     @State private var isSubmitting = false
@@ -171,7 +171,7 @@ struct CheckoutView: View {
 #Preview {
     NavigationStack {
         CheckoutView()
-            .environmentObject(CartViewModel())
-            .environmentObject(AppState())
+            .environment(CartViewModel())
+            .environment(AppState())
     }
 }

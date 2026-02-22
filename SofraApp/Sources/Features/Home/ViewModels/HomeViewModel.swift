@@ -2,11 +2,13 @@
 // Loads featured restaurants for the home screen
 
 import Foundation
+import Observation
 
-final class HomeViewModel: ObservableObject {
-    @Published var featuredRestaurants: [Restaurant] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+@Observable
+final class HomeViewModel {
+    var featuredRestaurants: [Restaurant] = []
+    var isLoading = false
+    var errorMessage: String?
 
     private let firestoreService = FirestoreService()
 

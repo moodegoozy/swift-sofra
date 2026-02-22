@@ -2,12 +2,14 @@
 // Loads menu items for a specific restaurant
 
 import Foundation
+import Observation
 
-final class MenuViewModel: ObservableObject {
-    @Published var menuItems: [MenuItem] = []
-    @Published var restaurant: Restaurant?
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+@Observable
+final class MenuViewModel {
+    var menuItems: [MenuItem] = []
+    var restaurant: Restaurant?
+    var isLoading = false
+    var errorMessage: String?
 
     private let firestoreService = FirestoreService()
 

@@ -4,8 +4,8 @@
 import SwiftUI
 
 struct ProfileView: View {
-    @EnvironmentObject var appState: AppState
-    @StateObject private var vm = ProfileViewModel()
+    @Environment(AppState.self) var appState
+    @State private var vm = ProfileViewModel()
 
     @State private var name = ""
     @State private var phone = ""
@@ -174,6 +174,6 @@ struct ProfileView: View {
 #Preview {
     NavigationStack {
         ProfileView()
-            .environmentObject(AppState())
+            .environment(AppState())
     }
 }

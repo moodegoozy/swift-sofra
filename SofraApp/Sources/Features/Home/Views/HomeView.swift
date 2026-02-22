@@ -5,8 +5,8 @@
 import SwiftUI
 
 struct HomeView: View {
-    @EnvironmentObject var appState: AppState
-    @StateObject private var vm = HomeViewModel()
+    @Environment(AppState.self) var appState
+    @State private var vm = HomeViewModel()
 
     var body: some View {
         ScrollView {
@@ -133,7 +133,7 @@ struct QuickActionCard: View {
 #Preview {
     NavigationStack {
         HomeView()
-            .environmentObject(AppState())
-            .environmentObject(CartViewModel())
+            .environment(AppState())
+            .environment(CartViewModel())
     }
 }

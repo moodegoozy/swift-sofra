@@ -4,8 +4,8 @@
 import SwiftUI
 
 struct CourierDashboardView: View {
-    @EnvironmentObject var appState: AppState
-    @StateObject private var vm = CourierDashboardViewModel()
+    @Environment(AppState.self) var appState
+    @State private var vm = CourierDashboardViewModel()
     @State private var selectedTab = 0
 
     var body: some View {
@@ -426,6 +426,6 @@ struct CourierDashboardView: View {
 
 #Preview {
     CourierDashboardView()
-        .environmentObject(AppState())
-        .environmentObject(CartViewModel())
+        .environment(AppState())
+        .environment(CartViewModel())
 }

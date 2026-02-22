@@ -5,8 +5,8 @@ import SwiftUI
 
 struct OrderDetailView: View {
     let order: Order
-    @EnvironmentObject var appState: AppState
-    @StateObject private var vm = OrdersViewModel()
+    @Environment(AppState.self) var appState
+    @State private var vm = OrdersViewModel()
     @State private var showCancelConfirm = false
 
     var body: some View {
@@ -195,6 +195,6 @@ extension OrderStatus {
             ],
             subtotal: 60, deliveryFee: 5, total: 65, status: .preparing
         ))
-        .environmentObject(AppState())
+        .environment(AppState())
     }
 }

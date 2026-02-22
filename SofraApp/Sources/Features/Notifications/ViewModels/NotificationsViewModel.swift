@@ -21,10 +21,13 @@ struct AppNotification: Identifiable {
     }
 }
 
-final class NotificationsViewModel: ObservableObject {
-    @Published var notifications: [AppNotification] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+import Observation
+
+@Observable
+final class NotificationsViewModel {
+    var notifications: [AppNotification] = []
+    var isLoading = false
+    var errorMessage: String?
 
     private let firestoreService = FirestoreService()
 

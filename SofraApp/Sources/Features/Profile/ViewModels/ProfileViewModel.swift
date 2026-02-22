@@ -2,13 +2,15 @@
 // Profile data management
 
 import Foundation
+import Observation
 
-final class ProfileViewModel: ObservableObject {
-    @Published var user: AppUser?
-    @Published var isLoading = false
-    @Published var isSaving = false
-    @Published var errorMessage: String?
-    @Published var successMessage: String?
+@Observable
+final class ProfileViewModel {
+    var user: AppUser?
+    var isLoading = false
+    var isSaving = false
+    var errorMessage: String?
+    var successMessage: String?
 
     private let firestoreService = FirestoreService()
 

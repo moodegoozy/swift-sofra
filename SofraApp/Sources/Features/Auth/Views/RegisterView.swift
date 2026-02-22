@@ -5,8 +5,8 @@ import SwiftUI
 
 struct RegisterView: View {
     let selectedRole: UserRole
-    @EnvironmentObject var appState: AppState
-    @StateObject private var vm = AuthViewModel()
+    @Environment(AppState.self) var appState
+    @State private var vm = AuthViewModel()
 
     var body: some View {
         ScrollView {
@@ -117,6 +117,6 @@ struct RegisterView: View {
 #Preview {
     NavigationStack {
         RegisterView(selectedRole: .customer)
-            .environmentObject(AppState())
+            .environment(AppState())
     }
 }

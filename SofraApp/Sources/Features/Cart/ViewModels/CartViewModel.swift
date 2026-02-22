@@ -3,6 +3,7 @@
 // Uses @AppStorage for persistence (equivalent to web's localStorage key 'broast_cart')
 
 import SwiftUI
+import Observation
 
 /// Cart item matching web's CartItem type
 struct CartItem: Identifiable, Codable, Equatable, Sendable {
@@ -15,10 +16,11 @@ struct CartItem: Identifiable, Codable, Equatable, Sendable {
     var lineTotal: Double { price * Double(qty) }
 }
 
-final class CartViewModel: ObservableObject {
+@Observable
+final class CartViewModel {
     private static let storageKey = "broast_cart"
 
-    @Published var items: [CartItem] = []
+    var items: [CartItem] = []
 
     var subtotal: Double {
         items.reduce(0) { $0 + $1.lineTotal }

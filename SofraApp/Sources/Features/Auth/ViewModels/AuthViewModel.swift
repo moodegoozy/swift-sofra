@@ -2,24 +2,26 @@
 // Handles login/register form state and validation
 
 import SwiftUI
+import Observation
 
-final class AuthViewModel: ObservableObject {
+@Observable
+final class AuthViewModel {
     // MARK: - Login Fields
-    @Published var loginEmail = ""
-    @Published var loginPassword = ""
+    var loginEmail = ""
+    var loginPassword = ""
 
     // MARK: - Register Fields
-    @Published var registerEmail = ""
-    @Published var registerPassword = ""
-    @Published var registerName = ""
-    @Published var registerPhone = ""
-    @Published var registerCity = ""
-    @Published var selectedRole: UserRole = .customer
+    var registerEmail = ""
+    var registerPassword = ""
+    var registerName = ""
+    var registerPhone = ""
+    var registerCity = ""
+    var selectedRole: UserRole = .customer
 
     // MARK: - State
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var showError = false
+    var isLoading = false
+    var errorMessage: String?
+    var showError = false
 
     // MARK: - Login
     func login(appState: AppState) async {

@@ -2,11 +2,13 @@
 // Manages customer order list with real-time style polling
 
 import Foundation
+import Observation
 
-final class OrdersViewModel: ObservableObject {
-    @Published var orders: [Order] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+@Observable
+final class OrdersViewModel {
+    var orders: [Order] = []
+    var isLoading = false
+    var errorMessage: String?
 
     private let firestoreService = FirestoreService()
 
