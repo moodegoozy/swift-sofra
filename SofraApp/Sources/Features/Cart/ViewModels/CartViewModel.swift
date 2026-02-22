@@ -5,7 +5,7 @@
 import SwiftUI
 
 /// Cart item matching web's CartItem type
-struct CartItem: Identifiable, Codable, Equatable {
+struct CartItem: Identifiable, Codable, Equatable, Sendable {
     let id: String
     let name: String
     let price: Double
@@ -15,7 +15,6 @@ struct CartItem: Identifiable, Codable, Equatable {
     var lineTotal: Double { price * Double(qty) }
 }
 
-@MainActor
 final class CartViewModel: ObservableObject {
     private static let storageKey = "broast_cart"
 

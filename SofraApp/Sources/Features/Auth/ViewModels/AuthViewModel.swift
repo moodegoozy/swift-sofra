@@ -3,7 +3,6 @@
 
 import SwiftUI
 
-@MainActor
 final class AuthViewModel: ObservableObject {
     // MARK: - Login Fields
     @Published var loginEmail = ""

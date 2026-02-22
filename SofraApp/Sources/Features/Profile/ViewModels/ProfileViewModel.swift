@@ -3,7 +3,6 @@
 
 import Foundation
 
-@MainActor
 final class ProfileViewModel: ObservableObject {
     @Published var user: AppUser?
     @Published var isLoading = false

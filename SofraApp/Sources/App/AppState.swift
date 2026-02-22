@@ -11,7 +11,6 @@ enum UserRole: String, Codable, CaseIterable {
 }
 
 /// Central observable state shared across the entire app
-@MainActor
 final class AppState: ObservableObject {
     // MARK: - Published State
     @Published var isAuthenticated = false

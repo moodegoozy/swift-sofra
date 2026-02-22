@@ -21,7 +21,6 @@ struct AppNotification: Identifiable {
     }
 }
 
-@MainActor
 final class NotificationsViewModel: ObservableObject {
     @Published var notifications: [AppNotification] = []
     @Published var isLoading = false

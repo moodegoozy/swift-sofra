@@ -3,7 +3,6 @@
 
 import Foundation
 
-@MainActor
 final class CourierDashboardViewModel: ObservableObject {
     @Published var isAvailable = false
     @Published var readyOrders: [Order] = []

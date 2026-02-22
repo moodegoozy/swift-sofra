@@ -3,7 +3,6 @@
 
 import Foundation
 
-@MainActor
 final class MenuViewModel: ObservableObject {
     @Published var menuItems: [MenuItem] = []
     @Published var restaurant: Restaurant?

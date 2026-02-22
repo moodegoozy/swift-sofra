@@ -3,7 +3,6 @@
 
 import Foundation
 
-@MainActor
 final class OwnerDashboardViewModel: ObservableObject {
     @Published var restaurant: Restaurant?
     @Published var orders: [Order] = []

@@ -3,7 +3,6 @@
 
 import Foundation
 
-@MainActor
 final class HomeViewModel: ObservableObject {
     @Published var featuredRestaurants: [Restaurant] = []
     @Published var isLoading = false

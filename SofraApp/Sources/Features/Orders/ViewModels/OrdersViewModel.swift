@@ -3,7 +3,6 @@
 
 import Foundation
 
-@MainActor
 final class OrdersViewModel: ObservableObject {
     @Published var orders: [Order] = []
     @Published var isLoading = false
