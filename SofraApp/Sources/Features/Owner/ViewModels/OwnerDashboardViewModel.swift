@@ -75,6 +75,7 @@ final class OwnerDashboardViewModel {
             self.orders = docs.map { Order(from: $0) }
         } catch {
             Logger.log("Owner orders load error: \(error)", level: .error)
+            errorMessage = "تعذر تحميل الطلبات"
         }
     }
 

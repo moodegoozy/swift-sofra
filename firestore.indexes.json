@@ -20,7 +20,7 @@
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "restaurantOwnerId", "order": "ASCENDING" },
+        { "fieldPath": "restaurantId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
