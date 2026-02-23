@@ -57,8 +57,11 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        UIUserInterfaceStyle: Light
+        UIUserInterfaceStyle: Dark
         ITSAppUsesNonExemptEncryption: false
+        NSLocationWhenInUseUsageDescription: "نحتاج موقعك لعرض المطاعم القريبة منك وتحديد عنوان التوصيل"
+        NSCameraUsageDescription: "نحتاج الكاميرا لتصوير صورة الملف الشخصي أو صور المنتجات"
+        NSPhotoLibraryUsageDescription: "نحتاج الوصول لمعرض الصور لاختيار صورة الملف الشخصي أو صور المنتجات"
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: false
         UIApplicationSceneManifest:

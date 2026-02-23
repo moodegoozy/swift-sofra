@@ -51,7 +51,11 @@ enum Endpoints {
     static let storageBucket = "albayt-sofra.firebasestorage.app"
 
     static func storageDownload(path: String) -> URL {
-        let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path
+        // Firebase Storage REST API requires full path as a single URL component
+        // where '/' must be encoded as '%2F'
+        var allowed = CharacterSet.urlPathAllowed
+        allowed.remove("/")
+        let encoded = path.addingPercentEncoding(withAllowedCharacters: allowed) ?? path
         return URL(string: "https://firebasestorage.googleapis.com/v0/b/\(storageBucket)/o/\(encoded)?alt=media")!
     }
 }

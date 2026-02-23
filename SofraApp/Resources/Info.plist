@@ -38,9 +38,15 @@
         <string>UIInterfaceOrientationPortrait</string>
     </array>
     <key>UIUserInterfaceStyle</key>
-    <string>Light</string>
+    <string>Dark</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>نحتاج موقعك لعرض المطاعم القريبة منك وتحديد عنوان التوصيل</string>
+    <key>NSCameraUsageDescription</key>
+    <string>نحتاج الكاميرا لتصوير صورة الملف الشخصي أو صور المنتجات</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>نحتاج الوصول لمعرض الصور لاختيار صورة الملف الشخصي أو صور المنتجات</string>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>
