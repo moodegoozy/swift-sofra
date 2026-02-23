@@ -1110,14 +1110,14 @@ struct DeveloperDashboardView: View {
     }
 }
 
-// Make Restaurant Identifiable as sheet item
-extension Restaurant: @retroactive Identifiable, @retroactive Equatable, @retroactive Hashable {
+// Make Restaurant equatable/hashable for sheet item
+extension Restaurant: Equatable, Hashable {
     public static func == (lhs: Restaurant, rhs: Restaurant) -> Bool { lhs.id == rhs.id }
     public func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 // Make AppUser equatable/hashable for sheet item
-extension AppUser: @retroactive Equatable, @retroactive Hashable {
+extension AppUser: Equatable, Hashable {
     public static func == (lhs: AppUser, rhs: AppUser) -> Bool { lhs.uid == rhs.uid }
     public func hash(into hasher: inout Hasher) { hasher.combine(uid) }
 }
