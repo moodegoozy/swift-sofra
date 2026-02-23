@@ -119,6 +119,7 @@ final class AppState {
         userLatitude = 0
         userLongitude = 0
         userAddress = ""
+        OrderPollingService.shared.stopAll()
     }
 
     // MARK: - Location

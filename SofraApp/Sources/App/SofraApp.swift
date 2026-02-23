@@ -18,7 +18,13 @@ struct SofraApp: App {
                 .preferredColorScheme(.dark)
                 .tint(SofraColors.gold400)
                 .onAppear {
-                    Task { await appState.restoreSession() }
+                    Task {
+                        // Setup notifications
+                        NotificationService.shared.registerCategories()
+                        await NotificationService.shared.requestPermission()
+                        // Restore session
+                        await appState.restoreSession()
+                    }
                     // Set global appearance
                     configureAppearance()
                 }

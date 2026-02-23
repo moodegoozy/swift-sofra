@@ -11,6 +11,7 @@ final class OrdersViewModel {
     var errorMessage: String?
 
     private let firestoreService = FirestoreService()
+    private let notificationService = NotificationService.shared
 
     /// Order groups for UI
     var activeOrders: [Order] {
@@ -26,6 +27,9 @@ final class OrdersViewModel {
     func loadOrders(userId: String, token: String?) async {
         guard let token else { return }
 
+        let previousStatuses = Dictionary(uniqueKeysWithValues: orders.map { ($0.id, $0.status) })
+        let isFirstLoad = orders.isEmpty
+
         isLoading = true
         errorMessage = nil
 
@@ -38,6 +42,19 @@ final class OrdersViewModel {
                 idToken: token
             )
             self.orders = docs.map { Order(from: $0) }
+
+            // Notify for status changes (not on first load)
+            if !isFirstLoad {
+                for order in self.orders {
+                    if let prevStatus = previousStatuses[order.id], prevStatus != order.status {
+                        notificationService.notifyOrderStatusChange(
+                            orderId: order.id,
+                            status: order.status.rawValue,
+                            restaurantName: order.restaurantName
+                        )
+                    }
+                }
+            }
         } catch {
             Logger.log("Orders load error: \(error)", level: .error)
             errorMessage = "تعذر تحميل الطلبات"

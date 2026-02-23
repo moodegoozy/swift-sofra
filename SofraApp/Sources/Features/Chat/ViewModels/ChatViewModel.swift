@@ -13,16 +13,22 @@ final class ChatViewModel {
     var isSending = false
 
     private let firestoreService = FirestoreService()
+    private let notificationService = NotificationService.shared
     private var pollingTask: Task<Void, Never>?
     private var orderId: String = ""
+    private var currentUserId: String = ""
 
     // MARK: - Load Messages
-    func loadMessages(orderId: String, token: String?) async {
+    func loadMessages(orderId: String, token: String?, currentUserId: String? = nil) async {
         guard let token else { return }
         self.orderId = orderId
+        if let currentUserId { self.currentUserId = currentUserId }
 
         isLoading = messages.isEmpty
         errorMessage = nil
+
+        let previousCount = messages.count
+        let previousIds = Set(messages.map { $0.id })
 
         do {
             let docs = try await firestoreService.query(
@@ -33,6 +39,18 @@ final class ChatViewModel {
                 idToken: token
             )
             self.messages = docs.map { ChatMessage(from: $0, orderId: orderId) }
+
+            // Notify for new messages from others (only during polling, not initial load)
+            if previousCount > 0 {
+                let newMessages = self.messages.filter { !previousIds.contains($0.id) && $0.senderId != self.currentUserId }
+                for msg in newMessages {
+                    notificationService.notifyNewMessage(
+                        senderName: msg.senderName,
+                        text: msg.text,
+                        orderId: orderId
+                    )
+                }
+            }
         } catch {
             Logger.log("Chat load error: \(error)", level: .error)
             errorMessage = "تعذر تحميل المحادثة"

@@ -21,6 +21,7 @@ final class OwnerDashboardViewModel {
 
     private let firestoreService = FirestoreService()
     private let storageService = StorageService.shared
+    private let notificationService = NotificationService.shared
 
     func loadDashboard(ownerId: String, token: String?) async {
         guard let token else { return }
@@ -66,6 +67,9 @@ final class OwnerDashboardViewModel {
 
     func loadOrders(ownerId: String, token: String?) async {
         guard let token else { return }
+        let previousOrderIds = Set(orders.map { $0.id })
+        let isFirstLoad = orders.isEmpty
+
         do {
             let docs = try await firestoreService.query(
                 collection: "orders",
@@ -76,6 +80,18 @@ final class OwnerDashboardViewModel {
                 idToken: token
             )
             self.orders = docs.map { Order(from: $0) }
+
+            // Notify for new orders (not on first load)
+            if !isFirstLoad {
+                let newOrders = self.orders.filter { !previousOrderIds.contains($0.id) }
+                for order in newOrders {
+                    notificationService.notifyNewOrder(
+                        orderId: order.id,
+                        customerName: nil,
+                        total: order.total
+                    )
+                }
+            }
         } catch {
             Logger.log("Owner orders load error: \(error)", level: .error)
             errorMessage = "تعذر تحميل الطلبات"

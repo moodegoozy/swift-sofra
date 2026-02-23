@@ -33,6 +33,34 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.4), value: appState.isAuthenticated)
         .animation(.easeInOut(duration: 0.4), value: appState.isLoading)
         .preferredColorScheme(.dark)
+        .onChange(of: appState.isAuthenticated) { _, isAuth in
+            if isAuth {
+                startOrderPolling()
+            } else {
+                OrderPollingService.shared.stopAll()
+            }
+        }
+        .task {
+            // Start polling if already authenticated on launch
+            if appState.isAuthenticated {
+                startOrderPolling()
+            }
+        }
+    }
+
+    private func startOrderPolling() {
+        guard let uid = appState.currentUser?.uid else { return }
+        let role = appState.role
+
+        if role == .owner {
+            OrderPollingService.shared.startOwnerPolling(ownerId: uid) {
+                try? await appState.validToken()
+            }
+        } else {
+            OrderPollingService.shared.startCustomerPolling(userId: uid) {
+                try? await appState.validToken()
+            }
+        }
     }
 }
 

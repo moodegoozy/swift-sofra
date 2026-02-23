@@ -82,7 +82,7 @@ struct OrderChatView: View {
                 }
             }
             .task {
-                await vm.loadMessages(orderId: orderId, token: try? await appState.validToken())
+                await vm.loadMessages(orderId: orderId, token: try? await appState.validToken(), currentUserId: currentUserId)
                 vm.startPolling(orderId: orderId, token: try? await appState.validToken())
             }
             .onDisappear {
