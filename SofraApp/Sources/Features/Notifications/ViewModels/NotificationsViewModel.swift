@@ -5,6 +5,7 @@ import Foundation
 
 struct AppNotification: Identifiable {
     let id: String
+    let userId: String
     let title: String
     let body: String
     let type: String?
@@ -13,6 +14,7 @@ struct AppNotification: Identifiable {
 
     init(from doc: FirestoreDocumentResponse) {
         self.id = doc.documentId ?? UUID().uuidString
+        self.userId = doc.stringField("userId") ?? ""
         self.title = doc.stringField("title") ?? ""
         self.body = doc.stringField("body") ?? ""
         self.type = doc.stringField("type")
@@ -45,15 +47,28 @@ final class NotificationsViewModel {
             let docs = try await firestoreService.query(
                 collection: "notifications",
                 filters: [QueryFilter(field: "userId", op: "EQUAL", value: userId)],
-                orderBy: "createdAt",
-                descending: true,
                 limit: 50,
                 idToken: token
             )
             self.notifications = docs.map { AppNotification(from: $0) }
+                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
         } catch {
             Logger.log("Notifications load error: \(error)", level: .error)
-            errorMessage = "تعذر تحميل الإشعارات"
+            // If query fails (index missing), try simple list and filter locally
+            do {
+                let allDocs = try await firestoreService.listDocuments(
+                    collection: "notifications",
+                    idToken: token,
+                    pageSize: 200
+                )
+                self.notifications = allDocs.map { AppNotification(from: $0) }
+                    .filter { $0.userId == userId }
+                    .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+                self.errorMessage = nil
+            } catch {
+                Logger.log("Notifications fallback error: \(error)", level: .error)
+                errorMessage = "تعذر تحميل الإشعارات"
+            }
         }
 
         isLoading = false
