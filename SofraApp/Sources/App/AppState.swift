@@ -107,6 +107,21 @@ final class AppState {
         self.needsLocationPick = true
     }
 
+    // MARK: - Delete Account
+    func deleteAccount() async throws {
+        let token = try await validToken()
+        guard let uid = currentUser?.uid else { throw APIError.unauthorized }
+
+        // 1. Delete user document from Firestore
+        try await firestoreService.deleteDocument(collection: "users", id: uid, idToken: token)
+
+        // 2. Delete Firebase Auth account
+        try await authService.deleteAccount(idToken: token)
+
+        // 3. Clear local state
+        logout()
+    }
+
     // MARK: - Logout
     func logout() {
         keychain.delete(key: .idToken)

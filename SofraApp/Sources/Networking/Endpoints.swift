@@ -29,6 +29,10 @@ enum Endpoints {
         URL(string: "\(authBase)/accounts:lookup?key=\(apiKey)")!
     }
 
+    static var deleteAccount: URL {
+        URL(string: "\(authBase)/accounts:delete?key=\(apiKey)")!
+    }
+
     // MARK: - Firestore REST API
     private static let firestoreBase = "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents"
 

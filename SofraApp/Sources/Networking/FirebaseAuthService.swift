@@ -55,6 +55,13 @@ final class FirebaseAuthService {
         return try await client.request(url: Endpoints.signUp, method: "POST", body: data)
     }
 
+    // MARK: - Delete Account
+    func deleteAccount(idToken: String) async throws {
+        let body: [String: Any] = ["idToken": idToken]
+        let data = try JSONSerialization.data(withJSONObject: body)
+        try await client.send(url: Endpoints.deleteAccount, method: "POST", body: data)
+    }
+
     // MARK: - Refresh Token
     func refreshToken(_ refreshToken: String) async throws -> RefreshTokenResponse {
         let body: [String: Any] = [

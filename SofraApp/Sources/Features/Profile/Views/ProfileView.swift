@@ -12,6 +12,8 @@ struct ProfileView: View {
     @State private var address = ""
     @State private var city = ""
     @State private var showLogoutConfirm = false
+    @State private var showDeleteConfirm = false
+    @State private var isDeleting = false
     @State private var showNotifications = false
     @State private var showPrivacy = false
     @State private var showTerms = false
@@ -129,6 +131,26 @@ struct ProfileView: View {
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
 
+                // Delete Account
+                Button {
+                    showDeleteConfirm = true
+                } label: {
+                    HStack(spacing: SofraSpacing.xs) {
+                        if isDeleting {
+                            ProgressView()
+                                .tint(.red)
+                        }
+                        Text("حذف الحساب نهائياً")
+                            .font(SofraTypography.callout)
+                        Image(systemName: "trash")
+                    }
+                    .foregroundStyle(.red.opacity(0.7))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SofraSpacing.sm)
+                }
+                .disabled(isDeleting)
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+
                 Spacer(minLength: SofraSpacing.xxxl)
             }
         }
@@ -142,6 +164,21 @@ struct ProfileView: View {
             }
         } message: {
             Text("هل أنت متأكد من تسجيل الخروج؟")
+        }
+        .confirmationDialog("حذف الحساب", isPresented: $showDeleteConfirm) {
+            Button("حذف الحساب نهائياً", role: .destructive) {
+                Task {
+                    isDeleting = true
+                    do {
+                        try await appState.deleteAccount()
+                    } catch {
+                        vm.errorMessage = "فشل حذف الحساب: \(error.localizedDescription)"
+                        isDeleting = false
+                    }
+                }
+            }
+        } message: {
+            Text("هل أنت متأكد؟ سيتم حذف حسابك وجميع بياناتك نهائياً ولا يمكن التراجع عن هذا الإجراء.")
         }
         .sheet(isPresented: $showPrivacy) {
             PrivacyPolicyView()
