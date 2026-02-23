@@ -74,18 +74,22 @@ struct RestaurantCard: View {
             Spacer()
 
             // Logo
-            AsyncImage(url: URL(string: restaurant.logoUrl ?? "")) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                case .failure:
-                    Image(systemName: "storefront.fill")
-                        .font(.title2)
-                        .foregroundStyle(SofraColors.gold400.opacity(0.5))
-                default:
-                    SkeletonView(width: 64, height: 64, radius: 14)
+            Group {
+                if let logoUrl = restaurant.logoUrl, !logoUrl.isEmpty, let url = URL(string: logoUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure:
+                            restaurantPlaceholder
+                        default:
+                            SkeletonView(width: 64, height: 64, radius: 14)
+                        }
+                    }
+                } else {
+                    restaurantPlaceholder
                 }
             }
             .frame(width: 64, height: 64)
@@ -107,6 +111,15 @@ struct RestaurantCard: View {
                 .strokeBorder(SofraColors.gold500.opacity(0.1), lineWidth: 0.5)
         )
         .shadow(color: Color.black.opacity(0.2), radius: 10, y: 4)
+    }
+
+    private var restaurantPlaceholder: some View {
+        ZStack {
+            SofraColors.surfaceElevated
+            Image(systemName: "storefront.fill")
+                .font(.title2)
+                .foregroundStyle(SofraColors.gold400.opacity(0.5))
+        }
     }
 }
 

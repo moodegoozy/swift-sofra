@@ -143,6 +143,15 @@ struct ProfileView: View {
         } message: {
             Text("هل أنت متأكد من تسجيل الخروج؟")
         }
+        .sheet(isPresented: $showPrivacy) {
+            PrivacyPolicyView()
+        }
+        .sheet(isPresented: $showTerms) {
+            TermsConditionsView()
+        }
+        .sheet(isPresented: $showSupport) {
+            SupportView()
+        }
     }
 
     // MARK: - Settings Row
