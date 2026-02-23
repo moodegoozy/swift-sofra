@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Restaurant logos and images
+    match /restaurants/{ownerId}/{allPaths=**} {
+      allow read: if true;  // Public read for restaurant images
+      allow write: if request.auth != null && request.auth.uid == ownerId;
+    }
+
+    // User profile photos
+    match /users/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Other files - authenticated read, admin write
+    match /{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if false;  // Block by default
+    }
+  }
+}
