@@ -176,7 +176,7 @@ struct ProfileView: View {
         guard let uid = appState.currentUser?.uid else { return }
         await vm.loadProfile(uid: uid, token: try? await appState.validToken())
         if let u = vm.user {
-            name = u.name
+            name = u.name!
             phone = u.phone ?? ""
             address = u.address ?? ""
             city = u.city ?? ""

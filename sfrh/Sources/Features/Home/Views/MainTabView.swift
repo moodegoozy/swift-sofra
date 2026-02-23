@@ -39,8 +39,8 @@ struct MainTabView: View {
                 .tag(2)
             }
 
-            // Orders tab — customer + owner (personal orders when ordering from other restaurants)
-            if appState.role == .customer || appState.role == .owner || appState.role == .developer {
+            // Orders tab — customer
+            if appState.role == .customer || appState.role == .developer {
                 NavigationStack {
                     OrdersView()
                 }
@@ -87,7 +87,7 @@ struct MainTabView: View {
 
     private var showCartTab: Bool {
         guard let role = appState.role else { return false }
-        return [.customer, .owner, .admin, .developer].contains(role)
+        return [.customer, .admin, .developer].contains(role)
     }
 }
 
