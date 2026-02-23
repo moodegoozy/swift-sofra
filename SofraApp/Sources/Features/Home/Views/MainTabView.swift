@@ -27,28 +27,24 @@ struct MainTabView: View {
             }
             .tag(1)
 
-            // Cart tab — customer/admin/developer
-            if showCartTab {
-                NavigationStack {
-                    CartView()
-                }
-                .tabItem {
-                    Label("السلة", systemImage: "cart.fill")
-                }
-                .badge(cartVM.items.count)
-                .tag(2)
+            // Cart tab — visible to all authenticated users
+            NavigationStack {
+                CartView()
             }
+            .tabItem {
+                Label("السلة", systemImage: "cart.fill")
+            }
+            .badge(cartVM.items.count)
+            .tag(2)
 
-            // Orders tab — customer + owner (personal orders when ordering from other restaurants)
-            if appState.role == .customer || appState.role == .owner || appState.role == .developer {
-                NavigationStack {
-                    OrdersView()
-                }
-                .tabItem {
-                    Label("طلباتي", systemImage: "bag.fill")
-                }
-                .tag(3)
+            // Orders tab — visible to all (personal orders)
+            NavigationStack {
+                OrdersView()
             }
+            .tabItem {
+                Label("طلباتي", systemImage: "bag.fill")
+            }
+            .tag(3)
 
             // Owner tab
             if appState.role == .owner || appState.role == .developer {
@@ -85,10 +81,7 @@ struct MainTabView: View {
         .preferredColorScheme(.dark)
     }
 
-    private var showCartTab: Bool {
-        guard let role = appState.role else { return false }
-        return [.customer, .owner, .admin, .developer].contains(role)
-    }
+
 }
 
 #Preview {
