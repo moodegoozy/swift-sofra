@@ -66,5 +66,3 @@ struct SkeletonCard: View {
     .padding()
     .background(SofraColors.background)
 }
-    .background(SofraColors.background)
-}
