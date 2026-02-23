@@ -14,6 +14,10 @@ struct PhoneLoginView: View {
     @State private var showError = false
     @State private var countdownSeconds = 0
     @State private var timerTask: Task<Void, Never>?
+    // reCAPTCHA
+    @State private var showRecaptcha = false
+    @State private var recaptchaSiteKey: String?
+    @State private var loadingSiteKey = false
 
     private var isPhoneValid: Bool {
         let digits = phoneNumber.filter { $0.isNumber }
@@ -54,7 +58,37 @@ struct PhoneLoginView: View {
             }
             .padding(.top, SofraSpacing.lg)
 
-            if sessionInfo == nil {
+            if showRecaptcha, let siteKey = recaptchaSiteKey {
+                // reCAPTCHA Step
+                VStack(spacing: SofraSpacing.md) {
+                    Text("أكمل التحقق الأمني لإرسال الرمز")
+                        .font(SofraTypography.callout)
+                        .foregroundStyle(SofraColors.textSecondary)
+
+                    RecaptchaWebView(
+                        siteKey: siteKey,
+                        onToken: { token in
+                            showRecaptcha = false
+                            Task { await sendOTPWithToken(token) }
+                        },
+                        onError: { error in
+                            showRecaptcha = false
+                            errorMessage = "تعذر التحقق الأمني: \(error)"
+                            showError = true
+                        }
+                    )
+                    .frame(height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    Button {
+                        showRecaptcha = false
+                    } label: {
+                        Text("رجوع")
+                            .font(SofraTypography.callout)
+                            .foregroundStyle(SofraColors.textSecondary)
+                    }
+                }
+            } else if sessionInfo == nil {
                 // Step 1: Enter phone number
                 phoneInputStep
             } else {
@@ -154,17 +188,41 @@ struct PhoneLoginView: View {
     }
 
     // MARK: - Actions
+
+    /// Step 1: Validate phone → fetch reCAPTCHA site key → show reCAPTCHA
     private func sendOTP() async {
         isLoading = true
         errorMessage = nil
 
         do {
-            // For phone auth, Firebase requires reCAPTCHA verification
-            // In production, this would use Firebase SDK's reCAPTCHA flow
-            // Using a placeholder token — will work with test phone numbers configured in Firebase Console
+            // Fetch site key if not already loaded
+            if recaptchaSiteKey == nil {
+                loadingSiteKey = true
+                let siteKey = try await RecaptchaHelper.fetchSiteKey()
+                recaptchaSiteKey = siteKey
+                loadingSiteKey = false
+            }
+
+            // Show reCAPTCHA challenge
+            isLoading = false
+            showRecaptcha = true
+        } catch {
+            loadingSiteKey = false
+            isLoading = false
+            errorMessage = "تعذر تحميل التحقق الأمني. تأكد من اتصالك بالإنترنت"
+            showError = true
+        }
+    }
+
+    /// Step 2: Called after reCAPTCHA succeeds with real token
+    private func sendOTPWithToken(_ recaptchaToken: String) async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
             let session = try await appState.sendPhoneOTP(
                 phoneNumber: formattedPhone,
-                recaptchaToken: "RECAPTCHA_TOKEN"
+                recaptchaToken: recaptchaToken
             )
             sessionInfo = session
             startCountdown()
@@ -176,7 +234,8 @@ struct PhoneLoginView: View {
                 } else if msg.contains("TOO_MANY_ATTEMPTS") {
                     errorMessage = "محاولات كثيرة. حاول لاحقاً"
                 } else if msg.contains("CAPTCHA_CHECK_FAILED") || msg.contains("MISSING_RECAPTCHA_TOKEN") {
-                    errorMessage = "تعذر التحقق الأمني. استخدم تسجيل الدخول بالبريد"
+                    errorMessage = "فشل التحقق الأمني. حاول مرة أخرى"
+                    recaptchaSiteKey = nil // Re-fetch on next attempt
                 } else {
                     errorMessage = msg
                 }
