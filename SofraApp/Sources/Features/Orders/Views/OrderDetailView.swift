@@ -9,6 +9,7 @@ struct OrderDetailView: View {
     @Environment(\.dismiss) var dismiss
     @State private var vm = OrdersViewModel()
     @State private var showCancelConfirm = false
+    @State private var showChat = false
 
     var body: some View {
         ScrollView {
@@ -123,6 +124,14 @@ struct OrderDetailView: View {
                     .padding(.horizontal, SofraSpacing.screenHorizontal)
                 }
 
+                // Chat with restaurant (available after order is accepted)
+                if order.status != .pending && order.status != .cancelled && order.status != .delivered {
+                    SofraButton(title: "محادثة المطعم", icon: "bubble.left.and.bubble.right.fill") {
+                        showChat = true
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                }
+
                 // Cancel
                 if order.status == .pending {
                     SofraButton(title: "إلغاء الطلب", icon: "xmark.circle", style: .danger) {
@@ -148,6 +157,13 @@ struct OrderDetailView: View {
                     )
                 }
             }
+        }
+        .sheet(isPresented: $showChat) {
+            OrderChatView(
+                orderId: order.id,
+                restaurantName: order.restaurantName ?? "المطعم",
+                orderStatus: order.status
+            )
         }
     }
 

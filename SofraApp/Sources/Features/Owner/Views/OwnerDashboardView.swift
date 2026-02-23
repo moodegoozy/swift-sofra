@@ -13,6 +13,8 @@ struct OwnerDashboardView: View {
     // Photo upload
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var restaurantImage: UIImage?
+    // Chat
+    @State private var chatOrder: Order?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,6 +54,13 @@ struct OwnerDashboardView: View {
             }
             .sheet(isPresented: $showAddMenuItem) {
                 AddMenuItemView(vm: vm)
+            }
+            .sheet(item: $chatOrder) { order in
+                OrderChatView(
+                    orderId: order.id,
+                    restaurantName: vm.restaurant?.name ?? "المطعم",
+                    orderStatus: order.status
+                )
             }
     }
 
@@ -231,6 +240,17 @@ struct OwnerDashboardView: View {
                     }
                     .font(SofraTypography.calloutSemibold)
                     .foregroundStyle(SofraColors.primary)
+                }
+
+                // Chat button (available after order is accepted)
+                if order.status != .pending && order.status != .cancelled && order.status != .delivered {
+                    Button {
+                        chatOrder = order
+                    } label: {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(SofraTypography.calloutSemibold)
+                            .foregroundStyle(SofraColors.info)
+                    }
                 }
 
                 Spacer()
