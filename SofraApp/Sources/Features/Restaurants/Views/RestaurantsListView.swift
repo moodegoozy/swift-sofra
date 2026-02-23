@@ -1,5 +1,5 @@
 // RestaurantsListView.swift
-// Full restaurant listing matching web /restaurants route
+// Full restaurant listing — filtered by 20km distance from user
 
 import SwiftUI
 
@@ -11,26 +11,65 @@ struct RestaurantsListView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: SofraSpacing.md) {
+                // Distance info banner
+                if appState.hasConfirmedLocation {
+                    HStack(spacing: SofraSpacing.xs) {
+                        Text("يتم عرض المطاعم ضمن \(Int(RestaurantsViewModel.maxDistanceKm)) كم من موقعك")
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                        Spacer()
+                        Image(systemName: "location.fill")
+                            .font(.caption2)
+                            .foregroundStyle(SofraColors.success)
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                }
+
                 if vm.isLoading && vm.restaurants.isEmpty {
                     ForEach(0..<5, id: \.self) { _ in
                         SkeletonCard()
                     }
                 } else if let error = vm.errorMessage {
                     ErrorStateView(message: error) {
-                        await vm.loadRestaurants(token: try? await appState.validToken())
+                        await loadRestaurants()
                     }
                 } else if filteredRestaurants.isEmpty {
                     EmptyStateView(
                         icon: "magnifyingglass",
                         title: "لا توجد نتائج",
                         message: searchText.isEmpty
-                            ? "لا توجد مطاعم مسجلة حالياً"
+                            ? (appState.hasConfirmedLocation
+                                ? "لا توجد مطاعم قريبة منك ضمن \(Int(RestaurantsViewModel.maxDistanceKm)) كم"
+                                : "لا توجد مطاعم مسجلة حالياً")
                             : "لم نجد مطاعم تطابق '\(searchText)'"
                     )
                 } else {
                     ForEach(filteredRestaurants) { restaurant in
                         NavigationLink(value: restaurant.id) {
-                            RestaurantCard(restaurant: restaurant)
+                            VStack(spacing: 0) {
+                                RestaurantCard(restaurant: restaurant)
+
+                                // Show distance if available
+                                if appState.hasConfirmedLocation,
+                                   let distText = restaurant.distanceText(
+                                    fromLat: appState.userLatitude,
+                                    fromLng: appState.userLongitude
+                                   ) {
+                                    HStack {
+                                        Spacer()
+                                        HStack(spacing: SofraSpacing.xxs) {
+                                            Text(distText)
+                                                .font(SofraTypography.caption2)
+                                                .foregroundStyle(SofraColors.textMuted)
+                                            Image(systemName: "location")
+                                                .font(.system(size: 10))
+                                                .foregroundStyle(SofraColors.textMuted)
+                                        }
+                                    }
+                                    .padding(.horizontal, SofraSpacing.md)
+                                    .padding(.top, SofraSpacing.xxs)
+                                }
+                            }
                         }
                         .buttonStyle(.plain)
                     }
@@ -42,11 +81,11 @@ struct RestaurantsListView: View {
         .ramadanBackground()
         .searchable(text: $searchText, prompt: "ابحث عن مطعم...")
         .refreshable {
-            await vm.loadRestaurants(token: try? await appState.validToken())
+            await loadRestaurants()
         }
         .task {
             if vm.restaurants.isEmpty {
-                await vm.loadRestaurants(token: try? await appState.validToken())
+                await loadRestaurants()
             }
         }
         .navigationTitle("المطاعم")
@@ -54,6 +93,14 @@ struct RestaurantsListView: View {
         .navigationDestination(for: String.self) { restaurantId in
             MenuView(restaurantId: restaurantId)
         }
+    }
+
+    private func loadRestaurants() async {
+        await vm.loadRestaurants(
+            token: try? await appState.validToken(),
+            userLat: appState.userLatitude,
+            userLng: appState.userLongitude
+        )
     }
 
     private var filteredRestaurants: [Restaurant] {

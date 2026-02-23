@@ -46,11 +46,19 @@ struct HomeView: View {
         }
         .ramadanBackground()
         .refreshable {
-            await vm.loadData(token: try? await appState.validToken())
+            await vm.loadData(
+                token: try? await appState.validToken(),
+                userLat: appState.userLatitude,
+                userLng: appState.userLongitude
+            )
         }
         .task {
             if vm.featuredRestaurants.isEmpty {
-                await vm.loadData(token: try? await appState.validToken())
+                await vm.loadData(
+                    token: try? await appState.validToken(),
+                    userLat: appState.userLatitude,
+                    userLng: appState.userLongitude
+                )
             }
         }
         .navigationTitle("سفرة البيت")

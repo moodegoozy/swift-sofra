@@ -3,6 +3,7 @@
 
 import SwiftUI
 import Observation
+import CoreLocation
 
 /// Roles matching the web app's union type exactly
 enum UserRole: String, Codable, CaseIterable {
@@ -20,6 +21,20 @@ final class AppState {
     var role: UserRole?
     var idToken: String?
     var selectedMainTab = 0
+
+    // MARK: - Location State
+    /// True when the user needs to pick their location (after login/session restore)
+    var needsLocationPick = false
+    /// User's current confirmed latitude
+    var userLatitude: Double = 0
+    /// User's current confirmed longitude
+    var userLongitude: Double = 0
+    /// User's current confirmed address text
+    var userAddress: String = ""
+
+    var hasConfirmedLocation: Bool {
+        userLatitude != 0 || userLongitude != 0
+    }
 
     // MARK: - Services
     private let authService = FirebaseAuthService()
@@ -47,6 +62,7 @@ final class AppState {
             self.currentUser = user
             self.role = user.role
             self.isAuthenticated = true
+            self.needsLocationPick = true
         } catch {
             Logger.log("Session restore failed: \(error.localizedDescription)", level: .warning)
             logout()
@@ -64,6 +80,7 @@ final class AppState {
         self.currentUser = user
         self.role = user.role
         self.isAuthenticated = true
+        self.needsLocationPick = true
     }
 
     // MARK: - Register
@@ -87,6 +104,7 @@ final class AppState {
         self.currentUser = newUser
         self.role = userRole
         self.isAuthenticated = true
+        self.needsLocationPick = true
     }
 
     // MARK: - Logout
@@ -97,6 +115,57 @@ final class AppState {
         currentUser = nil
         role = nil
         isAuthenticated = false
+        needsLocationPick = false
+        userLatitude = 0
+        userLongitude = 0
+        userAddress = ""
+    }
+
+    // MARK: - Location
+    /// Called when user confirms their location on the map
+    func confirmLocation(lat: Double, lng: Double, address: String) {
+        self.userLatitude = lat
+        self.userLongitude = lng
+        self.userAddress = address
+        self.needsLocationPick = false
+
+        // Update LocationManager too
+        LocationManager.shared.userLatitude = lat
+        LocationManager.shared.userLongitude = lng
+
+        // Save to Firestore in background
+        Task {
+            await saveUserLocation(lat: lat, lng: lng, address: address)
+        }
+    }
+
+    /// Persist user location to Firestore
+    func saveUserLocation(lat: Double, lng: Double, address: String) async {
+        guard let uid = currentUser?.uid else { return }
+        let locationFields: [String: Any] = [
+            "savedLocation": [
+                "lat": lat,
+                "lng": lng,
+                "address": address
+            ] as [String: Any],
+            "location": [
+                "lat": lat,
+                "lng": lng
+            ] as [String: Any]
+        ]
+        do {
+            let token = try await validToken()
+            try await firestoreService.updateDocument(
+                collection: "users", id: uid,
+                fields: locationFields,
+                idToken: token
+            )
+            // Update local user
+            currentUser?.savedLocation = SavedLocation(lat: lat, lng: lng, address: address)
+            currentUser?.location = GeoLocation(lat: lat, lng: lng)
+        } catch {
+            Logger.log("Save location error: \(error)", level: .error)
+        }
     }
 
     // MARK: - Token Helper

@@ -69,6 +69,19 @@ struct AppUser: Identifiable {
         if let phone { fields["phone"] = phone }
         if let city { fields["city"] = city }
         if let address { fields["address"] = address }
+        if let loc = savedLocation {
+            fields["savedLocation"] = [
+                "lat": loc.lat,
+                "lng": loc.lng,
+                "address": loc.address
+            ] as [String: Any]
+        }
+        if let geo = location {
+            fields["location"] = [
+                "lat": geo.lat,
+                "lng": geo.lng
+            ] as [String: Any]
+        }
         return fields
     }
 }

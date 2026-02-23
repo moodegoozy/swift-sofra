@@ -13,6 +13,9 @@ struct CheckoutView: View {
     @State private var isSubmitting = false
     @State private var showSuccess = false
     @State private var errorMessage: String?
+    @State private var showLocationPicker = false
+    @State private var deliveryLat: Double = 0
+    @State private var deliveryLng: Double = 0
 
     private let deliveryFee: Double = 0 // Set by courier/owner later
 
@@ -79,16 +82,42 @@ struct CheckoutView: View {
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
 
-                // Delivery Address
+                // Delivery Address — map picker
                 if deliveryType == "delivery" {
                     SofraCard {
-                        Text("عنوان التوصيل")
-                            .font(SofraTypography.headline)
-                        TextField("أدخل عنوان التوصيل", text: $address)
-                            .font(SofraTypography.body)
-                            .textFieldStyle(.roundedBorder)
+                        HStack {
+                            Button {
+                                showLocationPicker = true
+                            } label: {
+                                HStack(spacing: SofraSpacing.xs) {
+                                    Text("تغيير")
+                                        .font(SofraTypography.caption)
+                                    Image(systemName: "map")
+                                }
+                                .foregroundStyle(SofraColors.primary)
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: SofraSpacing.xxs) {
+                                HStack(spacing: SofraSpacing.xs) {
+                                    Text("عنوان التوصيل")
+                                        .font(SofraTypography.headline)
+                                    Image(systemName: "mappin.and.ellipse")
+                                        .foregroundStyle(SofraColors.gold400)
+                                }
+                                Text(address.isEmpty ? "اضغط لتحديد الموقع على الخريطة" : address)
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(address.isEmpty ? SofraColors.textMuted : SofraColors.textSecondary)
+                                    .multilineTextAlignment(.trailing)
+                                    .lineLimit(2)
+                            }
+                        }
                     }
                     .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    .onTapGesture {
+                        showLocationPicker = true
+                    }
                 }
 
                 // Payment info
@@ -134,10 +163,28 @@ struct CheckoutView: View {
         .alert("تم إنشاء الطلب بنجاح! 🎉", isPresented: $showSuccess) {
             Button("حسناً") { dismiss() }
         }
+        .sheet(isPresented: $showLocationPicker) {
+            LocationPickerView(
+                title: "موقع التوصيل",
+                subtitle: "حدد موقع التوصيل على الخريطة"
+            ) { lat, lng, addr in
+                deliveryLat = lat
+                deliveryLng = lng
+                address = addr
+                // Also update the user's saved location
+                appState.confirmLocation(lat: lat, lng: lng, address: addr)
+            }
+        }
         .task {
-            // Auto-populate address from user profile
-            if let user = appState.currentUser {
+            // Auto-populate from appState confirmed location, or user profile
+            if appState.hasConfirmedLocation {
+                address = appState.userAddress
+                deliveryLat = appState.userLatitude
+                deliveryLng = appState.userLongitude
+            } else if let user = appState.currentUser {
                 address = user.savedLocation?.address ?? user.address ?? ""
+                deliveryLat = user.savedLocation?.lat ?? 0
+                deliveryLng = user.savedLocation?.lng ?? 0
             }
         }
     }
@@ -149,10 +196,16 @@ struct CheckoutView: View {
             return
         }
 
+        // Require location for delivery
+        if deliveryType == "delivery" && deliveryLat == 0 && deliveryLng == 0 {
+            showLocationPicker = true
+            return
+        }
+
         isSubmitting = true
         errorMessage = nil
 
-        let orderFields: [String: Any] = [
+        var orderFields: [String: Any] = [
             "customerId": user.uid,
             "items": cartVM.items.map { item -> [String: Any] in
                 ["id": item.id, "name": item.name, "price": item.price, "qty": item.qty, "ownerId": item.ownerId ?? ""]
@@ -168,6 +221,14 @@ struct CheckoutView: View {
             "restaurantName": cartVM.restaurantName,
             "createdAt": ISO8601DateFormatter().string(from: Date())
         ]
+
+        // Add delivery location coordinates
+        if deliveryLat != 0 || deliveryLng != 0 {
+            orderFields["deliveryLocation"] = [
+                "lat": deliveryLat,
+                "lng": deliveryLng
+            ] as [String: Any]
+        }
 
         do {
             let token = try await appState.validToken()

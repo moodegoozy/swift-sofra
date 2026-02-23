@@ -1,5 +1,5 @@
 // RestaurantsViewModel.swift
-// Loads and manages restaurant list data
+// Loads and manages restaurant list data with 20km distance filter
 
 import Foundation
 import Observation
@@ -10,9 +10,12 @@ final class RestaurantsViewModel {
     var isLoading = false
     var errorMessage: String?
 
+    /// Maximum distance in km to show restaurants
+    static let maxDistanceKm: Double = 20.0
+
     private let firestoreService = FirestoreService()
 
-    func loadRestaurants(token: String?) async {
+    func loadRestaurants(token: String?, userLat: Double = 0, userLng: Double = 0) async {
         guard let token else {
             errorMessage = "يرجى تسجيل الدخول"
             return
@@ -25,10 +28,32 @@ final class RestaurantsViewModel {
             let docs = try await firestoreService.listDocuments(
                 collection: "restaurants",
                 idToken: token,
-                pageSize: 50
+                pageSize: 100
             )
-            restaurants = docs.map { Restaurant(from: $0) }
-                .sorted { ($0.isOpen ? 1 : 0) > ($1.isOpen ? 1 : 0) }
+            var allRestaurants = docs.map { Restaurant(from: $0) }
+
+            // Filter by distance (20km) if user has location
+            let hasUserLocation = userLat != 0 || userLng != 0
+            if hasUserLocation {
+                allRestaurants = allRestaurants.filter { restaurant in
+                    // If restaurant has no coordinates, still show it (don't penalize)
+                    guard let km = restaurant.distanceKm(fromLat: userLat, fromLng: userLng) else {
+                        return true
+                    }
+                    return km <= Self.maxDistanceKm
+                }
+                // Sort by distance (closest first), then by open status
+                allRestaurants.sort { a, b in
+                    let distA = a.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
+                    let distB = b.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
+                    if a.isOpen != b.isOpen { return a.isOpen && !b.isOpen }
+                    return distA < distB
+                }
+            } else {
+                allRestaurants.sort { ($0.isOpen ? 1 : 0) > ($1.isOpen ? 1 : 0) }
+            }
+
+            restaurants = allRestaurants
         } catch {
             Logger.log("Failed to load restaurants: \(error)", level: .error)
             errorMessage = "تعذر تحميل قائمة المطاعم"

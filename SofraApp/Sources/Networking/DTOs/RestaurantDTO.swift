@@ -24,6 +24,9 @@ struct Restaurant: Identifiable {
     var announcement: String?
     var isHiring: Bool
     var hiringDescription: String?
+    // Coordinates for distance filtering
+    var latitude: Double?
+    var longitude: Double?
 
     enum PackageType: String {
         case free, premium
@@ -56,6 +59,15 @@ struct Restaurant: Identifiable {
         self.announcement = f["announcement"]?.stringVal
         self.isHiring = f["isHiring"]?.boolVal ?? false
         self.hiringDescription = f["hiringDescription"]?.stringVal
+
+        // Parse coordinates from savedLocation or location map
+        if let locMap = f["savedLocation"]?.mapVal {
+            self.latitude = locMap["lat"]?.doubleVal
+            self.longitude = locMap["lng"]?.doubleVal
+        } else if let locMap = f["coordinates"]?.mapVal {
+            self.latitude = locMap["lat"]?.doubleVal
+            self.longitude = locMap["lng"]?.doubleVal
+        }
     }
 
     /// Tier icon for display
@@ -71,5 +83,32 @@ struct Restaurant: Identifiable {
     var ratingText: String {
         guard let r = averageRating else { return "جديد" }
         return String(format: "%.1f", r)
+    }
+
+    /// Whether this restaurant has coordinates set
+    var hasCoordinates: Bool {
+        latitude != nil && longitude != nil
+    }
+
+    /// Distance in km from a given location. Returns nil if restaurant has no coordinates.
+    func distanceKm(fromLat: Double, fromLng: Double) -> Double? {
+        guard let lat = latitude, let lng = longitude else { return nil }
+        let earthRadius = 6371.0 // km
+        let dLat = (lat - fromLat) * .pi / 180
+        let dLng = (lng - fromLng) * .pi / 180
+        let a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(fromLat * .pi / 180) * cos(lat * .pi / 180) *
+                sin(dLng / 2) * sin(dLng / 2)
+        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return earthRadius * c
+    }
+
+    /// Formatted distance text
+    func distanceText(fromLat: Double, fromLng: Double) -> String? {
+        guard let km = distanceKm(fromLat: fromLat, fromLng: fromLng) else { return nil }
+        if km < 1 {
+            return "\(Int(km * 1000)) م"
+        }
+        return String(format: "%.1f كم", km)
     }
 }

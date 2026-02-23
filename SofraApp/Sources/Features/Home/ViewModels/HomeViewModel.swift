@@ -1,5 +1,5 @@
 // HomeViewModel.swift
-// Loads featured restaurants for the home screen
+// Loads featured restaurants for the home screen — filtered by 20km
 
 import Foundation
 import Observation
@@ -12,7 +12,7 @@ final class HomeViewModel {
 
     private let firestoreService = FirestoreService()
 
-    func loadData(token: String?) async {
+    func loadData(token: String?, userLat: Double = 0, userLng: Double = 0) async {
         guard let token else {
             errorMessage = "يرجى تسجيل الدخول"
             return
@@ -25,11 +25,31 @@ final class HomeViewModel {
             let docs = try await firestoreService.listDocuments(
                 collection: "restaurants",
                 idToken: token,
-                pageSize: 20
+                pageSize: 50
             )
-            featuredRestaurants = docs.map { Restaurant(from: $0) }
-                .filter { $0.isOpen }  // Only show open restaurants
-                .sorted { ($0.totalOrders ?? 0) > ($1.totalOrders ?? 0) }
+            var restaurants = docs.map { Restaurant(from: $0) }
+                .filter { $0.isOpen }
+
+            // Filter by 20km if user has location
+            let hasUserLocation = userLat != 0 || userLng != 0
+            if hasUserLocation {
+                restaurants = restaurants.filter { restaurant in
+                    guard let km = restaurant.distanceKm(fromLat: userLat, fromLng: userLng) else {
+                        return true // show restaurants without coordinates
+                    }
+                    return km <= RestaurantsViewModel.maxDistanceKm
+                }
+                // Sort by distance
+                restaurants.sort { a, b in
+                    let distA = a.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
+                    let distB = b.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
+                    return distA < distB
+                }
+            } else {
+                restaurants.sort { ($0.totalOrders ?? 0) > ($1.totalOrders ?? 0) }
+            }
+
+            featuredRestaurants = restaurants
         } catch {
             Logger.log("Failed to load restaurants: \(error)", level: .error)
             errorMessage = "تعذر تحميل المطاعم. اسحب للأسفل لإعادة المحاولة"
