@@ -52,22 +52,26 @@ final class NotificationsViewModel {
             )
             self.notifications = docs.map { AppNotification(from: $0) }
                 .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+        } catch let error as APIError where error.isForbiddenOrNotFound {
+            // Firestore rules don't allow querying notifications collection,
+            // or collection doesn't exist yet — show empty state
+            Logger.log("Notifications access restricted: \(error)", level: .info)
+            self.notifications = []
         } catch {
             Logger.log("Notifications load error: \(error)", level: .error)
-            // If query fails (index missing), try simple list and filter locally
+            // Try user-specific subcollection as fallback
             do {
-                let allDocs = try await firestoreService.listDocuments(
-                    collection: "notifications",
+                let docs = try await firestoreService.listDocuments(
+                    collection: "users/\(userId)/notifications",
                     idToken: token,
-                    pageSize: 200
+                    pageSize: 50
                 )
-                self.notifications = allDocs.map { AppNotification(from: $0) }
-                    .filter { $0.userId == userId }
+                self.notifications = docs.map { AppNotification(from: $0) }
                     .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-                self.errorMessage = nil
             } catch {
-                Logger.log("Notifications fallback error: \(error)", level: .error)
-                errorMessage = "تعذر تحميل الإشعارات"
+                // If both fail, just show empty — not an error worth showing to the user
+                Logger.log("Notifications fallback also failed: \(error)", level: .info)
+                self.notifications = []
             }
         }
 

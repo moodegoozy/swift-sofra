@@ -33,4 +33,11 @@ enum APIError: LocalizedError {
             return msg
         }
     }
+
+    var isForbiddenOrNotFound: Bool {
+        switch self {
+        case .forbidden, .notFound: return true
+        default: return false
+        }
+    }
 }
