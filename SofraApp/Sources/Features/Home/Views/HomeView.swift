@@ -64,6 +64,9 @@ struct HomeView: View {
         .navigationTitle("سفرة البيت")
         .navigationBarTitleDisplayMode(.large)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .navigationDestination(for: String.self) { restaurantId in
+            MenuView(restaurantId: restaurantId)
+        }
     }
 
     // MARK: - Welcome Header
@@ -126,9 +129,6 @@ struct HomeView: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
             }
-        }
-        .navigationDestination(for: String.self) { restaurantId in
-            MenuView(restaurantId: restaurantId)
         }
     }
 }
