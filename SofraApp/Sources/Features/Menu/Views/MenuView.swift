@@ -11,7 +11,7 @@ struct MenuView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: SofraSpacing.lg) {
+            LazyVStack(spacing: SofraSpacing.lg) {
                 // Restaurant Header
                 if let restaurant = vm.restaurant {
                     restaurantHeader(restaurant)
@@ -87,7 +87,7 @@ struct MenuView: View {
     private func restaurantHeader(_ restaurant: Restaurant) -> some View {
         VStack(spacing: SofraSpacing.md) {
             // Cover / Logo
-            AsyncImage(url: URL(string: restaurant.coverUrl ?? restaurant.logoUrl ?? "")) { phase in
+            CachedPhaseImage(url: URL(string: restaurant.coverUrl ?? restaurant.logoUrl ?? "")) { phase in
                 switch phase {
                 case .success(let img):
                     img.resizable().aspectRatio(contentMode: .fill)

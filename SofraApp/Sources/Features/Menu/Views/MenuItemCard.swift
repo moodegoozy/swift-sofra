@@ -53,7 +53,7 @@ struct MenuItemCard: View {
             }
 
             // Image
-            AsyncImage(url: URL(string: item.imageUrl ?? "")) { phase in
+            CachedPhaseImage(url: URL(string: item.imageUrl ?? "")) { phase in
                 switch phase {
                 case .success(let img):
                     img.resizable().aspectRatio(contentMode: .fill)

@@ -10,7 +10,7 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: SofraSpacing.xl) {
+            LazyVStack(spacing: SofraSpacing.xl) {
                 // MARK: - Ramadan Banner
                 RamadanBannerView()
                     .padding(.horizontal, SofraSpacing.screenHorizontal)

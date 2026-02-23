@@ -43,6 +43,10 @@ final class MenuViewModel {
             )
             self.menuItems = docs.map { MenuItem(from: $0) }
                 .sorted { ($0.orderCount ?? 0) > ($1.orderCount ?? 0) }
+
+            // Prefetch menu item images
+            let imageURLs = self.menuItems.compactMap { $0.imageUrl }.compactMap { URL(string: $0) }
+            ImageCache.shared.prefetch(imageURLs)
         } catch {
             Logger.log("Menu load error: \(error)", level: .error)
             errorMessage = "تعذر تحميل القائمة"

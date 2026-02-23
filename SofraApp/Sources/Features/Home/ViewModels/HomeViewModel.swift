@@ -50,6 +50,10 @@ final class HomeViewModel {
             }
 
             featuredRestaurants = restaurants
+
+            // Prefetch restaurant logos
+            let imageURLs = restaurants.compactMap { $0.logoUrl ?? $0.coverUrl }.compactMap { URL(string: $0) }
+            ImageCache.shared.prefetch(imageURLs)
         } catch {
             Logger.log("Failed to load restaurants: \(error)", level: .error)
             errorMessage = "تعذر تحميل المطاعم. اسحب للأسفل لإعادة المحاولة"

@@ -504,7 +504,7 @@ struct DeveloperDashboardView: View {
                         .foregroundStyle(SofraColors.textMuted)
                 }
 
-                AsyncImage(url: URL(string: restaurant.logoUrl ?? "")) { phase in
+                CachedPhaseImage(url: URL(string: restaurant.logoUrl ?? "")) { phase in
                     switch phase {
                     case .success(let img):
                         img.resizable().aspectRatio(contentMode: .fill)

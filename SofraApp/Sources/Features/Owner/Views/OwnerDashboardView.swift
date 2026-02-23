@@ -381,7 +381,7 @@ struct OwnerDashboardView: View {
                                 )
                             }
 
-                            AsyncImage(url: URL(string: item.imageUrl ?? "")) { phase in
+                            CachedPhaseImage(url: URL(string: item.imageUrl ?? "")) { phase in
                                 switch phase {
                                 case .success(let img):
                                     img.resizable().aspectRatio(contentMode: .fill)
@@ -431,7 +431,7 @@ struct OwnerDashboardView: View {
                                         .resizable()
                                         .aspectRatio(contentMode: .fill)
                                 } else {
-                                    AsyncImage(url: URL(string: rest.logoUrl ?? rest.coverUrl ?? "")) { phase in
+                                    CachedPhaseImage(url: URL(string: rest.logoUrl ?? rest.coverUrl ?? "")) { phase in
                                         switch phase {
                                         case .success(let img):
                                             img.resizable().aspectRatio(contentMode: .fill)

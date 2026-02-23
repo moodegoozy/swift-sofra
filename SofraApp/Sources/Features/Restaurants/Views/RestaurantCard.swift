@@ -76,7 +76,7 @@ struct RestaurantCard: View {
             // Logo
             Group {
                 if let logoUrl = restaurant.logoUrl, !logoUrl.isEmpty, let url = URL(string: logoUrl) {
-                    AsyncImage(url: url) { phase in
+                    CachedPhaseImage(url: url) { phase in
                         switch phase {
                         case .success(let image):
                             image

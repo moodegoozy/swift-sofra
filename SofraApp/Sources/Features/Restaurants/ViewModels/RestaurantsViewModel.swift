@@ -63,6 +63,10 @@ final class RestaurantsViewModel {
             }
 
             restaurants = allRestaurants
+
+            // Prefetch restaurant logos
+            let imageURLs = allRestaurants.compactMap { $0.logoUrl ?? $0.coverUrl }.compactMap { URL(string: $0) }
+            ImageCache.shared.prefetch(imageURLs)
         } catch {
             Logger.log("Failed to load restaurants: \(error)", level: .error)
             errorMessage = "تعذر تحميل قائمة المطاعم"
