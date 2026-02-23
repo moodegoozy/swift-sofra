@@ -7,6 +7,17 @@ struct LoginView: View {
     @Environment(AppState.self) var appState
     @State private var vm = AuthViewModel()
     @State private var showRegister = false
+    @State private var loginMethod: LoginMethod = .email
+
+    enum LoginMethod: String, CaseIterable {
+        case email, phone
+        var label: String {
+            switch self {
+            case .email: return "بريد إلكتروني"
+            case .phone: return "رقم الجوال"
+            }
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -38,45 +49,28 @@ struct LoginView: View {
                 }
                 .padding(.top, SofraSpacing.xl)
 
-                // MARK: - Form
-                VStack(spacing: SofraSpacing.lg) {
-                    SofraTextField(
-                        label: "البريد الإلكتروني",
-                        text: $vm.loginEmail,
-                        icon: "envelope",
-                        placeholder: "example@email.com",
-                        keyboardType: .emailAddress
-                    )
-                    .textContentType(.emailAddress)
-                    .autocapitalization(.none)
-
-                    SofraTextField(
-                        label: "كلمة المرور",
-                        text: $vm.loginPassword,
-                        icon: "lock",
-                        placeholder: "••••••••",
-                        isSecure: true
-                    )
-                    .textContentType(.password)
+                // MARK: - Login Method Picker
+                Picker("طريقة الدخول", selection: $loginMethod) {
+                    ForEach(LoginMethod.allCases, id: \.self) { method in
+                        Text(method.label).tag(method)
+                    }
                 }
+                .pickerStyle(.segmented)
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
 
-                // MARK: - Actions
-                VStack(spacing: SofraSpacing.md) {
-                    SofraButton(
-                        title: "تسجيل الدخول",
-                        icon: "arrow.right.circle.fill",
-                        isLoading: vm.isLoading
-                    ) {
-                        Task { await vm.login(appState: appState) }
-                    }
+                // MARK: - Form
+                if loginMethod == .email {
+                    emailLoginForm
+                } else {
+                    PhoneLoginView()
+                }
 
-                    SofraButton(
-                        title: "إنشاء حساب جديد",
-                        style: .ghost
-                    ) {
-                        showRegister = true
-                    }
+                // MARK: - Register
+                SofraButton(
+                    title: "إنشاء حساب جديد",
+                    style: .ghost
+                ) {
+                    showRegister = true
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
 
@@ -92,6 +86,39 @@ struct LoginView: View {
         } message: {
             Text(vm.errorMessage ?? "حدث خطأ غير متوقع")
         }
+    }
+
+    // MARK: - Email Login Form
+    private var emailLoginForm: some View {
+        VStack(spacing: SofraSpacing.lg) {
+            SofraTextField(
+                label: "البريد الإلكتروني",
+                text: $vm.loginEmail,
+                icon: "envelope",
+                placeholder: "example@email.com",
+                keyboardType: .emailAddress
+            )
+            .textContentType(.emailAddress)
+            .autocapitalization(.none)
+
+            SofraTextField(
+                label: "كلمة المرور",
+                text: $vm.loginPassword,
+                icon: "lock",
+                placeholder: "••••••••",
+                isSecure: true
+            )
+            .textContentType(.password)
+
+            SofraButton(
+                title: "تسجيل الدخول",
+                icon: "arrow.right.circle.fill",
+                isLoading: vm.isLoading
+            ) {
+                Task { await vm.login(appState: appState) }
+            }
+        }
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
     }
 }
 

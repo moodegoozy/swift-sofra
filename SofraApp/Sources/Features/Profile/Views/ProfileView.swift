@@ -234,6 +234,9 @@ struct ProfileView: View {
         )
         if success {
             appState.currentUser?.name = name
+            appState.currentUser?.phone = phone
+            appState.currentUser?.address = address
+            appState.currentUser?.city = city
         }
     }
 

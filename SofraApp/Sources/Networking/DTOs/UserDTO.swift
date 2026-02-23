@@ -21,6 +21,23 @@ struct AppUser: Identifiable {
         name ?? email.split(separator: "@").first.map(String.init) ?? "مستخدم"
     }
 
+    /// Customer profile is complete when name, phone, and location are set
+    var isCustomerProfileComplete: Bool {
+        let hasName = !(name ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasPhone = !(phone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasLocation = savedLocation != nil && savedLocation!.lat != 0
+        return hasName && hasPhone && hasLocation
+    }
+
+    /// Missing fields list for display
+    var missingProfileFields: [String] {
+        var missing: [String] = []
+        if (name ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { missing.append("الاسم") }
+        if (phone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { missing.append("رقم الجوال") }
+        if savedLocation == nil || savedLocation!.lat == 0 { missing.append("الموقع") }
+        return missing
+    }
+
     // MARK: - Init from Firestore document
     init(from doc: FirestoreDocumentResponse) {
         let f = doc.fields ?? [:]

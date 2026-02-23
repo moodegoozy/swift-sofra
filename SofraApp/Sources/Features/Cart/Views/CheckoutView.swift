@@ -196,6 +196,19 @@ struct CheckoutView: View {
             return
         }
 
+        // Require complete profile (name, phone, location)
+        let hasName = !(user.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasPhone = !(user.phone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasLocation = appState.hasConfirmedLocation || (user.savedLocation != nil && user.savedLocation!.lat != 0)
+        if !hasName || !hasPhone || !hasLocation {
+            var missing: [String] = []
+            if !hasName { missing.append("الاسم") }
+            if !hasPhone { missing.append("رقم الجوال") }
+            if !hasLocation { missing.append("الموقع") }
+            errorMessage = "أكمل بياناتك في صفحة حسابي أولاً: \(missing.joined(separator: "، "))"
+            return
+        }
+
         // Require location for delivery
         if deliveryType == "delivery" && deliveryLat == 0 && deliveryLng == 0 {
             showLocationPicker = true

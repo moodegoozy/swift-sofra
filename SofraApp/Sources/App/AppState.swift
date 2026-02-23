@@ -107,6 +107,35 @@ final class AppState {
         self.needsLocationPick = true
     }
 
+    // MARK: - Phone Auth: Send OTP
+    func sendPhoneOTP(phoneNumber: String, recaptchaToken: String) async throws -> String {
+        return try await authService.sendPhoneVerification(phoneNumber: phoneNumber, recaptchaToken: recaptchaToken)
+    }
+
+    // MARK: - Phone Auth: Verify OTP & Login
+    func verifyPhoneOTP(sessionInfo: String, code: String) async throws {
+        let response = try await authService.verifyPhoneCode(sessionInfo: sessionInfo, code: code)
+        keychain.save(response.idToken, key: .idToken)
+        keychain.save(response.refreshToken, key: .refreshToken)
+        self.idToken = response.idToken
+
+        // Try to load existing user document
+        do {
+            let user = try await firestoreService.getUser(uid: response.localId, idToken: response.idToken)
+            self.currentUser = user
+            self.role = user.role
+        } catch {
+            // New phone user — create minimal user document
+            let newUser = AppUser(uid: response.localId, email: response.email, phone: nil, role: .customer)
+            try await firestoreService.createUser(newUser, idToken: response.idToken)
+            self.currentUser = newUser
+            self.role = .customer
+        }
+
+        self.isAuthenticated = true
+        self.needsLocationPick = true
+    }
+
     // MARK: - Delete Account
     func deleteAccount() async throws {
         let token = try await validToken()

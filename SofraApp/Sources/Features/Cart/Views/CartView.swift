@@ -8,6 +8,25 @@ struct CartView: View {
     @Environment(AppState.self) var appState
     @State private var showCheckout = false
 
+    /// Customer must have name, phone, and location to order
+    private var isProfileComplete: Bool {
+        guard let user = appState.currentUser else { return false }
+        let hasName = !(user.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasPhone = !(user.phone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasLocation = appState.hasConfirmedLocation || (user.savedLocation != nil && user.savedLocation!.lat != 0)
+        return hasName && hasPhone && hasLocation
+    }
+
+    private var missingFields: [String] {
+        guard let user = appState.currentUser else { return ["الاسم", "رقم الجوال", "الموقع"] }
+        var missing: [String] = []
+        if (user.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { missing.append("الاسم") }
+        if (user.phone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { missing.append("رقم الجوال") }
+        let hasLoc = appState.hasConfirmedLocation || (user.savedLocation != nil && user.savedLocation!.lat != 0)
+        if !hasLoc { missing.append("الموقع") }
+        return missing
+    }
+
     var body: some View {
         Group {
             if cartVM.isEmpty {
@@ -22,6 +41,11 @@ struct CartView: View {
             } else {
                 ScrollView {
                     VStack(spacing: SofraSpacing.md) {
+                        // Profile incomplete warning
+                        if !isProfileComplete {
+                            profileIncompleteWarning
+                        }
+
                         // Cart Items
                         ForEach(cartVM.items) { item in
                             cartItemRow(item)
@@ -50,7 +74,11 @@ struct CartView: View {
 
                         // Actions
                         VStack(spacing: SofraSpacing.sm) {
-                            SofraButton(title: "إتمام الطلب", icon: "creditcard.fill") {
+                            SofraButton(
+                                title: "إتمام الطلب",
+                                icon: "creditcard.fill",
+                                isDisabled: !isProfileComplete
+                            ) {
                                 showCheckout = true
                             }
 
@@ -123,6 +151,50 @@ struct CartView: View {
         .background(SofraColors.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
         .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+
+    // MARK: - Profile Incomplete Warning
+    private var profileIncompleteWarning: some View {
+        VStack(spacing: SofraSpacing.sm) {
+            HStack(spacing: SofraSpacing.sm) {
+                VStack(alignment: .trailing, spacing: SofraSpacing.xs) {
+                    Text("أكمل بياناتك أولاً")
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(SofraColors.warning)
+                    Text("يجب إضافة \(missingFields.joined(separator: " و")) قبل الطلب")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textSecondary)
+                        .multilineTextAlignment(.trailing)
+                }
+                Spacer()
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title2)
+                    .foregroundStyle(SofraColors.warning)
+            }
+
+            NavigationLink {
+                ProfileView()
+            } label: {
+                HStack(spacing: SofraSpacing.xs) {
+                    Image(systemName: "chevron.left")
+                    Text("الذهاب للملف الشخصي")
+                        .font(SofraTypography.calloutSemibold)
+                }
+                .foregroundStyle(SofraColors.primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, SofraSpacing.sm)
+                .background(SofraColors.primary.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+        }
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.warning.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
+                .strokeBorder(SofraColors.warning.opacity(0.3), lineWidth: 1)
+        )
         .padding(.horizontal, SofraSpacing.screenHorizontal)
     }
 }

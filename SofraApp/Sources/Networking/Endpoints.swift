@@ -33,6 +33,18 @@ enum Endpoints {
         URL(string: "\(authBase)/accounts:delete?key=\(apiKey)")!
     }
 
+    static var sendVerificationCode: URL {
+        URL(string: "\(authBase)/accounts:sendOobCode?key=\(apiKey)")!
+    }
+
+    static var signInWithPhone: URL {
+        URL(string: "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=\(apiKey)")!
+    }
+
+    static var sendPhoneVerification: URL {
+        URL(string: "https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=\(apiKey)")!
+    }
+
     // MARK: - Firestore REST API
     private static let firestoreBase = "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents"
 

@@ -15,6 +15,11 @@ struct OwnerDashboardView: View {
     @State private var restaurantImage: UIImage?
     // Chat
     @State private var chatOrder: Order?
+    // Restaurant info editing
+    @State private var editRestName = ""
+    @State private var editRestPhone = ""
+    @State private var isSavingInfo = false
+    @State private var infoSaveMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,6 +50,11 @@ struct OwnerDashboardView: View {
             .task {
                 guard let uid = appState.currentUser?.uid else { return }
                 await vm.loadDashboard(ownerId: uid, token: try? await appState.validToken())
+                // Populate edit fields from loaded restaurant
+                if let rest = vm.restaurant {
+                    editRestName = rest.name == "مطعم" ? "" : rest.name
+                    editRestPhone = rest.phone ?? ""
+                }
             }
             .sheet(isPresented: $showWallet) {
                 WalletView(
@@ -91,6 +101,45 @@ struct OwnerDashboardView: View {
                     ForEach(0..<3, id: \.self) { _ in SkeletonCard() }
                         .padding(.horizontal, SofraSpacing.screenHorizontal)
                 } else {
+                    // Owner completeness warning
+                    if let warnings = ownerCompletenessWarnings, !warnings.isEmpty {
+                        VStack(spacing: SofraSpacing.sm) {
+                            HStack(spacing: SofraSpacing.sm) {
+                                VStack(alignment: .trailing, spacing: SofraSpacing.xs) {
+                                    Text("مطعمك غير مكتمل")
+                                        .font(SofraTypography.headline)
+                                        .foregroundStyle(SofraColors.warning)
+                                    Text("أكمل البيانات التالية ليظهر مطعمك للعملاء:")
+                                        .font(SofraTypography.caption)
+                                        .foregroundStyle(SofraColors.textSecondary)
+                                        .multilineTextAlignment(.trailing)
+                                }
+                                Spacer()
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(SofraColors.warning)
+                            }
+                            ForEach(warnings, id: \.self) { warning in
+                                HStack(spacing: SofraSpacing.xs) {
+                                    Spacer()
+                                    Text(warning)
+                                        .font(SofraTypography.callout)
+                                        .foregroundStyle(SofraColors.textPrimary)
+                                    Image(systemName: "xmark.circle")
+                                        .foregroundStyle(SofraColors.error)
+                                }
+                            }
+                        }
+                        .padding(SofraSpacing.cardPadding)
+                        .background(SofraColors.warning.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
+                                .strokeBorder(SofraColors.warning.opacity(0.3), lineWidth: 1)
+                        )
+                        .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    }
+
                     // Stats Cards
                     LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
                         statCard("طلبات اليوم", value: "\(vm.todayOrders)", icon: "bag.fill", color: SofraColors.primary)
@@ -445,24 +494,24 @@ struct OwnerDashboardView: View {
 
                     SofraCard {
                         VStack(alignment: .trailing, spacing: SofraSpacing.md) {
-                            HStack(spacing: SofraSpacing.sm) {
-                                if rest.isVerified {
-                                    Image(systemName: "checkmark.seal.fill")
-                                        .foregroundStyle(SofraColors.primary)
-                                }
-                                Text(rest.name)
-                                    .font(SofraTypography.title3)
-                            }
+                            Text("بيانات المطعم")
+                                .font(SofraTypography.headline)
+                                .foregroundStyle(SofraColors.gold400)
 
-                            if let phone = rest.phone {
-                                HStack {
-                                    Spacer()
-                                    Text(phone)
-                                        .font(SofraTypography.body)
-                                    Image(systemName: "phone.fill")
-                                        .foregroundStyle(SofraColors.primary)
-                                }
-                            }
+                            SofraTextField(
+                                label: "اسم المطعم",
+                                text: $editRestName,
+                                icon: "storefront",
+                                placeholder: "أدخل اسم المطعم"
+                            )
+
+                            SofraTextField(
+                                label: "رقم الجوال",
+                                text: $editRestPhone,
+                                icon: "phone",
+                                placeholder: "05xxxxxxxx",
+                                keyboardType: .phonePad
+                            )
 
                             if let city = rest.city {
                                 HStack {
@@ -471,6 +520,32 @@ struct OwnerDashboardView: View {
                                         .font(SofraTypography.body)
                                     Image(systemName: "location.fill")
                                         .foregroundStyle(SofraColors.primary)
+                                }
+                            }
+
+                            if let msg = infoSaveMessage {
+                                Text(msg)
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(SofraColors.success)
+                            }
+
+                            SofraButton(
+                                title: "حفظ البيانات",
+                                icon: "checkmark",
+                                isLoading: isSavingInfo,
+                                isDisabled: editRestName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ) {
+                                Task {
+                                    isSavingInfo = true
+                                    infoSaveMessage = nil
+                                    let ok = await vm.updateRestaurantInfo(
+                                        ownerId: appState.currentUser?.uid ?? "",
+                                        name: editRestName.trimmingCharacters(in: .whitespacesAndNewlines),
+                                        phone: editRestPhone.trimmingCharacters(in: .whitespacesAndNewlines),
+                                        token: try? await appState.validToken()
+                                    )
+                                    if ok { infoSaveMessage = "تم الحفظ" }
+                                    isSavingInfo = false
                                 }
                             }
                         }
@@ -561,6 +636,23 @@ struct OwnerDashboardView: View {
                     .frame(width: 28)
             }
         }
+    }
+
+    /// Warnings for incomplete owner profile — nil if complete
+    private var ownerCompletenessWarnings: [String]? {
+        var warnings: [String] = []
+        if let rest = vm.restaurant {
+            if rest.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || rest.name == "مطعم" {
+                warnings.append("أضف اسم المطعم في الإعدادات")
+            }
+            if (rest.phone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                warnings.append("أضف رقم الجوال في الإعدادات")
+            }
+        }
+        if vm.menuItemsCount == 0 {
+            warnings.append("أضف منتج واحد على الأقل في القائمة")
+        }
+        return warnings.isEmpty ? nil : warnings
     }
 }
 

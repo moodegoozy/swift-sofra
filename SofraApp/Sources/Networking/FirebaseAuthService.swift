@@ -30,6 +30,10 @@ struct RefreshTokenResponse: Decodable {
     }
 }
 
+struct PhoneVerificationResponse: Decodable {
+    let sessionInfo: String
+}
+
 final class FirebaseAuthService {
     private let client = APIClient.shared
 
@@ -53,6 +57,35 @@ final class FirebaseAuthService {
         ]
         let data = try JSONSerialization.data(withJSONObject: body)
         return try await client.request(url: Endpoints.signUp, method: "POST", body: data)
+    }
+
+    // MARK: - Send Phone Verification Code
+    func sendPhoneVerification(phoneNumber: String, recaptchaToken: String) async throws -> String {
+        let body: [String: Any] = [
+            "phoneNumber": phoneNumber,
+            "recaptchaToken": recaptchaToken
+        ]
+        let data = try JSONSerialization.data(withJSONObject: body)
+        let response: PhoneVerificationResponse = try await client.request(
+            url: Endpoints.sendPhoneVerification,
+            method: "POST",
+            body: data
+        )
+        return response.sessionInfo
+    }
+
+    // MARK: - Verify Phone Code & Sign In
+    func verifyPhoneCode(sessionInfo: String, code: String) async throws -> AuthResponse {
+        let body: [String: Any] = [
+            "sessionInfo": sessionInfo,
+            "code": code
+        ]
+        let data = try JSONSerialization.data(withJSONObject: body)
+        return try await client.request(
+            url: Endpoints.signInWithPhone,
+            method: "POST",
+            body: data
+        )
     }
 
     // MARK: - Delete Account

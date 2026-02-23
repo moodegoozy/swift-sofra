@@ -125,6 +125,24 @@ final class OwnerDashboardViewModel {
         }
     }
 
+    func updateRestaurantInfo(ownerId: String, name: String, phone: String, token: String?) async -> Bool {
+        guard let token else { return false }
+        do {
+            try await firestoreService.updateDocument(
+                collection: "restaurants", id: ownerId,
+                fields: ["name": name, "phone": phone],
+                idToken: token
+            )
+            restaurant?.name = name
+            restaurant?.phone = phone
+            return true
+        } catch {
+            Logger.log("Update restaurant info error: \(error)", level: .error)
+            errorMessage = "تعذر حفظ بيانات المطعم"
+            return false
+        }
+    }
+
     func updateOrderStatus(orderId: String, newStatus: OrderStatus, token: String?) async {
         guard let token else { return }
         do {
@@ -223,6 +241,14 @@ final class OwnerDashboardViewModel {
             // Reload menu
             await loadMenu(ownerId: ownerId, token: token)
             menuItemsCount = menuItems.count
+
+            // Update menuItemCount on restaurant doc for visibility
+            try await firestoreService.updateDocument(
+                collection: "restaurants", id: ownerId,
+                fields: ["menuItemCount": menuItemsCount],
+                idToken: token
+            )
+
             Logger.log("Menu item added: \(name)", level: .info)
         } catch {
             Logger.log("Add menu item error: \(error)", level: .error)
@@ -240,6 +266,13 @@ final class OwnerDashboardViewModel {
             )
             menuItems.removeAll { $0.id == itemId }
             menuItemsCount = menuItems.count
+
+            // Update menuItemCount on restaurant doc for visibility
+            try? await firestoreService.updateDocument(
+                collection: "restaurants", id: ownerId,
+                fields: ["menuItemCount": menuItemsCount],
+                idToken: token
+            )
         } catch {
             Logger.log("Delete menu item error: \(error)", level: .error)
             errorMessage = "تعذر حذف الصنف"

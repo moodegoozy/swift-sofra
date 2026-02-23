@@ -32,6 +32,15 @@ final class RestaurantsViewModel {
             )
             var allRestaurants = docs.map { Restaurant(from: $0) }
 
+            // Filter out incomplete restaurants (missing name, phone, or no menu items)
+            allRestaurants = allRestaurants.filter { restaurant in
+                let hasName = !restaurant.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && restaurant.name != "مطعم"
+                let hasPhone = !(restaurant.phone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                let hasMenuItems = (restaurant.menuItemCount ?? 0) > 0
+                return hasName && hasPhone && hasMenuItems
+            }
+
             // Filter by distance (20km) if user has location
             let hasUserLocation = userLat != 0 || userLng != 0
             if hasUserLocation {

@@ -27,6 +27,8 @@ struct Restaurant: Identifiable {
     // Coordinates for distance filtering
     var latitude: Double?
     var longitude: Double?
+    // Menu item count for completeness check
+    var menuItemCount: Int?
 
     enum PackageType: String {
         case free, premium
@@ -59,6 +61,7 @@ struct Restaurant: Identifiable {
         self.announcement = f["announcement"]?.stringVal
         self.isHiring = f["isHiring"]?.boolVal ?? false
         self.hiringDescription = f["hiringDescription"]?.stringVal
+        self.menuItemCount = f["menuItemCount"]?.intVal
 
         // Parse coordinates from savedLocation or location map
         if let locMap = f["savedLocation"]?.mapVal {
