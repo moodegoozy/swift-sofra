@@ -9,16 +9,28 @@ struct MainTabView: View {
     @Environment(CartViewModel.self) var cartVM
 
     private var isOwner: Bool {
-        appState.role == .owner || appState.role == .developer
+        appState.role == .owner
     }
 
     private var isCourier: Bool {
-        appState.role == .courier || appState.role == .developer
+        appState.role == .courier
+    }
+
+    private var isSupervisor: Bool {
+        appState.role == .supervisor || appState.role == .admin
+    }
+
+    private var isDeveloper: Bool {
+        appState.role == .developer
     }
 
     var body: some View {
         // Each role gets its own TabView — no conditionals INSIDE TabView
-        if isOwner {
+        if isDeveloper {
+            developerTabs
+        } else if isSupervisor {
+            supervisorTabs
+        } else if isOwner {
             ownerTabs
         } else if isCourier {
             courierTabs
@@ -104,6 +116,68 @@ struct MainTabView: View {
                 .tabItem { Label("السلة", systemImage: "cart.fill") }
                 .badge(cartVM.items.count)
                 .tag(2)
+
+            NavigationStack { OrdersView() }
+                .tabItem { Label("طلباتي", systemImage: "bag.fill") }
+                .tag(3)
+
+            NavigationStack { ProfileView() }
+                .tabItem { Label("حسابي", systemImage: "person.fill") }
+                .tag(9)
+        }
+        .tint(SofraColors.gold400)
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Supervisor Tabs (5 tabs)
+    private var supervisorTabs: some View {
+        @Bindable var appState = appState
+        return TabView(selection: $appState.selectedMainTab) {
+            NavigationStack { SupervisorDashboardView() }
+                .tabItem { Label("الإشراف", systemImage: "shield.fill") }
+                .tag(0)
+
+            NavigationStack { RestaurantsListView() }
+                .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
+                .tag(1)
+
+            NavigationStack { OrdersView() }
+                .tabItem { Label("طلباتي", systemImage: "bag.fill") }
+                .tag(3)
+
+            NavigationStack { CartView() }
+                .tabItem { Label("السلة", systemImage: "cart.fill") }
+                .badge(cartVM.items.count)
+                .tag(7)
+
+            NavigationStack { ProfileView() }
+                .tabItem { Label("حسابي", systemImage: "person.fill") }
+                .tag(9)
+        }
+        .tint(SofraColors.gold400)
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Developer Tabs (7 tabs — full access)
+    private var developerTabs: some View {
+        @Bindable var appState = appState
+        return TabView(selection: $appState.selectedMainTab) {
+            NavigationStack { DeveloperDashboardView() }
+                .tabItem { Label("المطور", systemImage: "wrench.and.screwdriver.fill") }
+                .tag(0)
+
+            NavigationStack { OwnerDashboardView() }
+                .tabItem { Label("المطعم", systemImage: "chart.bar.fill") }
+                .tag(2)
+
+            NavigationStack { RestaurantsListView() }
+                .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
+                .tag(1)
+
+            NavigationStack { CartView() }
+                .tabItem { Label("السلة", systemImage: "cart.fill") }
+                .badge(cartVM.items.count)
+                .tag(7)
 
             NavigationStack { OrdersView() }
                 .tabItem { Label("طلباتي", systemImage: "bag.fill") }

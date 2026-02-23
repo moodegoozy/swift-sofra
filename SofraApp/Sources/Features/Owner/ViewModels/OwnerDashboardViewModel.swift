@@ -17,6 +17,7 @@ final class OwnerDashboardViewModel {
     // Stats
     var todayOrders = 0
     var totalRevenue: Double = 0
+    var totalCommission: Double = 0
     var menuItemsCount = 0
 
     private let firestoreService = FirestoreService()
@@ -53,7 +54,11 @@ final class OwnerDashboardViewModel {
 
             totalRevenue = orders
                 .filter { $0.status == .delivered }
-                .reduce(0) { $0 + $1.total }
+                .reduce(0) { $0 + $1.netAmount }
+
+            totalCommission = orders
+                .filter { $0.status == .delivered }
+                .reduce(0) { $0 + $1.commissionAmount }
 
             menuItemsCount = menuItems.count
 

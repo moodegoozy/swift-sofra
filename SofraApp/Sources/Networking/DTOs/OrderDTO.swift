@@ -17,6 +17,11 @@ struct Order: Identifiable {
     var notes: String?
     var restaurantName: String?
     var restaurantId: String?
+    var customerName: String?
+    // Commission / platform fee
+    var commissionRate: Double      // e.g. 15 = 15%
+    var commissionAmount: Double    // subtotal * rate / 100
+    var netAmount: Double           // total - commissionAmount
     var createdAt: Date?
     var updatedAt: Date?
 
@@ -40,7 +45,11 @@ struct Order: Identifiable {
         restaurantName: String? = nil,
         courierId: String? = nil,
         notes: String? = nil,
-        createdAt: Date? = nil
+        createdAt: Date? = nil,
+        commissionRate: Double = 15,
+        commissionAmount: Double = 0,
+        netAmount: Double = 0,
+        customerName: String? = nil
     ) {
         self.id = id
         self.customerId = customerId
@@ -55,6 +64,10 @@ struct Order: Identifiable {
         self.courierId = courierId
         self.notes = notes
         self.createdAt = createdAt
+        self.commissionRate = commissionRate
+        self.commissionAmount = commissionAmount
+        self.netAmount = netAmount == 0 ? total : netAmount
+        self.customerName = customerName
     }
 
     // MARK: - Init from Firestore
@@ -72,6 +85,11 @@ struct Order: Identifiable {
         self.notes = f["notes"]?.stringVal
         self.restaurantName = f["restaurantName"]?.stringVal
         self.restaurantId = f["restaurantId"]?.stringVal
+        self.customerName = f["customerName"]?.stringVal
+        self.commissionRate = f["commissionRate"]?.doubleVal ?? 15
+        self.commissionAmount = f["commissionAmount"]?.doubleVal ?? 0
+        let rawNet = f["netAmount"]?.doubleVal ?? 0
+        self.netAmount = rawNet > 0 ? rawNet : self.total
         self.createdAt = f["createdAt"]?.dateVal
         self.updatedAt = f["updatedAt"]?.dateVal
 

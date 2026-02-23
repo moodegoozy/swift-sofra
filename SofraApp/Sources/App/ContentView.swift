@@ -61,8 +61,8 @@ struct ContentView: View {
             try? await appState.validToken()
         }
 
-        // Owner/developer also gets owner polling for incoming restaurant orders
-        if role == .owner || role == .developer {
+        // Owner/developer/supervisor also gets owner polling for incoming restaurant orders
+        if role == .owner || role == .developer || role == .supervisor {
             OrderPollingService.shared.startOwnerPolling(ownerId: uid) {
                 try? await appState.validToken()
             }

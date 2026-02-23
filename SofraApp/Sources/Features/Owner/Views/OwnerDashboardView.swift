@@ -143,7 +143,7 @@ struct OwnerDashboardView: View {
                     // Stats Cards
                     LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
                         statCard("طلبات اليوم", value: "\(vm.todayOrders)", icon: "bag.fill", color: SofraColors.primary)
-                        statCard("الإجمالي", value: String(format: "%.0f ر.س", vm.totalRevenue), icon: "banknote.fill", color: SofraColors.success)
+                        statCard("صافي الأرباح", value: String(format: "%.0f ر.س", vm.totalRevenue), icon: "banknote.fill", color: SofraColors.success)
                         statCard("الأصناف", value: "\(vm.menuItemsCount)", icon: "menucard.fill", color: SofraColors.info)
                         statCard("التقييم", value: String(format: "%.1f", vm.restaurant?.averageRating ?? 0), icon: "star.fill", color: SofraColors.warning)
                     }

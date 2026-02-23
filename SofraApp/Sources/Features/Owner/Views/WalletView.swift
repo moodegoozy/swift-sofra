@@ -17,6 +17,14 @@ struct WalletView: View {
         deliveredOrders.reduce(0) { $0 + $1.total }
     }
 
+    private var totalCommission: Double {
+        deliveredOrders.reduce(0) { $0 + $1.commissionAmount }
+    }
+
+    private var netEarnings: Double {
+        totalEarnings - totalCommission
+    }
+
     private var pendingOrders: [Order] {
         orders.filter { $0.status != .delivered && $0.status != .cancelled }
     }
@@ -35,13 +43,33 @@ struct WalletView: View {
                             .font(.system(size: 40))
                             .foregroundStyle(SofraColors.primary)
 
-                        Text("الرصيد الكلي")
+                        Text("صافي الأرباح")
                             .font(SofraTypography.calloutSemibold)
                             .foregroundStyle(SofraColors.textSecondary)
 
-                        Text("\(totalEarnings, specifier: "%.2f") ر.س")
+                        Text("\(netEarnings, specifier: "%.2f") ر.س")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundStyle(SofraColors.success)
+
+                        // Commission breakdown
+                        VStack(spacing: 4) {
+                            HStack(spacing: SofraSpacing.sm) {
+                                Text("\(totalEarnings, specifier: "%.2f") ر.س")
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(SofraColors.textSecondary)
+                                Text("إجمالي المبيعات:")
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(SofraColors.textMuted)
+                            }
+                            HStack(spacing: SofraSpacing.sm) {
+                                Text("-\(totalCommission, specifier: "%.2f") ر.س")
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(SofraColors.error)
+                                Text("عمولة المنصة:")
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(SofraColors.textMuted)
+                            }
+                        }
 
                         Text(restaurantName)
                             .font(SofraTypography.caption)
@@ -153,9 +181,16 @@ struct WalletView: View {
     // MARK: - Transaction Row
     private func transactionRow(_ order: Order) -> some View {
         HStack {
-            Text("+\(order.total, specifier: "%.2f") ر.س")
-                .font(SofraTypography.headline)
-                .foregroundStyle(SofraColors.success)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("+\(order.netAmount, specifier: "%.2f") ر.س")
+                    .font(SofraTypography.headline)
+                    .foregroundStyle(SofraColors.success)
+                if order.commissionAmount > 0 {
+                    Text("عمولة: -\(order.commissionAmount, specifier: "%.0f") ر.س")
+                        .font(SofraTypography.caption2)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+            }
 
             Spacer()
 

@@ -17,7 +17,13 @@ struct CheckoutView: View {
     @State private var deliveryLat: Double = 0
     @State private var deliveryLng: Double = 0
 
+    /// Platform commission rate (default 15%)
+    private let commissionRate: Double = 15
     private let deliveryFee: Double = 0 // Set by courier/owner later
+
+    var commissionAmount: Double {
+        cartVM.subtotal * commissionRate / 100
+    }
 
     var total: Double {
         cartVM.subtotal + deliveryFee
@@ -220,12 +226,16 @@ struct CheckoutView: View {
 
         var orderFields: [String: Any] = [
             "customerId": user.uid,
+            "customerName": user.displayName,
             "items": cartVM.items.map { item -> [String: Any] in
                 ["id": item.id, "name": item.name, "price": item.price, "qty": item.qty, "ownerId": item.ownerId ?? ""]
             },
             "subtotal": cartVM.subtotal,
             "deliveryFee": deliveryFee,
             "total": total,
+            "commissionRate": commissionRate,
+            "commissionAmount": commissionAmount,
+            "netAmount": total - commissionAmount,
             "status": "pending",
             "address": address.isEmpty ? (user.savedLocation?.address ?? user.address ?? "") : address,
             "deliveryType": deliveryType,
