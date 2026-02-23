@@ -58,4 +58,12 @@ enum Endpoints {
         let encoded = path.addingPercentEncoding(withAllowedCharacters: allowed) ?? path
         return URL(string: "https://firebasestorage.googleapis.com/v0/b/\(storageBucket)/o/\(encoded)?alt=media")!
     }
+
+    /// Upload to Firebase Storage (returns metadata JSON, use storageDownload for the actual URL)
+    static func storageUpload(path: String) -> URL {
+        var allowed = CharacterSet.urlPathAllowed
+        allowed.remove("/")
+        let encoded = path.addingPercentEncoding(withAllowedCharacters: allowed) ?? path
+        return URL(string: "https://firebasestorage.googleapis.com/v0/b/\(storageBucket)/o/\(encoded)")!
+    }
 }

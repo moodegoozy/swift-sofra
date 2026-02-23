@@ -2,11 +2,17 @@
 // Owner dashboard matching web /owner (OwnerDashboard.tsx)
 
 import SwiftUI
+import PhotosUI
 
 struct OwnerDashboardView: View {
     @Environment(AppState.self) var appState
     @State private var vm = OwnerDashboardViewModel()
     @State private var selectedTab = 0
+    @State private var showWallet = false
+    @State private var showAddMenuItem = false
+    // Photo upload
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var restaurantImage: UIImage?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +43,15 @@ struct OwnerDashboardView: View {
             .task {
                 guard let uid = appState.currentUser?.uid else { return }
                 await vm.loadDashboard(ownerId: uid, token: try? await appState.validToken())
+            }
+            .sheet(isPresented: $showWallet) {
+                WalletView(
+                    orders: vm.orders,
+                    restaurantName: vm.restaurant?.name ?? "المطعم"
+                )
+            }
+            .sheet(isPresented: $showAddMenuItem) {
+                AddMenuItemView(vm: vm)
             }
     }
 
@@ -131,7 +146,7 @@ struct OwnerDashboardView: View {
                             quickAction("الطلبات", icon: "list.clipboard", color: SofraColors.primary) { selectedTab = 1 }
                             quickAction("القائمة", icon: "menucard", color: SofraColors.success) { selectedTab = 2 }
                             quickAction("المحفظة", icon: "creditcard", color: SofraColors.info) {
-                                // TODO: Navigate to wallet when implemented
+                                showWallet = true
                             }
                             quickAction("الإعدادات", icon: "gearshape", color: SofraColors.textSecondary) { selectedTab = 3 }
                         }
@@ -236,6 +251,22 @@ struct OwnerDashboardView: View {
         ScrollView {
             VStack(spacing: SofraSpacing.md) {
                 HStack {
+                    // Add menu item button
+                    Button {
+                        showAddMenuItem = true
+                    } label: {
+                        HStack(spacing: SofraSpacing.xs) {
+                            Text("إضافة صنف")
+                                .font(SofraTypography.calloutSemibold)
+                            Image(systemName: "plus.circle.fill")
+                        }
+                        .padding(.horizontal, SofraSpacing.md)
+                        .padding(.vertical, SofraSpacing.sm)
+                        .background(SofraColors.primary)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                    }
+
                     Spacer()
                     Text("أصناف القائمة")
                         .font(SofraTypography.title3)
@@ -294,6 +325,19 @@ struct OwnerDashboardView: View {
                         .padding(SofraSpacing.cardPadding)
                         .background(SofraColors.cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                Task {
+                                    await vm.deleteMenuItem(
+                                        itemId: item.id,
+                                        ownerId: appState.currentUser?.uid ?? "",
+                                        token: try? await appState.validToken()
+                                    )
+                                }
+                            } label: {
+                                Label("حذف", systemImage: "trash")
+                            }
+                        }
                     }
                     .padding(.horizontal, SofraSpacing.screenHorizontal)
                 }
@@ -307,6 +351,77 @@ struct OwnerDashboardView: View {
         ScrollView {
             VStack(spacing: SofraSpacing.lg) {
                 if let rest = vm.restaurant {
+                    // Restaurant Photo
+                    SofraCard {
+                        VStack(spacing: SofraSpacing.md) {
+                            // Current photo or placeholder
+                            ZStack {
+                                if let restaurantImage {
+                                    Image(uiImage: restaurantImage)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                } else {
+                                    AsyncImage(url: URL(string: rest.logoUrl ?? rest.coverUrl ?? "")) { phase in
+                                        switch phase {
+                                        case .success(let img):
+                                            img.resizable().aspectRatio(contentMode: .fill)
+                                        default:
+                                            VStack(spacing: SofraSpacing.sm) {
+                                                Image(systemName: "camera.fill")
+                                                    .font(.system(size: 30))
+                                                    .foregroundStyle(SofraColors.textMuted)
+                                                Text("صورة المطعم")
+                                                    .font(SofraTypography.caption)
+                                                    .foregroundStyle(SofraColors.textMuted)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if vm.isUploadingImage {
+                                    Color.black.opacity(0.4)
+                                    ProgressView()
+                                        .tint(.white)
+                                        .scaleEffect(1.5)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 160)
+                            .background(SofraColors.sky100)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                            // Photo picker button
+                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                                HStack(spacing: SofraSpacing.xs) {
+                                    Text(rest.logoUrl != nil ? "تغيير الصورة" : "رفع صورة المطعم")
+                                        .font(SofraTypography.calloutSemibold)
+                                    Image(systemName: "photo.on.rectangle.angled")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, SofraSpacing.sm)
+                                .background(SofraColors.primary.opacity(0.1))
+                                .foregroundStyle(SofraColors.primary)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                            .onChange(of: selectedPhoto) { _, newItem in
+                                Task {
+                                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                                       let uiImage = UIImage(data: data) {
+                                        restaurantImage = uiImage
+                                        if let jpegData = uiImage.jpegData(compressionQuality: 0.7) {
+                                            await vm.uploadRestaurantPhoto(
+                                                imageData: jpegData,
+                                                ownerId: appState.currentUser?.uid ?? "",
+                                                token: try? await appState.validToken()
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+
                     SofraCard {
                         VStack(alignment: .trailing, spacing: SofraSpacing.md) {
                             HStack(spacing: SofraSpacing.sm) {
@@ -344,7 +459,21 @@ struct OwnerDashboardView: View {
 
                 SofraCard {
                     VStack(spacing: SofraSpacing.md) {
-                        settingsRow(icon: "creditcard.fill", label: "المحفظة", color: SofraColors.success)
+                        Button {
+                            showWallet = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "chevron.left")
+                                    .foregroundStyle(SofraColors.textMuted)
+                                Spacer()
+                                Text("المحفظة")
+                                    .font(SofraTypography.body)
+                                    .foregroundStyle(SofraColors.textPrimary)
+                                Image(systemName: "creditcard.fill")
+                                    .foregroundStyle(SofraColors.success)
+                                    .frame(width: 28)
+                            }
+                        }
                         settingsRow(icon: "person.3.fill", label: "التوظيف", color: SofraColors.info)
                         settingsRow(icon: "megaphone.fill", label: "العروض الترويجية", color: SofraColors.warning)
                         settingsRow(icon: "chart.bar.fill", label: "التقارير", color: SofraColors.primaryDark)

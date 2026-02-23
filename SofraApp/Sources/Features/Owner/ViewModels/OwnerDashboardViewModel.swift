@@ -11,6 +11,8 @@ final class OwnerDashboardViewModel {
     var menuItems: [MenuItem] = []
     var isLoading = false
     var errorMessage: String?
+    var isUploadingImage = false
+    var showAddMenuItem = false
 
     // Stats
     var todayOrders = 0
@@ -18,6 +20,7 @@ final class OwnerDashboardViewModel {
     var menuItemsCount = 0
 
     private let firestoreService = FirestoreService()
+    private let storageService = StorageService.shared
 
     func loadDashboard(ownerId: String, token: String?) async {
         guard let token else { return }
@@ -79,7 +82,7 @@ final class OwnerDashboardViewModel {
         }
     }
 
-    private func loadMenu(ownerId: String, token: String) async {
+    func loadMenu(ownerId: String, token: String) async {
         do {
             let docs = try await firestoreService.query(
                 collection: "menuItems",
@@ -135,6 +138,95 @@ final class OwnerDashboardViewModel {
             }
         } catch {
             Logger.log("Toggle availability error: \(error)", level: .error)
+        }
+    }
+
+    // MARK: - Upload Restaurant Photo
+    func uploadRestaurantPhoto(imageData: Data, ownerId: String, token: String?) async {
+        guard let token else { return }
+        isUploadingImage = true
+        do {
+            let path = "restaurants/\(ownerId)/logo_\(Int(Date().timeIntervalSince1970)).jpg"
+            let downloadUrl = try await storageService.uploadImage(data: imageData, path: path, token: token)
+
+            // Update restaurant doc with new logo URL
+            try await firestoreService.updateDocument(
+                collection: "restaurants", id: ownerId,
+                fields: ["logoUrl": downloadUrl, "coverUrl": downloadUrl],
+                idToken: token
+            )
+
+            restaurant?.logoUrl = downloadUrl
+            restaurant?.coverUrl = downloadUrl
+            Logger.log("Restaurant photo uploaded: \(downloadUrl)", level: .info)
+        } catch {
+            Logger.log("Upload restaurant photo error: \(error)", level: .error)
+            errorMessage = "تعذر رفع الصورة"
+        }
+        isUploadingImage = false
+    }
+
+    // MARK: - Add Menu Item
+    func addMenuItem(
+        name: String,
+        description: String,
+        price: Double,
+        category: String,
+        imageData: Data?,
+        ownerId: String,
+        token: String?
+    ) async {
+        guard let token else { return }
+        isLoading = true
+        do {
+            var imageUrl: String? = nil
+            // Upload image if provided
+            if let imageData {
+                let path = "menuItems/\(ownerId)/\(UUID().uuidString).jpg"
+                imageUrl = try await storageService.uploadImage(data: imageData, path: path, token: token)
+            }
+
+            let docId = UUID().uuidString
+            var fields: [String: Any] = [
+                "name": name,
+                "price": price,
+                "available": true,
+                "ownerId": ownerId,
+                "createdAt": ISO8601DateFormatter().string(from: Date())
+            ]
+            if !description.isEmpty { fields["desc"] = description }
+            if !category.isEmpty { fields["category"] = category }
+            if let imageUrl { fields["imageUrl"] = imageUrl }
+
+            try await firestoreService.createDocument(
+                collection: "menuItems", id: docId,
+                fields: fields,
+                idToken: token
+            )
+
+            // Reload menu
+            await loadMenu(ownerId: ownerId, token: token)
+            menuItemsCount = menuItems.count
+            Logger.log("Menu item added: \(name)", level: .info)
+        } catch {
+            Logger.log("Add menu item error: \(error)", level: .error)
+            errorMessage = "تعذر إضافة الصنف"
+        }
+        isLoading = false
+    }
+
+    // MARK: - Delete Menu Item
+    func deleteMenuItem(itemId: String, ownerId: String, token: String?) async {
+        guard let token else { return }
+        do {
+            try await firestoreService.deleteDocument(
+                collection: "menuItems", id: itemId, idToken: token
+            )
+            menuItems.removeAll { $0.id == itemId }
+            menuItemsCount = menuItems.count
+        } catch {
+            Logger.log("Delete menu item error: \(error)", level: .error)
+            errorMessage = "تعذر حذف الصنف"
         }
     }
 }
