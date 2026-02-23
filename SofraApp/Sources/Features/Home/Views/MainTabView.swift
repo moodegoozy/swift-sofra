@@ -1,5 +1,6 @@
 // MainTabView.swift
 // Role-aware tab bar — shows different tabs based on user role
+// IMPORTANT: No `if` inside TabView — SwiftUI breaks tab identity with conditionals
 
 import SwiftUI
 
@@ -16,80 +17,105 @@ struct MainTabView: View {
     }
 
     var body: some View {
+        // Each role gets its own TabView — no conditionals INSIDE TabView
+        if isOwner {
+            ownerTabs
+        } else if isCourier {
+            courierTabs
+        } else {
+            customerTabs
+        }
+    }
+
+    // MARK: - Owner Tabs (6 tabs)
+    private var ownerTabs: some View {
         @Bindable var appState = appState
-        TabView(selection: $appState.selectedMainTab) {
-            // Tab 0: الرئيسية — always visible
-            NavigationStack {
-                HomeView()
-            }
-            .tabItem {
-                Label("الرئيسية", systemImage: "house.fill")
-            }
-            .tag(0)
+        return TabView(selection: $appState.selectedMainTab) {
+            NavigationStack { HomeView() }
+                .tabItem { Label("الرئيسية", systemImage: "house.fill") }
+                .tag(0)
 
-            // Tab 1: المطاعم — always visible
-            NavigationStack {
-                RestaurantsListView()
-            }
-            .tabItem {
-                Label("المطاعم", systemImage: "storefront.fill")
-            }
-            .tag(1)
+            NavigationStack { RestaurantsListView() }
+                .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
+                .tag(1)
 
-            // Tab 2: role-specific middle tab
-            // Owner  → لوحة التحكم
-            // Courier → التوصيل
-            // Customer → السلة
-            if isOwner {
-                NavigationStack {
-                    OwnerDashboardView()
-                }
-                .tabItem {
-                    Label("لوحة التحكم", systemImage: "chart.bar.fill")
-                }
+            NavigationStack { OwnerDashboardView() }
+                .tabItem { Label("لوحة التحكم", systemImage: "chart.bar.fill") }
                 .tag(2)
-            } else if isCourier {
-                NavigationStack {
-                    CourierDashboardView()
-                }
-                .tabItem {
-                    Label("التوصيل", systemImage: "car.fill")
-                }
-                .tag(2)
-            } else {
-                NavigationStack {
-                    CartView()
-                }
-                .tabItem {
-                    Label("السلة", systemImage: "cart.fill")
-                }
+
+            NavigationStack { CartView() }
+                .tabItem { Label("السلة", systemImage: "cart.fill") }
                 .badge(cartVM.items.count)
-                .tag(2)
-            }
+                .tag(7)
 
-            // Tab 3: طلباتي — always visible
-            NavigationStack {
-                OrdersView()
-            }
-            .tabItem {
-                Label("طلباتي", systemImage: "bag.fill")
-            }
-            .tag(3)
+            NavigationStack { OrdersView() }
+                .tabItem { Label("طلباتي", systemImage: "bag.fill") }
+                .tag(3)
 
-            // Tab 4: حسابي — always last
-            NavigationStack {
-                ProfileView()
-            }
-            .tabItem {
-                Label("حسابي", systemImage: "person.fill")
-            }
-            .tag(4)
+            NavigationStack { ProfileView() }
+                .tabItem { Label("حسابي", systemImage: "person.fill") }
+                .tag(9)
         }
         .tint(SofraColors.gold400)
         .preferredColorScheme(.dark)
     }
 
+    // MARK: - Courier Tabs (5 tabs)
+    private var courierTabs: some View {
+        @Bindable var appState = appState
+        return TabView(selection: $appState.selectedMainTab) {
+            NavigationStack { HomeView() }
+                .tabItem { Label("الرئيسية", systemImage: "house.fill") }
+                .tag(0)
 
+            NavigationStack { RestaurantsListView() }
+                .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
+                .tag(1)
+
+            NavigationStack { CourierDashboardView() }
+                .tabItem { Label("التوصيل", systemImage: "car.fill") }
+                .tag(2)
+
+            NavigationStack { OrdersView() }
+                .tabItem { Label("طلباتي", systemImage: "bag.fill") }
+                .tag(3)
+
+            NavigationStack { ProfileView() }
+                .tabItem { Label("حسابي", systemImage: "person.fill") }
+                .tag(9)
+        }
+        .tint(SofraColors.gold400)
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Customer Tabs (5 tabs)
+    private var customerTabs: some View {
+        @Bindable var appState = appState
+        return TabView(selection: $appState.selectedMainTab) {
+            NavigationStack { HomeView() }
+                .tabItem { Label("الرئيسية", systemImage: "house.fill") }
+                .tag(0)
+
+            NavigationStack { RestaurantsListView() }
+                .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
+                .tag(1)
+
+            NavigationStack { CartView() }
+                .tabItem { Label("السلة", systemImage: "cart.fill") }
+                .badge(cartVM.items.count)
+                .tag(2)
+
+            NavigationStack { OrdersView() }
+                .tabItem { Label("طلباتي", systemImage: "bag.fill") }
+                .tag(3)
+
+            NavigationStack { ProfileView() }
+                .tabItem { Label("حسابي", systemImage: "person.fill") }
+                .tag(9)
+        }
+        .tint(SofraColors.gold400)
+        .preferredColorScheme(.dark)
+    }
 }
 
 #Preview {
