@@ -64,7 +64,7 @@ struct OrderDetailView: View {
                     Text("الأصناف")
                         .font(SofraTypography.headline)
 
-                    ForEach(Array(order.items.enumerated()), id: \.offset) { idx, item in
+                    ForEach(Array(order.items.enumerated()), id: \.element.id) { idx, item in
                         HStack {
                             Text("\(item.price * Double(item.qty), specifier: "%.0f") ر.س")
                                 .font(SofraTypography.callout)
@@ -150,11 +150,7 @@ struct OrderDetailView: View {
             Button("إلغاء الطلب", role: .destructive) {
                 Task {
                     await vm.cancelOrder(orderId: order.id, token: try? await appState.validToken())
-                    order = Order(
-                        id: order.id, customerId: order.customerId, restaurantId: order.restaurantId,
-                        items: order.items, subtotal: order.subtotal, deliveryFee: order.deliveryFee,
-                        total: order.total, status: .cancelled, address: order.address, notes: order.notes
-                    )
+                    order.status = .cancelled
                 }
             }
         }

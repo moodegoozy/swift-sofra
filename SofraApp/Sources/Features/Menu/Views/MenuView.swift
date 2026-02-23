@@ -62,6 +62,19 @@ struct MenuView: View {
         .task {
             await vm.loadMenu(restaurantId: restaurantId, token: try? await appState.validToken())
         }
+        .alert("تغيير المطعم", isPresented: Binding(
+            get: { cartVM.showRestaurantChangeAlert },
+            set: { cartVM.showRestaurantChangeAlert = $0 }
+        )) {
+            Button("تغيير", role: .destructive) {
+                cartVM.confirmRestaurantChange()
+            }
+            Button("إلغاء", role: .cancel) {
+                cartVM.cancelRestaurantChange()
+            }
+        } message: {
+            Text("سلتك تحتوي على أصناف من مطعم آخر. هل تريد إفراغ السلة والإضافة من هذا المطعم؟")
+        }
         .overlay(alignment: .bottom) {
             if !cartVM.items.isEmpty {
                 cartFloatingBar

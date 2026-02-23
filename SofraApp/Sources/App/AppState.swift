@@ -21,6 +21,7 @@ final class AppState {
     var role: UserRole?
     var idToken: String?
     var selectedMainTab = 0
+    private var tokenExpiresAt: Date?
 
     // MARK: - Location State
     /// True when the user needs to pick their location (after login/session restore)
@@ -56,6 +57,7 @@ final class AppState {
             keychain.save(tokens.idToken, key: .idToken)
             keychain.save(tokens.refreshToken, key: .refreshToken)
             self.idToken = tokens.idToken
+            self.tokenExpiresAt = Date().addingTimeInterval(3500)
 
             // Fetch user document from Firestore
             let user = try await firestoreService.getUser(uid: tokens.localId, idToken: tokens.idToken)
@@ -75,6 +77,7 @@ final class AppState {
         keychain.save(response.idToken, key: .idToken)
         keychain.save(response.refreshToken, key: .refreshToken)
         self.idToken = response.idToken
+        self.tokenExpiresAt = Date().addingTimeInterval(3500)
 
         let user = try await firestoreService.getUser(uid: response.localId, idToken: response.idToken)
         self.currentUser = user
@@ -89,6 +92,7 @@ final class AppState {
         keychain.save(response.idToken, key: .idToken)
         keychain.save(response.refreshToken, key: .refreshToken)
         self.idToken = response.idToken
+        self.tokenExpiresAt = Date().addingTimeInterval(3500)
 
         // Create user document in Firestore
         let newUser = AppUser(
@@ -118,6 +122,7 @@ final class AppState {
         keychain.save(response.idToken, key: .idToken)
         keychain.save(response.refreshToken, key: .refreshToken)
         self.idToken = response.idToken
+        self.tokenExpiresAt = Date().addingTimeInterval(3500)
 
         // Try to load existing user document
         do {
@@ -156,6 +161,7 @@ final class AppState {
         keychain.delete(key: .idToken)
         keychain.delete(key: .refreshToken)
         idToken = nil
+        tokenExpiresAt = nil
         currentUser = nil
         role = nil
         isAuthenticated = false
@@ -216,7 +222,9 @@ final class AppState {
     // MARK: - Token Helper
     /// Returns a valid ID token, refreshing if needed
     func validToken() async throws -> String {
-        if let token = idToken { return token }
+        if let token = idToken, let expiresAt = tokenExpiresAt, Date() < expiresAt {
+            return token
+        }
         guard let rt = keychain.read(key: .refreshToken) else {
             throw APIError.unauthorized
         }
@@ -224,6 +232,7 @@ final class AppState {
         keychain.save(tokens.idToken, key: .idToken)
         keychain.save(tokens.refreshToken, key: .refreshToken)
         self.idToken = tokens.idToken
+        self.tokenExpiresAt = Date().addingTimeInterval(3500)
         return tokens.idToken
     }
 }

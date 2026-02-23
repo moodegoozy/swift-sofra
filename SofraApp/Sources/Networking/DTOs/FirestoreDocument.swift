@@ -180,6 +180,8 @@ enum FirestoreEncoder {
             return ["integerValue": String(v)]
         case let v as Double:
             return ["doubleValue": v]
+        case let v as Date:
+            return ["timestampValue": ISO8601DateFormatter().string(from: v)]
         case let v as [String: Any]:
             return ["mapValue": ["fields": encode(v)]]
         case let v as [Any]:

@@ -92,7 +92,12 @@ actor APIClient {
             req.httpBody = body
         }
 
-        let (data, response) = try await session.data(for: req)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: req)
+        } catch {
+            throw APIError.networkError(error)
+        }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             if let errorBody = try? JSONDecoder().decode(FirebaseErrorResponse.self, from: data) {
                 throw APIError.firebaseError(errorBody.error.message)

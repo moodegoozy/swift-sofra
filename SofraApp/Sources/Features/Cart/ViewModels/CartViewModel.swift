@@ -19,9 +19,16 @@ struct CartItem: Identifiable, Codable, Equatable, Sendable {
 @Observable
 final class CartViewModel {
     private static let storageKey = "broast_cart"
+    private static let nameKey = "broast_cart_restaurant"
+    private static let maxQty = 99
 
     var items: [CartItem] = []
     var restaurantName: String = ""
+
+    // Restaurant change alert state
+    var showRestaurantChangeAlert = false
+    private var pendingRestaurantName: String?
+    private var pendingMenuItem: MenuItem?
 
     var subtotal: Double {
         items.reduce(0) { $0 + $1.lineTotal }
@@ -35,9 +42,16 @@ final class CartViewModel {
 
     // MARK: - Add Item
     func addItem(_ menuItem: MenuItem, qty: Int = 1, restaurantName: String? = nil) {
+        // Prevent mixing items from different restaurants
+        if !items.isEmpty, let existingOwner = items.first?.ownerId, existingOwner != menuItem.ownerId {
+            pendingMenuItem = menuItem
+            pendingRestaurantName = restaurantName
+            showRestaurantChangeAlert = true
+            return
+        }
         if let rn = restaurantName { self.restaurantName = rn }
         if let idx = items.firstIndex(where: { $0.id == menuItem.id }) {
-            items[idx].qty += qty
+            items[idx].qty = min(items[idx].qty + qty, Self.maxQty)
         } else {
             let cartItem = CartItem(
                 id: menuItem.id,
@@ -60,7 +74,7 @@ final class CartViewModel {
     // MARK: - Change Quantity
     func changeQty(id: String, qty: Int) {
         guard let idx = items.firstIndex(where: { $0.id == id }) else { return }
-        items[idx].qty = max(1, qty)
+        items[idx].qty = max(1, min(qty, Self.maxQty))
         saveToStorage()
     }
 
@@ -69,6 +83,26 @@ final class CartViewModel {
         items = []
         restaurantName = ""
         saveToStorage()
+    }
+
+    // MARK: - Restaurant Change Confirmation
+    func confirmRestaurantChange() {
+        guard let item = pendingMenuItem else { return }
+        items = []
+        restaurantName = pendingRestaurantName ?? ""
+        let cartItem = CartItem(
+            id: item.id, name: item.name, price: item.finalPrice,
+            qty: 1, ownerId: item.ownerId
+        )
+        items.append(cartItem)
+        pendingMenuItem = nil
+        pendingRestaurantName = nil
+        saveToStorage()
+    }
+
+    func cancelRestaurantChange() {
+        pendingMenuItem = nil
+        pendingRestaurantName = nil
     }
 
     // MARK: - Restaurant ID (all items must be from same restaurant)
@@ -81,6 +115,7 @@ final class CartViewModel {
         if let data = try? JSONEncoder().encode(items) {
             UserDefaults.standard.set(data, forKey: CartViewModel.storageKey)
         }
+        UserDefaults.standard.set(restaurantName, forKey: CartViewModel.nameKey)
     }
 
     private func loadFromStorage() {
@@ -88,5 +123,6 @@ final class CartViewModel {
               let stored = try? JSONDecoder().decode([CartItem].self, from: data)
         else { return }
         items = stored
+        restaurantName = UserDefaults.standard.string(forKey: CartViewModel.nameKey) ?? ""
     }
 }

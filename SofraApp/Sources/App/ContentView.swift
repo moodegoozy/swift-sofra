@@ -5,6 +5,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) var appState
+    @State private var pollingStarted = false
 
     var body: some View {
         Group {
@@ -37,6 +38,7 @@ struct ContentView: View {
             if isAuth {
                 startOrderPolling()
             } else {
+                pollingStarted = false
                 OrderPollingService.shared.stopAll()
             }
         }
@@ -49,7 +51,9 @@ struct ContentView: View {
     }
 
     private func startOrderPolling() {
+        guard !pollingStarted else { return }
         guard let uid = appState.currentUser?.uid else { return }
+        pollingStarted = true
         let role = appState.role
 
         // Always start customer polling — any user can place orders
