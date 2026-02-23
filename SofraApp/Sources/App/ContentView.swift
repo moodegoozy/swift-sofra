@@ -52,12 +52,14 @@ struct ContentView: View {
         guard let uid = appState.currentUser?.uid else { return }
         let role = appState.role
 
-        if role == .owner {
+        // Always start customer polling — any user can place orders
+        OrderPollingService.shared.startCustomerPolling(userId: uid) {
+            try? await appState.validToken()
+        }
+
+        // Owner/developer also gets owner polling for incoming restaurant orders
+        if role == .owner || role == .developer {
             OrderPollingService.shared.startOwnerPolling(ownerId: uid) {
-                try? await appState.validToken()
-            }
-        } else {
-            OrderPollingService.shared.startCustomerPolling(userId: uid) {
                 try? await appState.validToken()
             }
         }

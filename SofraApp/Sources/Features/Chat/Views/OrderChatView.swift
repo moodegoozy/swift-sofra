@@ -8,6 +8,8 @@ struct OrderChatView: View {
     let orderId: String
     let restaurantName: String
     let orderStatus: OrderStatus
+    /// The role of the user in the context of THIS order ("customer" or "owner")
+    var chatRole: String = "customer"
 
     @Environment(AppState.self) var appState
     @Environment(\.dismiss) var dismiss
@@ -17,7 +19,7 @@ struct OrderChatView: View {
 
     private var currentUserId: String { appState.currentUser?.uid ?? "" }
     private var currentUserName: String { appState.currentUser?.displayName ?? "مستخدم" }
-    private var currentUserRole: String { appState.role?.rawValue ?? "customer" }
+    private var currentUserRole: String { chatRole }
 
     /// Chat is active only for accepted through ready statuses
     private var isChatActive: Bool {
@@ -228,7 +230,8 @@ struct OrderChatView: View {
     OrderChatView(
         orderId: "abc123",
         restaurantName: "مطعم سفرة البيت",
-        orderStatus: .accepted
+        orderStatus: .accepted,
+        chatRole: "customer"
     )
     .environment(AppState())
 }

@@ -162,7 +162,8 @@ struct OrderDetailView: View {
             OrderChatView(
                 orderId: order.id,
                 restaurantName: order.restaurantName ?? "المطعم",
-                orderStatus: order.status
+                orderStatus: order.status,
+                chatRole: "customer"
             )
         }
     }

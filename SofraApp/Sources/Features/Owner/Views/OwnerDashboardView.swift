@@ -59,7 +59,8 @@ struct OwnerDashboardView: View {
                 OrderChatView(
                     orderId: order.id,
                     restaurantName: vm.restaurant?.name ?? "المطعم",
-                    orderStatus: order.status
+                    orderStatus: order.status,
+                    chatRole: "owner"
                 )
             }
     }
