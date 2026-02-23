@@ -154,10 +154,14 @@ final class ImageCache: @unchecked Sendable {
 
         let task = Task.detached(priority: .userInitiated) { [weak self] () -> UIImage? in
             guard let self else { return nil }
-            let (data, response) = try await self.session.data(from: url)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else { return nil }
-            return self.downsample(data: data, maxPixels: 800)
+            do {
+                let (data, response) = try await self.session.data(from: url)
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode) else { return nil }
+                return self.downsample(data: data, maxPixels: 800)
+            } catch {
+                return nil
+            }
         }
 
         inflightLock.lock()

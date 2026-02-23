@@ -20,6 +20,8 @@ struct OwnerDashboardView: View {
     @State private var editRestPhone = ""
     @State private var isSavingInfo = false
     @State private var infoSaveMessage: String?
+    // Packages
+    @State private var showPackages = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,6 +74,11 @@ struct OwnerDashboardView: View {
                     orderStatus: order.status,
                     chatRole: "owner"
                 )
+            }
+            .sheet(isPresented: $showPackages) {
+                if let rest = vm.restaurant {
+                    PackagesView(restaurant: rest)
+                }
             }
     }
 
@@ -177,22 +184,31 @@ struct OwnerDashboardView: View {
                         }
                         .padding(.horizontal, SofraSpacing.screenHorizontal)
 
-                        // Package Info
-                        SofraCard {
-                            HStack {
-                                StatusBadge(
-                                    text: rest.packageType == .premium ? "مميز" : "مجاني",
-                                    color: rest.packageType == .premium ? SofraColors.warning : SofraColors.textMuted
-                                )
-                                Spacer()
-                                HStack(spacing: SofraSpacing.xs) {
-                                    Text("الباقة")
-                                        .font(SofraTypography.headline)
-                                    Image(systemName: rest.packageType == .premium ? "crown.fill" : "tag.fill")
-                                        .foregroundStyle(rest.packageType == .premium ? SofraColors.warning : SofraColors.textMuted)
+                        // Package Info — Tappable
+                        Button {
+                            showPackages = true
+                        } label: {
+                            SofraCard {
+                                HStack {
+                                    Image(systemName: "chevron.left")
+                                        .font(.caption)
+                                        .foregroundStyle(SofraColors.textMuted)
+                                    StatusBadge(
+                                        text: rest.packageType == .premium ? "ذهبية" : "أساسية",
+                                        color: rest.packageType == .premium ? SofraColors.gold400 : SofraColors.textMuted
+                                    )
+                                    Spacer()
+                                    HStack(spacing: SofraSpacing.xs) {
+                                        Text("الباقة")
+                                            .font(SofraTypography.headline)
+                                            .foregroundStyle(SofraColors.textPrimary)
+                                        Image(systemName: rest.packageType == .premium ? "crown.fill" : "tag.fill")
+                                            .foregroundStyle(rest.packageType == .premium ? SofraColors.gold400 : SofraColors.textMuted)
+                                    }
                                 }
                             }
                         }
+                        .buttonStyle(.plain)
                         .padding(.horizontal, SofraSpacing.screenHorizontal)
                     }
 

@@ -12,6 +12,13 @@ struct DeveloperDashboardView: View {
     @State private var newCommissionRate: Double = 15
     @State private var editingUserRole: AppUser?
     @State private var selectedRole: UserRole = .customer
+    // Package management
+    @State private var showPriceEditor = false
+    @State private var editPremiumMonthly: String = "99"
+    @State private var editPremiumYearly: String = "999"
+    @State private var packageRequests: [PackageRequest] = []
+    @State private var loadingRequests = false
+    @State private var isSavingPrices = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,7 +29,8 @@ struct DeveloperDashboardView: View {
                     devTab("الطلبات", icon: "list.clipboard.fill", tag: 1)
                     devTab("المطاعم", icon: "storefront.fill", tag: 2)
                     devTab("المستخدمين", icon: "person.3.fill", tag: 3)
-                    devTab("النظام", icon: "gearshape.2.fill", tag: 4)
+                    devTab("الباقات", icon: "crown.fill", tag: 4)
+                    devTab("النظام", icon: "gearshape.2.fill", tag: 5)
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
                 .padding(.vertical, SofraSpacing.sm)
@@ -34,7 +42,8 @@ struct DeveloperDashboardView: View {
                 ordersTab.tag(1)
                 restaurantsTab.tag(2)
                 usersTab.tag(3)
-                systemTab.tag(4)
+                packagesTab.tag(4)
+                systemTab.tag(5)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
@@ -294,6 +303,308 @@ struct DeveloperDashboardView: View {
             if let token = try? await appState.validToken() {
                 await vm.loadUsers(token: token)
             }
+        }
+    }
+
+    // MARK: - Packages Tab
+    private var packagesTab: some View {
+        ScrollView {
+            VStack(spacing: SofraSpacing.lg) {
+                // Price Settings
+                SofraCard {
+                    VStack(alignment: .trailing, spacing: SofraSpacing.md) {
+                        HStack(spacing: SofraSpacing.xs) {
+                            Text("أسعار الباقات")
+                                .font(SofraTypography.headline)
+                            Image(systemName: "tag.fill")
+                                .foregroundStyle(SofraColors.gold400)
+                        }
+
+                        VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                            HStack {
+                                HStack(spacing: 4) {
+                                    Text("ر.س/شهر")
+                                        .font(SofraTypography.caption)
+                                        .foregroundStyle(SofraColors.textMuted)
+                                    TextField("99", text: $editPremiumMonthly)
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.center)
+                                        .frame(width: 80)
+                                        .padding(.vertical, 6)
+                                        .background(SofraColors.surfaceElevated)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                                Spacer()
+                                Text("الباقة الذهبية (شهري)")
+                                    .font(SofraTypography.body)
+                                    .foregroundStyle(SofraColors.textPrimary)
+                            }
+
+                            HStack {
+                                HStack(spacing: 4) {
+                                    Text("ر.س/سنة")
+                                        .font(SofraTypography.caption)
+                                        .foregroundStyle(SofraColors.textMuted)
+                                    TextField("999", text: $editPremiumYearly)
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.center)
+                                        .frame(width: 80)
+                                        .padding(.vertical, 6)
+                                        .background(SofraColors.surfaceElevated)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                                Spacer()
+                                Text("الباقة الذهبية (سنوي)")
+                                    .font(SofraTypography.body)
+                                    .foregroundStyle(SofraColors.textPrimary)
+                            }
+                        }
+
+                        SofraButton(
+                            title: isSavingPrices ? "جاري الحفظ..." : "حفظ الأسعار",
+                            style: .primary
+                        ) {
+                            Task { await savePackagePrices() }
+                        }
+                        .disabled(isSavingPrices)
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+
+                // Package Requests
+                SofraCard {
+                    HStack(spacing: SofraSpacing.xs) {
+                        if loadingRequests {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                        Text("طلبات الترقية (\(packageRequests.count))")
+                            .font(SofraTypography.headline)
+                        Image(systemName: "arrow.up.circle.fill")
+                            .foregroundStyle(SofraColors.warning)
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+
+                if packageRequests.isEmpty && !loadingRequests {
+                    EmptyStateView(
+                        icon: "crown",
+                        title: "لا توجد طلبات",
+                        message: "عندما يطلب مطعم ترقية ستظهر هنا"
+                    )
+                } else {
+                    ForEach(packageRequests) { request in
+                        packageRequestCard(request)
+                    }
+                }
+
+                // Restaurants with packages overview
+                SofraCard {
+                    VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                        HStack(spacing: SofraSpacing.xs) {
+                            Text("ملخص الباقات")
+                                .font(SofraTypography.headline)
+                            Image(systemName: "chart.pie.fill")
+                                .foregroundStyle(SofraColors.info)
+                        }
+
+                        let premiumCount = vm.restaurants.filter { $0.packageType == .premium }.count
+                        let freeCount = vm.restaurants.filter { $0.packageType == .free }.count
+
+                        HStack {
+                            Text("\(premiumCount)")
+                                .font(SofraTypography.price)
+                                .foregroundStyle(SofraColors.gold400)
+                            Spacer()
+                            HStack(spacing: SofraSpacing.xs) {
+                                Text("مطاعم ذهبية")
+                                    .font(SofraTypography.body)
+                                Image(systemName: "crown.fill")
+                                    .foregroundStyle(SofraColors.gold400)
+                            }
+                        }
+
+                        HStack {
+                            Text("\(freeCount)")
+                                .font(SofraTypography.price)
+                                .foregroundStyle(SofraColors.textSecondary)
+                            Spacer()
+                            HStack(spacing: SofraSpacing.xs) {
+                                Text("مطاعم أساسية")
+                                    .font(SofraTypography.body)
+                                Image(systemName: "tag.fill")
+                                    .foregroundStyle(SofraColors.textMuted)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+
+                Spacer(minLength: SofraSpacing.xxxl)
+            }
+            .padding(.top, SofraSpacing.md)
+        }
+        .task {
+            await loadPackageData()
+        }
+        .refreshable {
+            await loadPackageData()
+        }
+    }
+
+    // MARK: - Package Request Card
+    private func packageRequestCard(_ request: PackageRequest) -> some View {
+        VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+            HStack {
+                // Action Buttons
+                if request.status == .pending {
+                    HStack(spacing: SofraSpacing.sm) {
+                        Button {
+                            Task { await handlePackageRequest(request, approve: false) }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(SofraColors.error)
+                        }
+
+                        Button {
+                            Task { await handlePackageRequest(request, approve: true) }
+                        } label: {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(SofraColors.success)
+                        }
+                    }
+                } else {
+                    StatusBadge(text: request.statusLabel, color: request.statusColor)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(request.restaurantName)
+                        .font(SofraTypography.headline)
+                    Text("طلب: \(request.requestedPackage == "premium" ? "الذهبية" : request.requestedPackage)")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.gold400)
+                }
+            }
+
+            HStack {
+                Text("\(request.premiumPrice, specifier: "%.0f") ر.س/شهر")
+                    .font(SofraTypography.priceSmall)
+                    .foregroundStyle(SofraColors.success)
+                Spacer()
+                if let date = request.createdAt {
+                    Text(date.formatted(.dateTime.day().month().year()))
+                        .font(SofraTypography.caption2)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+            }
+        }
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
+                .strokeBorder(
+                    request.status == .pending ? SofraColors.warning.opacity(0.3) : Color.clear,
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+
+    // MARK: - Package Data Loading
+    private func loadPackageData() async {
+        loadingRequests = true
+        do {
+            let token = try await appState.validToken()
+
+            // Load prices
+            let priceDoc = try? await FirestoreService().getDocument(
+                collection: "config", id: "packages", idToken: token
+            )
+            if let f = priceDoc?.fields {
+                editPremiumMonthly = String(format: "%.0f", f["premiumMonthly"]?.doubleVal ?? 99)
+                editPremiumYearly = String(format: "%.0f", f["premiumYearly"]?.doubleVal ?? 999)
+            }
+
+            // Load package requests
+            let docs = try await FirestoreService().listDocuments(
+                collection: "packageRequests", idToken: token, pageSize: 100
+            )
+            packageRequests = docs.map { PackageRequest(from: $0) }
+                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+        } catch {
+            Logger.log("Load package data error: \(error)", level: .error)
+        }
+        loadingRequests = false
+    }
+
+    // MARK: - Save Package Prices
+    private func savePackagePrices() async {
+        isSavingPrices = true
+        do {
+            let token = try await appState.validToken()
+            let monthly = Double(editPremiumMonthly) ?? 99
+            let yearly = Double(editPremiumYearly) ?? 999
+
+            try await FirestoreService().createDocument(
+                collection: "config",
+                id: "packages",
+                fields: [
+                    "premiumMonthly": monthly,
+                    "premiumYearly": yearly,
+                    "updatedAt": ISO8601DateFormatter().string(from: Date())
+                ],
+                idToken: token
+            )
+        } catch {
+            Logger.log("Save prices error: \(error)", level: .error)
+        }
+        isSavingPrices = false
+    }
+
+    // MARK: - Handle Package Request (approve/reject)
+    private func handlePackageRequest(_ request: PackageRequest, approve: Bool) async {
+        do {
+            let token = try await appState.validToken()
+            let firestoreService = FirestoreService()
+
+            // Update request status
+            try await firestoreService.updateDocument(
+                collection: "packageRequests",
+                id: request.id,
+                fields: [
+                    "status": approve ? "approved" : "rejected",
+                    "reviewedAt": ISO8601DateFormatter().string(from: Date())
+                ],
+                idToken: token
+            )
+
+            // If approved, update restaurant's packageType
+            if approve {
+                try await firestoreService.updateDocument(
+                    collection: "restaurants",
+                    id: request.restaurantId,
+                    fields: ["packageType": "premium"],
+                    idToken: token
+                )
+
+                // Update local restaurant data
+                if let idx = vm.restaurants.firstIndex(where: { $0.id == request.restaurantId }) {
+                    vm.restaurants[idx].packageType = .premium
+                }
+            }
+
+            // Update local request
+            if let idx = packageRequests.firstIndex(where: { $0.id == request.id }) {
+                packageRequests[idx].status = approve ? .approved : .rejected
+            }
+        } catch {
+            Logger.log("Handle package request error: \(error)", level: .error)
         }
     }
 
