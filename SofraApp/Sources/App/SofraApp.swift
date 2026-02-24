@@ -15,7 +15,6 @@ struct SofraApp: App {
                 .environment(appState)
                 .environment(cartVM)
                 .environment(\.layoutDirection, .rightToLeft)
-                .preferredColorScheme(.dark)
                 .tint(SofraColors.gold400)
                 .onAppear {
                     Task {
