@@ -19,7 +19,6 @@ struct SofraCard<Content: View>: View {
                 // Glassmorphism base
                 RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
                     .fill(.ultraThinMaterial)
-                    .environment(\.colorScheme, .dark)
 
                 // Subtle gold border glow
                 if showBorder {

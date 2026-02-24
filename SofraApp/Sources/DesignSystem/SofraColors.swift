@@ -3,9 +3,21 @@
 // Luxurious Ramadan-themed color palette: deep navy, rich gold, emerald accents
 
 import SwiftUI
+import UIKit
 
 enum SofraColors {
-    // MARK: - 🌙 Ramadan Deep Navy Palette
+
+    // MARK: - Adaptive Color Helper
+    /// Creates a Color that automatically adapts between dark and light mode
+    private static func adaptive(dark: String, light: String) -> Color {
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(Color(hex: dark))
+                : UIColor(Color(hex: light))
+        })
+    }
+
+    // MARK: - 🌙 Ramadan Deep Navy Palette (fixed)
     static let navy50  = Color(hex: "EEF0F8")
     static let navy100 = Color(hex: "D4D8EC")
     static let navy200 = Color(hex: "A9B1D9")
@@ -17,7 +29,7 @@ enum SofraColors {
     static let navy800 = Color(hex: "111738")
     static let navy900 = Color(hex: "0A0E22")
 
-    // MARK: - ✨ Ramadan Gold Palette
+    // MARK: - ✨ Ramadan Gold Palette (fixed)
     static let gold50  = Color(hex: "FFF9E6")
     static let gold100 = Color(hex: "FFF0BF")
     static let gold200 = Color(hex: "FFE699")
@@ -46,21 +58,21 @@ enum SofraColors {
     static let sky800 = navy800
     static let sky900 = navy900
 
-    // MARK: - 🎨 Semantic Colors — Ramadan Luxe
+    // MARK: - 🎨 Semantic Colors — Adaptive (dark = Ramadan luxe, light = warm parchment)
     static let primary      = gold500
     static let primaryLight = gold400
     static let primaryDark  = gold700
     static let accent       = gold400
 
-    static let background      = navy900
-    static let cardBackground  = Color(hex: "141A3D")
-    static let secondaryBg     = navy800
-    static let surfaceElevated = Color(hex: "1C2347")
+    static let background      = adaptive(dark: "0A0E22", light: "F5EDE0")
+    static let cardBackground  = adaptive(dark: "141A3D", light: "FFFBF5")
+    static let secondaryBg     = adaptive(dark: "111738", light: "EDE5D8")
+    static let surfaceElevated = adaptive(dark: "1C2347", light: "F0E8DA")
 
-    static let textPrimary   = Color(hex: "F5F0E1")
-    static let textSecondary = Color(hex: "9CA3C4")
-    static let textMuted     = Color(hex: "6B7196")
-    static let textGold      = gold400
+    static let textPrimary   = adaptive(dark: "F5F0E1", light: "1A2354")
+    static let textSecondary = adaptive(dark: "9CA3C4", light: "5363B3")
+    static let textMuted     = adaptive(dark: "6B7196", light: "8690B5")
+    static let textGold: Color = adaptive(dark: "FFCC33", light: "B8860B")
 
     // MARK: - ⭐ Status Colors
     static let success = Color(hex: "10B981")
@@ -74,30 +86,36 @@ enum SofraColors {
     static let lanternGlow   = Color(hex: "FFB347").opacity(0.3)
     static let starGold      = Color(hex: "FFD700")
 
-    // MARK: - 🔮 Gradients
+    // MARK: - 🔮 Gradients (adaptive)
     static let goldGradient = LinearGradient(
         colors: [gold400, gold600],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
 
-    static let navyGradient = LinearGradient(
-        colors: [navy700, navy900],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static var navyGradient: LinearGradient {
+        LinearGradient(
+            colors: [adaptive(dark: "1A2354", light: "EDE5D8"), adaptive(dark: "0A0E22", light: "F5EDE0")],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 
-    static let premiumGradient = LinearGradient(
-        colors: [Color(hex: "1A1F4B"), Color(hex: "0D1126")],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var premiumGradient: LinearGradient {
+        LinearGradient(
+            colors: [adaptive(dark: "1A1F4B", light: "F0E8DA"), adaptive(dark: "0D1126", light: "F5EDE0")],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
 
-    static let cardGradient = LinearGradient(
-        colors: [Color(hex: "1C2347").opacity(0.85), Color(hex: "141A3D")],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var cardGradient: LinearGradient {
+        LinearGradient(
+            colors: [adaptive(dark: "1C2347", light: "FFFBF5").opacity(0.85), adaptive(dark: "141A3D", light: "FFF8EE")],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
 
     // MARK: - Order Status
     static func orderStatusColor(_ status: String) -> Color {

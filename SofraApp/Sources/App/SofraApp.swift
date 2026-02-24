@@ -31,27 +31,45 @@ struct SofraApp: App {
     }
 
     private func configureAppearance() {
+        // Dynamic colors that adapt to dark/light
+        let bgColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(Color(hex: "0A0E22"))
+                : UIColor(Color(hex: "F5EDE0"))
+        }
+        let titleColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(Color(hex: "FFD966"))
+                : UIColor(Color(hex: "B8860B"))
+        }
+        let tintColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(Color(hex: "FFCC33"))
+                : UIColor(Color(hex: "D4A017"))
+        }
+        let mutedColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(Color(hex: "6B7196"))
+                : UIColor(Color(hex: "8690B5"))
+        }
+
         // Navigation bar
         let navAppearance = UINavigationBarAppearance()
         navAppearance.configureWithOpaqueBackground()
-        navAppearance.backgroundColor = UIColor(SofraColors.navy900)
-        navAppearance.titleTextAttributes = [
-            .foregroundColor: UIColor(SofraColors.gold300)
-        ]
-        navAppearance.largeTitleTextAttributes = [
-            .foregroundColor: UIColor(SofraColors.gold300)
-        ]
+        navAppearance.backgroundColor = bgColor
+        navAppearance.titleTextAttributes = [.foregroundColor: titleColor]
+        navAppearance.largeTitleTextAttributes = [.foregroundColor: titleColor]
         UINavigationBar.appearance().standardAppearance = navAppearance
         UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
-        UINavigationBar.appearance().tintColor = UIColor(SofraColors.gold400)
+        UINavigationBar.appearance().tintColor = tintColor
 
         // Tab bar
         let tabAppearance = UITabBarAppearance()
         tabAppearance.configureWithOpaqueBackground()
-        tabAppearance.backgroundColor = UIColor(SofraColors.navy900)
+        tabAppearance.backgroundColor = bgColor
         UITabBar.appearance().standardAppearance = tabAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabAppearance
-        UITabBar.appearance().tintColor = UIColor(SofraColors.gold400)
-        UITabBar.appearance().unselectedItemTintColor = UIColor(SofraColors.textMuted)
+        UITabBar.appearance().tintColor = tintColor
+        UITabBar.appearance().unselectedItemTintColor = mutedColor
     }
 }
