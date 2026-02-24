@@ -19,6 +19,7 @@ struct DeveloperDashboardView: View {
     @State private var packageRequests: [PackageRequest] = []
     @State private var loadingRequests = false
     @State private var isSavingPrices = false
+    @State private var showMessaging = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,6 +59,9 @@ struct DeveloperDashboardView: View {
         }
         .sheet(item: $editingUserRole) { user in
             roleEditor(user)
+        }
+        .sheet(isPresented: $showMessaging) {
+            DevMessagingView()
         }
     }
 
@@ -667,6 +671,7 @@ struct DeveloperDashboardView: View {
                         .font(SofraTypography.headline)
 
                     LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
+                        quickAction("الرسائل", icon: "envelope.fill", color: SofraColors.gold400) { showMessaging = true }
                         quickAction("الطلبات", icon: "list.clipboard", color: SofraColors.primary) { selectedTab = 1 }
                         quickAction("المطاعم", icon: "storefront", color: SofraColors.success) { selectedTab = 2 }
                         quickAction("المستخدمين", icon: "person.3", color: SofraColors.info) { selectedTab = 3 }

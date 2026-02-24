@@ -158,17 +158,13 @@ struct MainTabView: View {
         
     }
 
-    // MARK: - Developer Tabs (6 tabs — full access)
+    // MARK: - Developer Tabs (5 tabs — full access, no restaurant)
     private var developerTabs: some View {
         @Bindable var appState = appState
         return TabView(selection: $appState.selectedMainTab) {
             NavigationStack { DeveloperDashboardView() }
                 .tabItem { Label("المطور", systemImage: "wrench.and.screwdriver.fill") }
                 .tag(0)
-
-            NavigationStack { OwnerDashboardView() }
-                .tabItem { Label("المطعم", systemImage: "chart.bar.fill") }
-                .tag(2)
 
             NavigationStack { RestaurantsListView() }
                 .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
@@ -177,6 +173,10 @@ struct MainTabView: View {
             NavigationStack { OrdersView() }
                 .tabItem { Label("طلباتي", systemImage: "bag.fill") }
                 .tag(3)
+
+            NavigationStack { NotificationsView() }
+                .tabItem { Label("الإشعارات", systemImage: "bell.fill") }
+                .tag(4)
 
             NavigationStack { ProfileView() }
                 .tabItem { Label("حسابي", systemImage: "person.fill") }

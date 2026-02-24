@@ -7,12 +7,14 @@ struct AuthResponse: Decodable {
     let idToken: String
     let refreshToken: String
     let localId: String       // = Firebase UID
-    let email: String
-    let expiresIn: String     // seconds until expiry
+    let email: String?        // nil for phone auth
+    let expiresIn: String?    // seconds until expiry
+    let phoneNumber: String?  // present for phone auth
+    let isNewUser: Bool?
 
     // The REST API uses these exact keys
     enum CodingKeys: String, CodingKey {
-        case idToken, refreshToken, localId, email, expiresIn
+        case idToken, refreshToken, localId, email, expiresIn, phoneNumber, isNewUser
     }
 }
 

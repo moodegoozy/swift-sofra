@@ -14,18 +14,6 @@ struct ContentView: View {
                 SplashView()
             } else if appState.isAuthenticated {
                 MainTabView()
-                    .fullScreenCover(isPresented: Binding(
-                        get: { appState.needsLocationPick },
-                        set: { appState.needsLocationPick = $0 }
-                    )) {
-                        LocationPickerView(
-                            title: "حدد موقعك",
-                            subtitle: "اختر موقعك على الخريطة للمتابعة"
-                        ) { lat, lng, address in
-                            appState.confirmLocation(lat: lat, lng: lng, address: address)
-                        }
-                        .interactiveDismissDisabled()
-                    }
             } else {
                 NavigationStack {
                     LoginView()

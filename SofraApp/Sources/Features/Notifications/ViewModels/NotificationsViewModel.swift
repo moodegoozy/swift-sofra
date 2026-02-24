@@ -11,6 +11,10 @@ struct AppNotification: Identifiable {
     let type: String?
     let read: Bool
     let createdAt: Date?
+    // Dev message reply fields
+    let devMessageId: String?
+    let canReply: Bool
+    let hasReplied: Bool
 
     init(from doc: FirestoreDocumentResponse) {
         self.id = doc.documentId ?? UUID().uuidString
@@ -20,6 +24,9 @@ struct AppNotification: Identifiable {
         self.type = doc.stringField("type")
         self.read = doc.boolField("read") ?? false
         self.createdAt = doc.dateField("createdAt")
+        self.devMessageId = doc.stringField("devMessageId")
+        self.canReply = doc.boolField("canReply") ?? false
+        self.hasReplied = doc.boolField("hasReplied") ?? false
     }
 }
 

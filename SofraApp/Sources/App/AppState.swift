@@ -64,7 +64,13 @@ final class AppState {
             self.currentUser = user
             self.role = user.role
             self.isAuthenticated = true
-            self.needsLocationPick = true
+
+            // Restore saved location if exists
+            if let loc = user.savedLocation, loc.lat != 0 {
+                userLatitude = loc.lat
+                userLongitude = loc.lng
+                userAddress = loc.address
+            }
         } catch {
             Logger.log("Session restore failed: \(error.localizedDescription)", level: .warning)
             logout()
@@ -83,7 +89,13 @@ final class AppState {
         self.currentUser = user
         self.role = user.role
         self.isAuthenticated = true
-        self.needsLocationPick = true
+
+        // Restore saved location if exists
+        if let loc = user.savedLocation, loc.lat != 0 {
+            userLatitude = loc.lat
+            userLongitude = loc.lng
+            userAddress = loc.address
+        }
     }
 
     // MARK: - Register
@@ -164,16 +176,22 @@ final class AppState {
             let user = try await firestoreService.getUser(uid: response.localId, idToken: response.idToken)
             self.currentUser = user
             self.role = user.role
+            // Restore saved location
+            if let loc = user.savedLocation, loc.lat != 0 {
+                userLatitude = loc.lat
+                userLongitude = loc.lng
+                userAddress = loc.address
+            }
         } catch {
             // New phone user — create minimal user document
-            let newUser = AppUser(uid: response.localId, email: response.email, phone: nil, role: .customer)
+            let phone = response.phoneNumber
+            let newUser = AppUser(uid: response.localId, email: response.email ?? "", phone: phone, role: .customer)
             try await firestoreService.createUser(newUser, idToken: response.idToken)
             self.currentUser = newUser
             self.role = .customer
         }
 
         self.isAuthenticated = true
-        self.needsLocationPick = true
     }
 
     // MARK: - Delete Account

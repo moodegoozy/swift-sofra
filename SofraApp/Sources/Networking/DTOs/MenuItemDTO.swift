@@ -42,13 +42,15 @@ struct MenuItem: Identifiable {
         self.orderCount = f["orderCount"]?.intVal
     }
 
-    /// Manual init (for cart items, etc.)
-    init(id: String, name: String, price: Double, ownerId: String, imageUrl: String? = nil) {
+    /// Manual init (for cart items, new items, etc.)
+    init(id: String, name: String, desc: String? = nil, price: Double, category: String? = nil, imageUrl: String? = nil, available: Bool = true, ownerId: String) {
         self.id = id
         self.name = name
+        self.description = desc
         self.price = price
-        self.ownerId = ownerId
+        self.category = category
         self.imageUrl = imageUrl
-        self.available = true
+        self.available = available
+        self.ownerId = ownerId
     }
 }

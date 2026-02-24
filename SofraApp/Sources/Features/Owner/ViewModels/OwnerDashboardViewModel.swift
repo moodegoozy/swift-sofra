@@ -243,8 +243,18 @@ final class OwnerDashboardViewModel {
                 idToken: token
             )
 
-            // Reload menu
-            await loadMenu(ownerId: ownerId, token: token)
+            // Add locally immediately (Firestore query has eventual consistency)
+            let newItem = MenuItem(
+                id: docId,
+                name: name,
+                desc: description.isEmpty ? nil : description,
+                price: price,
+                category: category.isEmpty ? nil : category,
+                imageUrl: imageUrl,
+                available: true,
+                ownerId: ownerId
+            )
+            menuItems.insert(newItem, at: 0)
             menuItemsCount = menuItems.count
 
             // Update menuItemCount on restaurant doc for visibility
