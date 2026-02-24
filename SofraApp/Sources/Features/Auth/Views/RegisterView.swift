@@ -7,6 +7,10 @@ struct RegisterView: View {
     let selectedRole: UserRole
     @Environment(AppState.self) var appState
     @State private var vm = AuthViewModel()
+    @State private var showLocationPicker = false
+    @State private var selectedLat: Double = 0
+    @State private var selectedLng: Double = 0
+    @State private var selectedAddress = ""
 
     var body: some View {
         ScrollView {
@@ -52,12 +56,35 @@ struct RegisterView: View {
                     )
                     .textContentType(.telephoneNumber)
 
-                    SofraTextField(
-                        label: "المدينة",
-                        text: $vm.registerCity,
-                        icon: "mappin.circle",
-                        placeholder: "مثال: الرياض"
-                    )
+                    // Location via Map
+                    Button {
+                        showLocationPicker = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "chevron.left")
+                                .foregroundStyle(SofraColors.textMuted)
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: SofraSpacing.xxs) {
+                                Text("الموقع على الخريطة")
+                                    .font(SofraTypography.callout)
+                                    .foregroundStyle(SofraColors.textPrimary)
+                                Text(selectedAddress.isEmpty ? "اضغط لتحديد موقعك" : selectedAddress)
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(selectedAddress.isEmpty ? SofraColors.textMuted : SofraColors.success)
+                                    .lineLimit(1)
+                            }
+                            Image(systemName: "map.fill")
+                                .foregroundStyle(SofraColors.gold400)
+                                .frame(width: 28)
+                        }
+                        .padding(SofraSpacing.md)
+                        .background(SofraColors.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(SofraColors.gold500.opacity(0.15), lineWidth: 0.5)
+                        )
+                    }
 
                     SofraTextField(
                         label: "كلمة المرور",
@@ -77,6 +104,9 @@ struct RegisterView: View {
                     isLoading: vm.isLoading
                 ) {
                     vm.selectedRole = selectedRole
+                    vm.registerLat = selectedLat
+                    vm.registerLng = selectedLng
+                    vm.registerLocationAddress = selectedAddress
                     Task { await vm.register(appState: appState) }
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
@@ -91,6 +121,16 @@ struct RegisterView: View {
             Button("حسناً", role: .cancel) {}
         } message: {
             Text(vm.errorMessage ?? "")
+        }
+        .sheet(isPresented: $showLocationPicker) {
+            LocationPickerView(
+                title: "حدد موقعك",
+                subtitle: "اختر موقعك على الخريطة"
+            ) { lat, lng, addr in
+                selectedLat = lat
+                selectedLng = lng
+                selectedAddress = addr
+            }
         }
     }
 

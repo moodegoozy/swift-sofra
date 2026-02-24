@@ -69,7 +69,7 @@ struct MainTabView: View {
                 .tag(9)
         }
         .tint(SofraColors.gold400)
-        .preferredColorScheme(.dark)
+        
     }
 
     // MARK: - Courier Tabs (5 tabs)
@@ -97,7 +97,7 @@ struct MainTabView: View {
                 .tag(9)
         }
         .tint(SofraColors.gold400)
-        .preferredColorScheme(.dark)
+        
     }
 
     // MARK: - Customer Tabs (5 tabs)
@@ -126,7 +126,7 @@ struct MainTabView: View {
                 .tag(9)
         }
         .tint(SofraColors.gold400)
-        .preferredColorScheme(.dark)
+        
     }
 
     // MARK: - Supervisor Tabs (5 tabs)
@@ -155,10 +155,10 @@ struct MainTabView: View {
                 .tag(9)
         }
         .tint(SofraColors.gold400)
-        .preferredColorScheme(.dark)
+        
     }
 
-    // MARK: - Developer Tabs (7 tabs — full access)
+    // MARK: - Developer Tabs (6 tabs — full access)
     private var developerTabs: some View {
         @Bindable var appState = appState
         return TabView(selection: $appState.selectedMainTab) {
@@ -174,11 +174,6 @@ struct MainTabView: View {
                 .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
                 .tag(1)
 
-            NavigationStack { CartView() }
-                .tabItem { Label("السلة", systemImage: "cart.fill") }
-                .badge(cartVM.items.count)
-                .tag(7)
-
             NavigationStack { OrdersView() }
                 .tabItem { Label("طلباتي", systemImage: "bag.fill") }
                 .tag(3)
@@ -188,7 +183,7 @@ struct MainTabView: View {
                 .tag(9)
         }
         .tint(SofraColors.gold400)
-        .preferredColorScheme(.dark)
+        
     }
 }
 

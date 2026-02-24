@@ -6,6 +6,7 @@ import SwiftUI
 struct ContentView: View {
     @Environment(AppState.self) var appState
     @State private var pollingStarted = false
+    private let appearance = AppearanceManager.shared
 
     var body: some View {
         Group {
@@ -33,7 +34,7 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.4), value: appState.isAuthenticated)
         .animation(.easeInOut(duration: 0.4), value: appState.isLoading)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(appearance.colorScheme)
         .onChange(of: appState.isAuthenticated) { _, isAuth in
             if isAuth {
                 startOrderPolling()

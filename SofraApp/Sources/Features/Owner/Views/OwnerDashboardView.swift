@@ -22,6 +22,9 @@ struct OwnerDashboardView: View {
     @State private var infoSaveMessage: String?
     // Packages
     @State private var showPackages = false
+    @State private var showPromotions = false
+    @State private var showReports = false
+    @State private var showHiring = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -78,6 +81,33 @@ struct OwnerDashboardView: View {
             .sheet(isPresented: $showPackages) {
                 if let rest = vm.restaurant {
                     PackagesView(restaurant: rest)
+                }
+            }
+            .sheet(isPresented: $showPromotions) {
+                if let rest = vm.restaurant {
+                    NavigationStack {
+                        OwnerPromotionsView(restaurant: rest)
+                            .navigationTitle("العروض الترويجية")
+                            .navigationBarTitleDisplayMode(.inline)
+                    }
+                }
+            }
+            .sheet(isPresented: $showReports) {
+                if let rest = vm.restaurant {
+                    NavigationStack {
+                        OwnerReportsView(restaurant: rest, orders: vm.orders)
+                            .navigationTitle("التقارير")
+                            .navigationBarTitleDisplayMode(.inline)
+                    }
+                }
+            }
+            .sheet(isPresented: $showHiring) {
+                if let rest = vm.restaurant {
+                    NavigationStack {
+                        OwnerHiringView(restaurant: rest)
+                            .navigationTitle("التوظيف")
+                            .navigationBarTitleDisplayMode(.inline)
+                    }
                 }
             }
     }
@@ -586,9 +616,9 @@ struct OwnerDashboardView: View {
                                     .frame(width: 28)
                             }
                         }
-                        settingsRow(icon: "person.3.fill", label: "التوظيف", color: SofraColors.info)
-                        settingsRow(icon: "megaphone.fill", label: "العروض الترويجية", color: SofraColors.warning)
-                        settingsRow(icon: "chart.bar.fill", label: "التقارير", color: SofraColors.primaryDark)
+                        settingsRow(icon: "person.3.fill", label: "التوظيف", color: SofraColors.info) { showHiring = true }
+                        settingsRow(icon: "megaphone.fill", label: "العروض الترويجية", color: SofraColors.warning) { showPromotions = true }
+                        settingsRow(icon: "chart.bar.fill", label: "التقارير", color: SofraColors.primaryDark) { showReports = true }
                     }
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
@@ -636,10 +666,8 @@ struct OwnerDashboardView: View {
         }
     }
 
-    private func settingsRow(icon: String, label: String, color: Color) -> some View {
-        Button {
-            // Settings rows navigate within owner settings
-        } label: {
+    private func settingsRow(icon: String, label: String, color: Color, action: @escaping () -> Void = {}) -> some View {
+        Button(action: action) {
             HStack {
                 Image(systemName: "chevron.left")
                     .foregroundStyle(SofraColors.textMuted)

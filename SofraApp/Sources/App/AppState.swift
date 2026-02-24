@@ -87,7 +87,7 @@ final class AppState {
     }
 
     // MARK: - Register
-    func register(email: String, password: String, name: String, phone: String, city: String, userRole: UserRole) async throws {
+    func register(email: String, password: String, name: String, phone: String, city: String, userRole: UserRole, lat: Double = 0, lng: Double = 0, locationAddress: String = "") async throws {
         let response = try await authService.signUp(email: email, password: password)
         keychain.save(response.idToken, key: .idToken)
         keychain.save(response.refreshToken, key: .refreshToken)
@@ -95,7 +95,7 @@ final class AppState {
         self.tokenExpiresAt = Date().addingTimeInterval(3500)
 
         // Create user document in Firestore
-        let newUser = AppUser(
+        var newUser = AppUser(
             uid: response.localId,
             email: email,
             name: name,
@@ -103,12 +103,47 @@ final class AppState {
             city: city,
             role: userRole
         )
+        if lat != 0 || lng != 0 {
+            newUser.savedLocation = SavedLocation(lat: lat, lng: lng, address: locationAddress)
+            newUser.location = GeoLocation(lat: lat, lng: lng)
+        }
         try await firestoreService.createUser(newUser, idToken: response.idToken)
+
+        // If owner, auto-create restaurant doc
+        if userRole == .owner {
+            let restFields: [String: Any] = [
+                "name": name,
+                "ownerId": response.localId,
+                "email": email,
+                "phone": phone,
+                "city": city,
+                "isOpen": true,
+                "allowDelivery": true,
+                "allowPickup": false,
+                "packageType": "free",
+                "isVerified": false,
+                "sellerTier": "bronze",
+                "commissionRate": 15,
+                "isHiring": false,
+                "menuItemCount": 0,
+                "createdAt": ISO8601DateFormatter().string(from: Date())
+            ]
+            try await firestoreService.createDocument(
+                collection: "restaurants", id: response.localId,
+                fields: restFields, idToken: response.idToken
+            )
+        }
 
         self.currentUser = newUser
         self.role = userRole
         self.isAuthenticated = true
-        self.needsLocationPick = true
+
+        // Skip location picker if location already set during registration
+        if lat != 0 || lng != 0 {
+            confirmLocation(lat: lat, lng: lng, address: locationAddress)
+        } else {
+            self.needsLocationPick = true
+        }
     }
 
     // MARK: - Phone Auth: Send OTP

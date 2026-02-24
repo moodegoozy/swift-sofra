@@ -17,6 +17,9 @@ final class AuthViewModel {
     var registerPhone = ""
     var registerCity = ""
     var selectedRole: UserRole = .customer
+    var registerLat: Double = 0
+    var registerLng: Double = 0
+    var registerLocationAddress = ""
 
     // MARK: - State
     var isLoading = false
@@ -54,7 +57,10 @@ final class AuthViewModel {
                 name: registerName.trimmed,
                 phone: registerPhone.trimmed,
                 city: registerCity.trimmed,
-                userRole: selectedRole
+                userRole: selectedRole,
+                lat: registerLat,
+                lng: registerLng,
+                locationAddress: registerLocationAddress
             )
         } catch let error as APIError {
             handleError(error)

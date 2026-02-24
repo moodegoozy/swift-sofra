@@ -10,7 +10,6 @@ struct ProfileView: View {
     @State private var name = ""
     @State private var phone = ""
     @State private var address = ""
-    @State private var city = ""
     @State private var showLogoutConfirm = false
     @State private var showDeleteConfirm = false
     @State private var isDeleting = false
@@ -18,6 +17,9 @@ struct ProfileView: View {
     @State private var showPrivacy = false
     @State private var showTerms = false
     @State private var showSupport = false
+    private let appearance = AppearanceManager.shared
+    @State private var showLocationPicker = false
+    @State private var locationAddress = ""
 
     var body: some View {
         ScrollView {
@@ -74,7 +76,36 @@ struct ProfileView: View {
                         SofraTextField(label: "الهاتف", text: $phone, icon: "phone")
                             .keyboardType(.phonePad)
                         SofraTextField(label: "العنوان", text: $address, icon: "location")
-                        SofraTextField(label: "المدينة", text: $city, icon: "map")
+
+                        // Location via Map
+                        Button {
+                            showLocationPicker = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "chevron.left")
+                                    .foregroundStyle(SofraColors.textMuted)
+                                Spacer()
+                                VStack(alignment: .trailing, spacing: SofraSpacing.xxs) {
+                                    Text("الموقع على الخريطة")
+                                        .font(SofraTypography.callout)
+                                        .foregroundStyle(SofraColors.textPrimary)
+                                    Text(locationAddress.isEmpty ? "اضغط لتحديد موقعك" : locationAddress)
+                                        .font(SofraTypography.caption)
+                                        .foregroundStyle(locationAddress.isEmpty ? SofraColors.textMuted : SofraColors.success)
+                                        .lineLimit(1)
+                                }
+                                Image(systemName: "map.fill")
+                                    .foregroundStyle(SofraColors.gold400)
+                                    .frame(width: 28)
+                            }
+                            .padding(SofraSpacing.md)
+                            .background(SofraColors.cardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(SofraColors.gold500.opacity(0.15), lineWidth: 0.5)
+                            )
+                        }
                     }
                     .padding(.horizontal, SofraSpacing.screenHorizontal)
 
@@ -103,6 +134,23 @@ struct ProfileView: View {
                 // Settings Section
                 SofraCard {
                     VStack(spacing: SofraSpacing.md) {
+                        // Dark/Light Mode Toggle
+                        HStack {
+                            Toggle("", isOn: Binding(
+                                get: { appearance.isDarkMode },
+                                set: { appearance.isDarkMode = $0 }
+                            ))
+                            .tint(SofraColors.gold400)
+
+                            Spacer()
+                            Text("الوضع الداكن")
+                                .font(SofraTypography.body)
+                                .foregroundStyle(SofraColors.textPrimary)
+                            Image(systemName: appearance.isDarkMode ? "moon.fill" : "sun.max.fill")
+                                .foregroundStyle(appearance.isDarkMode ? SofraColors.gold400 : SofraColors.warning)
+                                .frame(width: 28)
+                        }
+
                         NavigationLink {
                             NotificationsView()
                         } label: {
@@ -189,6 +237,15 @@ struct ProfileView: View {
         .sheet(isPresented: $showSupport) {
             SupportView()
         }
+        .sheet(isPresented: $showLocationPicker) {
+            LocationPickerView(
+                title: "حدد موقعك",
+                subtitle: "اضغط على الخريطة لتحديد موقعك"
+            ) { lat, lng, addr in
+                locationAddress = addr
+                appState.confirmLocation(lat: lat, lng: lng, address: addr)
+            }
+        }
     }
 
     // MARK: - Settings Row
@@ -213,21 +270,32 @@ struct ProfileView: View {
         guard let uid = appState.currentUser?.uid else { return }
         await vm.loadProfile(uid: uid, token: try? await appState.validToken())
         if let u = vm.user {
-            name = u.name
+            name = u.name ?? ""
             phone = u.phone ?? ""
             address = u.address ?? ""
-            city = u.city ?? ""
+            locationAddress = u.savedLocation?.address ?? ""
         }
     }
 
     private func saveProfile() async {
         guard let uid = appState.currentUser?.uid else { return }
-        let fields: [String: Any] = [
+        var fields: [String: Any] = [
             "name": name,
             "phone": phone,
-            "address": address,
-            "city": city
+            "address": address
         ]
+        // Include location if set
+        if let loc = appState.currentUser?.savedLocation, loc.lat != 0 {
+            fields["savedLocation"] = [
+                "lat": loc.lat,
+                "lng": loc.lng,
+                "address": loc.address
+            ] as [String: Any]
+            fields["location"] = [
+                "lat": loc.lat,
+                "lng": loc.lng
+            ] as [String: Any]
+        }
         let success = await vm.updateProfile(
             uid: uid, fields: fields,
             token: try? await appState.validToken()
@@ -236,7 +304,6 @@ struct ProfileView: View {
             appState.currentUser?.name = name
             appState.currentUser?.phone = phone
             appState.currentUser?.address = address
-            appState.currentUser?.city = city
         }
     }
 
