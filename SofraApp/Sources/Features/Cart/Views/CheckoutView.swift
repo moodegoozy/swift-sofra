@@ -221,14 +221,23 @@ struct CheckoutView: View {
             return
         }
 
+        // CRITICAL: Validate restaurantId exists
+        let restaurantId = cartVM.restaurantOwnerId
+        guard !restaurantId.isEmpty else {
+            errorMessage = "خطأ: لم يتم تحديد المطعم. أعد إضافة الأصناف للسلة."
+            return
+        }
+
         isSubmitting = true
         errorMessage = nil
 
+        let customerName = (user.name ?? user.displayName).trimmingCharacters(in: .whitespacesAndNewlines)
+
         var orderFields: [String: Any] = [
             "customerId": user.uid,
-            "customerName": user.displayName,
+            "customerName": customerName.isEmpty ? "عميل" : customerName,
             "items": cartVM.items.map { item -> [String: Any] in
-                ["id": item.id, "name": item.name, "price": item.price, "qty": item.qty, "ownerId": item.ownerId ?? ""]
+                ["id": item.id, "name": item.name, "price": item.price, "qty": item.qty, "ownerId": item.ownerId]
             },
             "subtotal": cartVM.subtotal,
             "deliveryFee": deliveryFee,
@@ -240,7 +249,7 @@ struct CheckoutView: View {
             "address": address.isEmpty ? (user.savedLocation?.address ?? user.address ?? "") : address,
             "deliveryType": deliveryType,
             "notes": notes,
-            "restaurantId": cartVM.restaurantOwnerId ?? "",
+            "restaurantId": restaurantId,
             "restaurantName": cartVM.restaurantName,
             "createdAt": ISO8601DateFormatter().string(from: Date())
         ]

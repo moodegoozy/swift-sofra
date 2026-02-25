@@ -39,7 +39,7 @@ struct MainTabView: View {
         }
     }
 
-    // MARK: - Owner Tabs (6 tabs)
+    // MARK: - Owner Tabs (4 tabs — no cart or customer orders)
     private var ownerTabs: some View {
         @Bindable var appState = appState
         return TabView(selection: $appState.selectedMainTab) {
@@ -54,15 +54,6 @@ struct MainTabView: View {
             NavigationStack { OwnerDashboardView() }
                 .tabItem { Label("لوحة التحكم", systemImage: "chart.bar.fill") }
                 .tag(2)
-
-            NavigationStack { CartView() }
-                .tabItem { Label("السلة", systemImage: "cart.fill") }
-                .badge(cartVM.items.count)
-                .tag(7)
-
-            NavigationStack { OrdersView() }
-                .tabItem { Label("طلباتي", systemImage: "bag.fill") }
-                .tag(3)
 
             NavigationStack { ProfileView() }
                 .tabItem { Label("حسابي", systemImage: "person.fill") }

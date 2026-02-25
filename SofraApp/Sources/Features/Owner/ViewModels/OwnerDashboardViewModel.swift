@@ -205,7 +205,10 @@ final class OwnerDashboardViewModel {
         isUploadingImage = false
     }
 
-    // MARK: - Add Menu Item
+    // MARK: - Add Menu Item (Fast — instant local add, background upload)
+    /// Returns the doc ID immediately so the view can dismiss fast.
+    /// Image upload + Firestore write happen concurrently after local insert.
+    @discardableResult
     func addMenuItem(
         name: String,
         description: String,
@@ -214,62 +217,80 @@ final class OwnerDashboardViewModel {
         imageData: Data?,
         ownerId: String,
         token: String?
-    ) async {
-        guard let token else { return }
-        isLoading = true
-        do {
-            var imageUrl: String? = nil
-            // Upload image if provided
-            if let imageData {
-                let path = "menuItems/\(ownerId)/\(UUID().uuidString).jpg"
-                imageUrl = try await storageService.uploadImage(data: imageData, path: path, token: token)
+    ) async -> String? {
+        guard let token else { return nil }
+        let docId = UUID().uuidString
+
+        // 1) Insert locally IMMEDIATELY — user sees result instantly
+        let newItem = MenuItem(
+            id: docId,
+            name: name,
+            desc: description.isEmpty ? nil : description,
+            price: price,
+            category: category.isEmpty ? nil : category,
+            imageUrl: nil,
+            available: true,
+            ownerId: ownerId
+        )
+        menuItems.insert(newItem, at: 0)
+        menuItemsCount = menuItems.count
+
+        // 2) Build base fields (no image yet)
+        var fields: [String: Any] = [
+            "name": name,
+            "price": price,
+            "available": true,
+            "ownerId": ownerId,
+            "createdAt": ISO8601DateFormatter().string(from: Date())
+        ]
+        if !description.isEmpty { fields["desc"] = description }
+        if !category.isEmpty { fields["category"] = category }
+
+        // 3) Background: create Firestore doc + upload image concurrently
+        Task.detached { [firestoreService, storageService, weak self] in
+            do {
+                // Create document (fast, no image yet)
+                try await firestoreService.createDocument(
+                    collection: "menuItems", id: docId,
+                    fields: fields,
+                    idToken: token
+                )
+
+                // Upload image if provided, then patch the doc
+                if let imageData {
+                    let path = "menuItems/\(ownerId)/\(docId).jpg"
+                    let imageUrl = try await storageService.uploadImage(data: imageData, path: path, token: token)
+                    try await firestoreService.updateDocument(
+                        collection: "menuItems", id: docId,
+                        fields: ["imageUrl": imageUrl],
+                        idToken: token
+                    )
+                    // Update local item with image URL
+                    await MainActor.run {
+                        if let idx = self?.menuItems.firstIndex(where: { $0.id == docId }) {
+                            self?.menuItems[idx].imageUrl = imageUrl
+                        }
+                    }
+                }
+
+                // Update menuItemCount on restaurant doc
+                let count = await MainActor.run { self?.menuItemsCount ?? 0 }
+                try? await firestoreService.updateDocument(
+                    collection: "restaurants", id: ownerId,
+                    fields: ["menuItemCount": count],
+                    idToken: token
+                )
+
+                Logger.log("Menu item added: \(name)", level: .info)
+            } catch {
+                Logger.log("Add menu item error: \(error)", level: .error)
+                await MainActor.run {
+                    self?.errorMessage = "تعذر حفظ الصنف في الخادم"
+                }
             }
-
-            let docId = UUID().uuidString
-            var fields: [String: Any] = [
-                "name": name,
-                "price": price,
-                "available": true,
-                "ownerId": ownerId,
-                "createdAt": ISO8601DateFormatter().string(from: Date())
-            ]
-            if !description.isEmpty { fields["desc"] = description }
-            if !category.isEmpty { fields["category"] = category }
-            if let imageUrl { fields["imageUrl"] = imageUrl }
-
-            try await firestoreService.createDocument(
-                collection: "menuItems", id: docId,
-                fields: fields,
-                idToken: token
-            )
-
-            // Add locally immediately (Firestore query has eventual consistency)
-            let newItem = MenuItem(
-                id: docId,
-                name: name,
-                desc: description.isEmpty ? nil : description,
-                price: price,
-                category: category.isEmpty ? nil : category,
-                imageUrl: imageUrl,
-                available: true,
-                ownerId: ownerId
-            )
-            menuItems.insert(newItem, at: 0)
-            menuItemsCount = menuItems.count
-
-            // Update menuItemCount on restaurant doc for visibility
-            try await firestoreService.updateDocument(
-                collection: "restaurants", id: ownerId,
-                fields: ["menuItemCount": menuItemsCount],
-                idToken: token
-            )
-
-            Logger.log("Menu item added: \(name)", level: .info)
-        } catch {
-            Logger.log("Add menu item error: \(error)", level: .error)
-            errorMessage = "تعذر إضافة الصنف"
         }
-        isLoading = false
+
+        return docId
     }
 
     // MARK: - Delete Menu Item

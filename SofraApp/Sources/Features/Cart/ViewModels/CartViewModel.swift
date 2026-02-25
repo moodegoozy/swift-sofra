@@ -11,9 +11,19 @@ struct CartItem: Identifiable, Codable, Equatable, Sendable {
     let name: String
     let price: Double
     var qty: Int
-    let ownerId: String?
+    let ownerId: String
 
     var lineTotal: Double { price * Double(qty) }
+
+    /// Migration: decode old items where ownerId was optional
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        price = try c.decode(Double.self, forKey: .price)
+        qty = try c.decode(Int.self, forKey: .qty)
+        ownerId = try c.decodeIfPresent(String.self, forKey: .ownerId) ?? ""
+    }
 }
 
 @Observable
@@ -43,7 +53,7 @@ final class CartViewModel {
     // MARK: - Add Item
     func addItem(_ menuItem: MenuItem, qty: Int = 1, restaurantName: String? = nil) {
         // Prevent mixing items from different restaurants
-        if !items.isEmpty, let existingOwner = items.first?.ownerId, existingOwner != menuItem.ownerId {
+        if !items.isEmpty, let first = items.first, !first.ownerId.isEmpty, first.ownerId != menuItem.ownerId {
             pendingMenuItem = menuItem
             pendingRestaurantName = restaurantName
             showRestaurantChangeAlert = true
@@ -92,7 +102,7 @@ final class CartViewModel {
         restaurantName = pendingRestaurantName ?? ""
         let cartItem = CartItem(
             id: item.id, name: item.name, price: item.finalPrice,
-            qty: 1, ownerId: item.ownerId
+            qty: 1, ownerId: item.ownerId.isEmpty ? "" : item.ownerId
         )
         items.append(cartItem)
         pendingMenuItem = nil
@@ -106,8 +116,8 @@ final class CartViewModel {
     }
 
     // MARK: - Restaurant ID (all items must be from same restaurant)
-    var restaurantOwnerId: String? {
-        items.first?.ownerId
+    var restaurantOwnerId: String {
+        items.first?.ownerId ?? ""
     }
 
     // MARK: - Persistence (UserDefaults, equivalent to web localStorage)

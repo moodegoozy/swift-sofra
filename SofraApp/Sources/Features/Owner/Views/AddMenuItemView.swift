@@ -143,6 +143,7 @@ struct AddMenuItemView: View {
             compressedData = img.jpegData(compressionQuality: 0.7)
         }
 
+        // Fast: addMenuItem adds locally immediately, uploads in background
         await vm.addMenuItem(
             name: name,
             description: description,
@@ -153,7 +154,7 @@ struct AddMenuItemView: View {
             token: try? await appState.validToken()
         )
 
-        isSaving = false
+        // Dismiss immediately — no waiting for network
         dismiss()
     }
 }

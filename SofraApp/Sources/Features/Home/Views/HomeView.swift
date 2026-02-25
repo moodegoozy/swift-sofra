@@ -95,14 +95,20 @@ struct HomeView: View {
                 QuickActionCard(icon: "storefront.fill", title: "المطاعم", color: SofraColors.gold500) {
                     appState.selectedMainTab = 1
                 }
-                QuickActionCard(icon: "flame.fill", title: "الأكثر طلباً", color: SofraColors.lanternOrange) {
-                    appState.selectedMainTab = 1
+                if appState.role != .owner {
+                    QuickActionCard(icon: "cart.fill", title: "السلة", color: SofraColors.lanternOrange) {
+                        appState.selectedMainTab = 2
+                    }
+                    QuickActionCard(icon: "bag.fill", title: "طلباتي", color: SofraColors.emerald500) {
+                        appState.selectedMainTab = 3
+                    }
+                } else {
+                    QuickActionCard(icon: "chart.bar.fill", title: "لوحة التحكم", color: SofraColors.lanternOrange) {
+                        appState.selectedMainTab = 2
+                    }
                 }
-                QuickActionCard(icon: "tag.fill", title: "العروض", color: SofraColors.emerald500) {
-                    appState.selectedMainTab = 1
-                }
-                QuickActionCard(icon: "clock.fill", title: "آخر الطلبات", color: SofraColors.info) {
-                    appState.selectedMainTab = 3
+                QuickActionCard(icon: "person.fill", title: "حسابي", color: SofraColors.info) {
+                    appState.selectedMainTab = 9
                 }
             }
             .padding(.horizontal, SofraSpacing.screenHorizontal)

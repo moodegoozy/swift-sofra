@@ -42,12 +42,19 @@ struct MenuView: View {
                                 .padding(.horizontal, SofraSpacing.screenHorizontal)
 
                             ForEach(group.items) { item in
-                                MenuItemCard(item: item) {
-                                    cartVM.addItem(item, restaurantName: vm.restaurant?.name)
-                                    let impact = UINotificationFeedbackGenerator()
-                                    impact.notificationOccurred(.success)
+                                if appState.role == .owner {
+                                    // Owner sees menu but can't add to cart
+                                    MenuItemCard(item: item) {}
+                                        .padding(.horizontal, SofraSpacing.screenHorizontal)
+                                        .allowsHitTesting(false)
+                                } else {
+                                    MenuItemCard(item: item) {
+                                        cartVM.addItem(item, restaurantName: vm.restaurant?.name)
+                                        let impact = UINotificationFeedbackGenerator()
+                                        impact.notificationOccurred(.success)
+                                    }
+                                    .padding(.horizontal, SofraSpacing.screenHorizontal)
                                 }
-                                .padding(.horizontal, SofraSpacing.screenHorizontal)
                             }
                         }
                     }
@@ -76,7 +83,7 @@ struct MenuView: View {
             Text("سلتك تحتوي على أصناف من مطعم آخر. هل تريد إفراغ السلة والإضافة من هذا المطعم؟")
         }
         .overlay(alignment: .bottom) {
-            if !cartVM.items.isEmpty {
+            if !cartVM.items.isEmpty && appState.role != .owner {
                 cartFloatingBar
             }
         }
