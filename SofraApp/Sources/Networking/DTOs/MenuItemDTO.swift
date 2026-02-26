@@ -15,10 +15,20 @@ struct MenuItem: Identifiable {
     var discountPercent: Double?
     var orderCount: Int?
 
-    /// Final price after discount
+    /// Final price after discount (owner's price)
     var finalPrice: Double {
         guard let discount = discountPercent, discount > 0 else { return price }
         return price * (1 - discount / 100)
+    }
+
+    /// Customer-facing price: finalPrice + service fee (fee is invisible to customer)
+    var customerPrice: Double {
+        finalPrice + ServiceFee.perItem
+    }
+
+    /// Original price + service fee (for strikethrough display when discounted)
+    var customerOriginalPrice: Double {
+        price + ServiceFee.perItem
     }
 
     /// Has active discount

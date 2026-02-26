@@ -9,7 +9,6 @@ struct DeveloperDashboardView: View {
     @State private var vm = DeveloperDashboardViewModel()
     @State private var selectedTab = 0
     @State private var editingCommission: Restaurant?
-    @State private var newCommissionRate: Double = 15
     @State private var editingUserRole: AppUser?
     @State private var selectedRole: UserRole = .customer
     // Package management
@@ -110,7 +109,7 @@ struct DeveloperDashboardView: View {
                                 Text("\(vm.totalCommission, specifier: "%.0f") ر.س")
                                     .font(SofraTypography.headline)
                                     .foregroundStyle(SofraColors.info)
-                                Text("عمولات المطاعم")
+                                Text("رسوم الخدمة")
                                     .font(SofraTypography.caption2)
                                     .foregroundStyle(SofraColors.textMuted)
                             }
@@ -628,7 +627,7 @@ struct DeveloperDashboardView: View {
 
                         Group {
                             infoRow("معرف المشروع", value: Endpoints.projectId)
-                            infoRow("العمولة الافتراضية", value: "15%")
+                            infoRow("رسوم الخدمة", value: "\(ServiceFee.perItem) ر.س/صنف")
                             infoRow("رسوم المندوب", value: "3.75 ر.س/طلب")
                             infoRow("إجمالي المستخدمين", value: "\(vm.totalUsers)")
                             infoRow("إجمالي المطاعم", value: "\(vm.totalRestaurants)")
@@ -649,7 +648,7 @@ struct DeveloperDashboardView: View {
                         }
 
                         infoRow("إجمالي المبيعات", value: String(format: "%.2f ر.س", vm.totalRevenue))
-                        infoRow("عمولات المطاعم", value: String(format: "%.2f ر.س", vm.totalCommission))
+                        infoRow("رسوم الخدمة", value: String(format: "%.2f ر.س", vm.totalCommission))
                         infoRow("رسوم المندوبين", value: String(format: "%.2f ر.س", vm.courierPlatformFees))
                         Divider()
                         HStack {
@@ -708,7 +707,7 @@ struct DeveloperDashboardView: View {
                         .font(SofraTypography.priceSmall)
                         .foregroundStyle(SofraColors.primaryDark)
                     if order.commissionAmount > 0 {
-                        Text("عمولة: \(order.commissionAmount, specifier: "%.0f") | صافي: \(order.netAmount, specifier: "%.0f")")
+                        Text("رسوم: \(order.commissionAmount, specifier: "%.0f") | صافي: \(order.netAmount, specifier: "%.0f")")
                             .font(SofraTypography.caption2)
                             .foregroundStyle(SofraColors.info)
                     }
@@ -797,10 +796,9 @@ struct DeveloperDashboardView: View {
                     }
 
                     Button {
-                        newCommissionRate = restaurant.commissionRate
                         editingCommission = restaurant
                     } label: {
-                        Text("\(restaurant.commissionRate, specifier: "%.0f")%")
+                        Text("\(ServiceFee.perItem, specifier: "%.2f") ر.س")
                             .font(SofraTypography.caption)
                             .foregroundStyle(SofraColors.info)
                             .padding(.horizontal, 8)
@@ -916,38 +914,55 @@ struct DeveloperDashboardView: View {
                     .foregroundStyle(SofraColors.textPrimary)
 
                 VStack(spacing: SofraSpacing.sm) {
-                    Text("نسبة العمولة")
+                    Text("رسوم الخدمة")
                         .font(SofraTypography.headline)
 
-                    Text("\(newCommissionRate, specifier: "%.0f")%")
+                    Text("\(ServiceFee.perItem, specifier: "%.2f") ر.س")
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .foregroundStyle(SofraColors.info)
 
-                    Slider(value: $newCommissionRate, in: 0...50, step: 1)
-                        .tint(SofraColors.info)
+                    Text("لكل صنف")
+                        .font(SofraTypography.calloutSemibold)
+                        .foregroundStyle(SofraColors.textSecondary)
+
+                    Divider()
                         .padding(.horizontal, SofraSpacing.xl)
 
-                    HStack {
-                        Text("50%")
-                            .font(SofraTypography.caption)
-                            .foregroundStyle(SofraColors.textMuted)
-                        Spacer()
-                        Text("0%")
-                            .font(SofraTypography.caption)
-                            .foregroundStyle(SofraColors.textMuted)
+                    VStack(spacing: SofraSpacing.md) {
+                        HStack {
+                            Text(restaurant.supervisorId != nil ? "\(ServiceFee.platformShareWithSupervisor, specifier: "%.2f") ر.س" : "\(ServiceFee.platformShareNoSupervisor, specifier: "%.2f") ر.س")
+                                .font(SofraTypography.headline)
+                                .foregroundStyle(SofraColors.success)
+                            Spacer()
+                            Text("حصة المنصة")
+                                .font(SofraTypography.body)
+                        }
+                        if restaurant.supervisorId != nil {
+                            HStack {
+                                Text("\(ServiceFee.supervisorShare, specifier: "%.2f") ر.س")
+                                    .font(SofraTypography.headline)
+                                    .foregroundStyle(SofraColors.warning)
+                                Spacer()
+                                Text("حصة المشرف")
+                                    .font(SofraTypography.body)
+                            }
+                        }
+                        HStack {
+                            Text(restaurant.supervisorId != nil ? "مضاف من مشرف" : "تسجيل ذاتي")
+                                .font(SofraTypography.caption)
+                                .foregroundStyle(restaurant.supervisorId != nil ? SofraColors.info : SofraColors.textMuted)
+                            Spacer()
+                            Text("نوع التسجيل")
+                                .font(SofraTypography.caption)
+                                .foregroundStyle(SofraColors.textMuted)
+                        }
                     }
                     .padding(.horizontal, SofraSpacing.xl)
                 }
 
-                SofraButton(title: "حفظ العمولة", icon: "checkmark") {
-                    Task {
-                        await vm.updateCommissionRate(
-                            restaurantId: restaurant.id,
-                            rate: newCommissionRate,
-                            token: try? await appState.validToken()
-                        )
-                        editingCommission = nil
-                    }
+                SofraButton(title: "إغلاق", icon: "xmark") {
+                    editingCommission = nil
+                }
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
 

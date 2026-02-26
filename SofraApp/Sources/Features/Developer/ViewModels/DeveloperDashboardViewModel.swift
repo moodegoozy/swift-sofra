@@ -105,7 +105,7 @@ final class DeveloperDashboardViewModel {
         let courierDeliveries = delivered.filter { $0.courierId != nil && !($0.courierId ?? "").isEmpty }
         courierPlatformFees = Double(courierDeliveries.count) * 3.75
 
-        // Total platform earnings = restaurant commissions + courier fees
+        // Total platform earnings = service fees + courier fees
         netPlatformEarnings = totalCommission + courierPlatformFees
 
         totalRestaurants = restaurants.count

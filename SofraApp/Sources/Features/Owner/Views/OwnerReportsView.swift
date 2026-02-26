@@ -37,7 +37,7 @@ struct OwnerReportsView: View {
                 LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
                     reportCard("إجمالي الطلبات", value: "\(filteredOrders.count)", icon: "bag.fill", color: SofraColors.primary)
                     reportCard("المبيعات", value: String(format: "%.0f ر.س", totalSales), icon: "banknote.fill", color: SofraColors.success)
-                    reportCard("العمولة", value: String(format: "%.0f ر.س", totalCommission), icon: "percent", color: SofraColors.warning)
+                    reportCard("رسوم الخدمة", value: String(format: "%.0f ر.س", totalCommission), icon: "percent", color: SofraColors.warning)
                     reportCard("صافي الربح", value: String(format: "%.0f ر.س", netProfit), icon: "chart.line.uptrend.xyaxis", color: SofraColors.info)
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)

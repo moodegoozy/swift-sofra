@@ -24,8 +24,10 @@ struct Restaurant: Identifiable {
     var announcement: String?
     var isHiring: Bool
     var hiringDescription: String?
-    // Commission rate (platform fee as a percentage, e.g. 15 = 15%)
+    // Commission rate (legacy, kept for backward compat)
     var commissionRate: Double
+    // Supervisor who added this restaurant (nil = self-registered)
+    var supervisorId: String?
     // Coordinates for distance filtering
     var latitude: Double?
     var longitude: Double?
@@ -64,6 +66,7 @@ struct Restaurant: Identifiable {
         self.isHiring = f["isHiring"]?.boolVal ?? false
         self.hiringDescription = f["hiringDescription"]?.stringVal
         self.commissionRate = f["commissionRate"]?.doubleVal ?? 15
+        self.supervisorId = f["supervisorId"]?.stringVal
         self.menuItemCount = f["menuItemCount"]?.intVal
 
         // Parse coordinates from savedLocation or location map

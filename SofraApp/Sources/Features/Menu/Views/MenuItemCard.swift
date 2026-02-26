@@ -33,19 +33,19 @@ struct MenuItemCard: View {
 
                     Spacer()
 
-                    // Price
+                    // Price (customer sees fee-inclusive price)
                     if item.hasDiscount {
                         VStack(alignment: .trailing, spacing: 0) {
-                            Text("\(item.price, specifier: "%.0f") ر.س")
+                            Text("\(item.customerOriginalPrice, specifier: "%.0f") ر.س")
                                 .font(SofraTypography.caption2)
                                 .strikethrough()
                                 .foregroundStyle(SofraColors.textMuted)
-                            Text("\(item.finalPrice, specifier: "%.0f") ر.س")
+                            Text("\(item.customerPrice, specifier: "%.0f") ر.س")
                                 .font(SofraTypography.priceSmall)
                                 .foregroundStyle(SofraColors.success)
                         }
                     } else {
-                        Text("\(item.price, specifier: "%.0f") ر.س")
+                        Text("\(item.customerPrice, specifier: "%.0f") ر.س")
                             .font(SofraTypography.priceSmall)
                             .foregroundStyle(SofraColors.primaryDark)
                     }

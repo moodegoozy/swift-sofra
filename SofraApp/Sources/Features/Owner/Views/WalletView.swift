@@ -65,7 +65,7 @@ struct WalletView: View {
                                 Text("-\(totalCommission, specifier: "%.2f") ر.س")
                                     .font(SofraTypography.caption)
                                     .foregroundStyle(SofraColors.error)
-                                Text("عمولة المنصة:")
+                                Text("رسوم الخدمة:")
                                     .font(SofraTypography.caption)
                                     .foregroundStyle(SofraColors.textMuted)
                             }
@@ -186,7 +186,7 @@ struct WalletView: View {
                     .font(SofraTypography.headline)
                     .foregroundStyle(SofraColors.success)
                 if order.commissionAmount > 0 {
-                    Text("عمولة: -\(order.commissionAmount, specifier: "%.0f") ر.س")
+                    Text("رسوم: -\(order.commissionAmount, specifier: "%.0f") ر.س")
                         .font(SofraTypography.caption2)
                         .foregroundStyle(SofraColors.textMuted)
                 }

@@ -135,7 +135,7 @@ final class AppState {
                 "packageType": "free",
                 "isVerified": false,
                 "sellerTier": "bronze",
-                "commissionRate": 15,
+                "commissionRate": 0,
                 "isHiring": false,
                 "menuItemCount": 0,
                 "createdAt": ISO8601DateFormatter().string(from: Date())

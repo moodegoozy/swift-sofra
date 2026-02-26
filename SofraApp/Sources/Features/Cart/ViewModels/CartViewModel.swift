@@ -44,6 +44,16 @@ final class CartViewModel {
         items.reduce(0) { $0 + $1.lineTotal }
     }
 
+    /// Total item quantity (for service fee calculation)
+    var totalItemCount: Int {
+        items.reduce(0) { $0 + $1.qty }
+    }
+
+    /// Total service fee embedded in subtotal
+    var embeddedServiceFee: Double {
+        ServiceFee.totalFee(itemCount: totalItemCount)
+    }
+
     var isEmpty: Bool { items.isEmpty }
 
     init() {
@@ -66,7 +76,7 @@ final class CartViewModel {
             let cartItem = CartItem(
                 id: menuItem.id,
                 name: menuItem.name,
-                price: menuItem.finalPrice,
+                price: menuItem.customerPrice,
                 qty: qty,
                 ownerId: menuItem.ownerId
             )
@@ -101,7 +111,7 @@ final class CartViewModel {
         items = []
         restaurantName = pendingRestaurantName ?? ""
         let cartItem = CartItem(
-            id: item.id, name: item.name, price: item.finalPrice,
+            id: item.id, name: item.name, price: item.customerPrice,
             qty: 1, ownerId: item.ownerId.isEmpty ? "" : item.ownerId
         )
         items.append(cartItem)

@@ -237,7 +237,7 @@ struct OwnerDashboardView: View {
 
             HStack(spacing: SofraSpacing.lg) {
                 VStack(spacing: 2) {
-                    Text("العمولة")
+                    Text("رسوم الخدمة")
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.6))
                     Text("\(vm.totalCommission, specifier: "%.0f") ر.س")
@@ -772,9 +772,14 @@ struct OwnerDashboardView: View {
                                 .clipShape(Capsule())
                         }
                         Spacer()
-                        Text("\(item.price, specifier: "%.0f") ر.س")
-                            .font(SofraTypography.priceSmall)
-                            .foregroundStyle(SofraColors.primaryDark)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("\(item.price, specifier: "%.0f") ر.س")
+                                .font(SofraTypography.priceSmall)
+                                .foregroundStyle(SofraColors.primaryDark)
+                            Text("+ رسوم الخدمة \(ServiceFee.perItem, specifier: "%.2f") ر.س")
+                                .font(.caption2)
+                                .foregroundStyle(SofraColors.textMuted)
+                        }
                     }
                 }
 

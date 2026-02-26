@@ -70,7 +70,7 @@ struct SupervisorDashboardView: View {
                         statCard("طلبات اليوم", value: "\(vm.todayOrders)", icon: "bag.fill", color: SofraColors.primary)
                         statCard("طلبات نشطة", value: "\(vm.activeOrders)", icon: "clock.fill", color: SofraColors.warning)
                         statCard("إجمالي الإيرادات", value: String(format: "%.0f ر.س", vm.totalRevenue), icon: "banknote.fill", color: SofraColors.success)
-                        statCard("عمولة المنصة", value: String(format: "%.0f ر.س", vm.totalCommission), icon: "percent", color: SofraColors.info)
+                        statCard("رسوم الخدمة", value: String(format: "%.0f ر.س", vm.totalCommission), icon: "percent", color: SofraColors.info)
                         statCard("المطاعم", value: "\(vm.totalRestaurants)", icon: "storefront.fill", color: SofraColors.primaryDark)
                         statCard("المستخدمين", value: "\(vm.totalUsers)", icon: "person.3.fill", color: SofraColors.gold400)
                     }
@@ -278,7 +278,7 @@ struct SupervisorDashboardView: View {
                         .font(SofraTypography.priceSmall)
                         .foregroundStyle(SofraColors.primaryDark)
                     if order.commissionAmount > 0 {
-                        Text("(\(order.commissionAmount, specifier: "%.0f") عمولة)")
+                        Text("(\(order.commissionAmount, specifier: "%.0f") رسوم)")
                             .font(SofraTypography.caption2)
                             .foregroundStyle(SofraColors.info)
                     }
@@ -370,7 +370,7 @@ struct SupervisorDashboardView: View {
             }
 
             HStack {
-                Text("عمولة: \(restaurant.commissionRate, specifier: "%.0f")%")
+                Text("رسوم: \(ServiceFee.perItem, specifier: "%.2f") ر.س/صنف")
                     .font(SofraTypography.caption)
                     .foregroundStyle(SofraColors.info)
 

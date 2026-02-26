@@ -18,10 +18,16 @@ struct Order: Identifiable {
     var restaurantName: String?
     var restaurantId: String?
     var customerName: String?
-    // Commission / platform fee
-    var commissionRate: Double      // e.g. 15 = 15%
-    var commissionAmount: Double    // subtotal * rate / 100
-    var netAmount: Double           // total - commissionAmount
+    // Commission / platform fee (legacy percentage system)
+    var commissionRate: Double      // e.g. 15 = 15% (legacy, now 0)
+    var commissionAmount: Double    // = serviceFeeTotal (for backward compat)
+    var netAmount: Double           // total - commissionAmount (owner's earnings)
+    // Service fee system (flat per-item fee)
+    var serviceFeePerItem: Double   // 1.75 SAR
+    var serviceFeeTotal: Double     // 1.75 × total item count
+    var platformFee: Double         // platform's share of service fees
+    var supervisorFee: Double       // supervisor's share (0 if no supervisor)
+    var supervisorId: String?       // supervisor who added the restaurant (nil = self-registered)
     var createdAt: Date?
     var updatedAt: Date?
 
@@ -46,10 +52,15 @@ struct Order: Identifiable {
         courierId: String? = nil,
         notes: String? = nil,
         createdAt: Date? = nil,
-        commissionRate: Double = 15,
+        commissionRate: Double = 0,
         commissionAmount: Double = 0,
         netAmount: Double = 0,
-        customerName: String? = nil
+        customerName: String? = nil,
+        serviceFeePerItem: Double = ServiceFee.perItem,
+        serviceFeeTotal: Double = 0,
+        platformFee: Double = 0,
+        supervisorFee: Double = 0,
+        supervisorId: String? = nil
     ) {
         self.id = id
         self.customerId = customerId
@@ -68,6 +79,11 @@ struct Order: Identifiable {
         self.commissionAmount = commissionAmount
         self.netAmount = netAmount == 0 ? total : netAmount
         self.customerName = customerName
+        self.serviceFeePerItem = serviceFeePerItem
+        self.serviceFeeTotal = serviceFeeTotal
+        self.platformFee = platformFee
+        self.supervisorFee = supervisorFee
+        self.supervisorId = supervisorId
     }
 
     // MARK: - Init from Firestore
@@ -86,10 +102,15 @@ struct Order: Identifiable {
         self.restaurantName = f["restaurantName"]?.stringVal
         self.restaurantId = f["restaurantId"]?.stringVal
         self.customerName = f["customerName"]?.stringVal
-        self.commissionRate = f["commissionRate"]?.doubleVal ?? 15
+        self.commissionRate = f["commissionRate"]?.doubleVal ?? 0
         self.commissionAmount = f["commissionAmount"]?.doubleVal ?? 0
         let rawNet = f["netAmount"]?.doubleVal ?? 0
         self.netAmount = rawNet > 0 ? rawNet : self.total
+        self.serviceFeePerItem = f["serviceFeePerItem"]?.doubleVal ?? ServiceFee.perItem
+        self.serviceFeeTotal = f["serviceFeeTotal"]?.doubleVal ?? self.commissionAmount
+        self.platformFee = f["platformFee"]?.doubleVal ?? 0
+        self.supervisorFee = f["supervisorFee"]?.doubleVal ?? 0
+        self.supervisorId = f["supervisorId"]?.stringVal
         self.createdAt = f["createdAt"]?.dateVal
         self.updatedAt = f["updatedAt"]?.dateVal
 

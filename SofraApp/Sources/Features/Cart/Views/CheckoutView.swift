@@ -16,13 +16,18 @@ struct CheckoutView: View {
     @State private var showLocationPicker = false
     @State private var deliveryLat: Double = 0
     @State private var deliveryLng: Double = 0
+    @State private var restaurantSupervisorId: String?
 
-    /// Platform commission rate (default 15%)
-    private let commissionRate: Double = 15
     private let deliveryFee: Double = 0 // Set by courier/owner later
 
-    var commissionAmount: Double {
-        cartVM.subtotal * commissionRate / 100
+    /// Total service fee embedded in prices (per-item flat fee)
+    var serviceFeeTotal: Double {
+        cartVM.embeddedServiceFee
+    }
+
+    /// Total item count across all cart items
+    var totalItemCount: Int {
+        cartVM.totalItemCount
     }
 
     var total: Double {
@@ -192,6 +197,21 @@ struct CheckoutView: View {
                 deliveryLat = user.savedLocation?.lat ?? 0
                 deliveryLng = user.savedLocation?.lng ?? 0
             }
+
+            // Load restaurant's supervisorId for fee split
+            let restId = cartVM.restaurantOwnerId
+            if !restId.isEmpty, let token = try? await appState.validToken() {
+                do {
+                    let restDoc = try await FirestoreService().getDocument(
+                        collection: "restaurants", id: restId, idToken: token
+                    )
+                    let rest = Restaurant(from: restDoc)
+                    restaurantSupervisorId = rest.supervisorId
+                } catch {
+                    // If we can't load, assume no supervisor (all fees to platform)
+                    restaurantSupervisorId = nil
+                }
+            }
         }
     }
 
@@ -233,6 +253,12 @@ struct CheckoutView: View {
 
         let customerName = (user.name ?? user.displayName).trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // Calculate service fee split
+        let hasSupervisor = restaurantSupervisorId != nil && !restaurantSupervisorId!.isEmpty
+        let platformFeeAmount = ServiceFee.platformFee(itemCount: totalItemCount, hasSupervisor: hasSupervisor)
+        let supervisorFeeAmount = ServiceFee.supervisorFee(itemCount: totalItemCount, hasSupervisor: hasSupervisor)
+        let netAmount = total - serviceFeeTotal
+
         var orderFields: [String: Any] = [
             "customerId": user.uid,
             "customerName": customerName.isEmpty ? "عميل" : customerName,
@@ -242,9 +268,13 @@ struct CheckoutView: View {
             "subtotal": cartVM.subtotal,
             "deliveryFee": deliveryFee,
             "total": total,
-            "commissionRate": commissionRate,
-            "commissionAmount": commissionAmount,
-            "netAmount": total - commissionAmount,
+            "commissionRate": 0,
+            "commissionAmount": serviceFeeTotal,
+            "netAmount": netAmount,
+            "serviceFeePerItem": ServiceFee.perItem,
+            "serviceFeeTotal": serviceFeeTotal,
+            "platformFee": platformFeeAmount,
+            "supervisorFee": supervisorFeeAmount,
             "status": "pending",
             "address": address.isEmpty ? (user.savedLocation?.address ?? user.address ?? "") : address,
             "deliveryType": deliveryType,
@@ -253,6 +283,11 @@ struct CheckoutView: View {
             "restaurantName": cartVM.restaurantName,
             "createdAt": ISO8601DateFormatter().string(from: Date())
         ]
+
+        // Add supervisor ID if present
+        if let supId = restaurantSupervisorId, !supId.isEmpty {
+            orderFields["supervisorId"] = supId
+        }
 
         // Add delivery location coordinates
         if deliveryLat != 0 || deliveryLng != 0 {
