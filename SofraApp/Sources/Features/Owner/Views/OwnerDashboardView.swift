@@ -1590,8 +1590,9 @@ struct OwnerDashboardView: View {
     }
 
     private func loadAllRestaurants() async {
+        let token = (try? await appState.validToken()) ?? appState.idToken
         await restaurantsVM.loadRestaurants(
-            token: try? await appState.validToken(),
+            token: token,
             showAll: true
         )
     }
