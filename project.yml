@@ -2,7 +2,7 @@ name: SofraApp
 options:
   bundleIdPrefix: com.albayt.sofra
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "18.0"
   xcodeVersion: "15.0"
   defaultConfig: Release
   createIntermediateGroups: true
@@ -28,7 +28,7 @@ targets:
   SofraApp:
     type: application
     platform: iOS
-    deploymentTarget: "17.0"
+    deploymentTarget: "18.0"
     sources:
       - path: SofraApp/Sources
         type: group

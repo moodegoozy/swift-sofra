@@ -41,139 +41,130 @@ struct MainTabView: View {
 
     // MARK: - Owner Tabs (4 tabs)
     private var ownerTabs: some View {
-        @Bindable var appState = appState
-        return TabView(selection: $appState.selectedMainTab) {
-            NavigationStack { HomeView() }
-                .tabItem { Label("الرئيسية", systemImage: "house.fill") }
-                .tag(0)
+        TabView(selection: Bindable(appState).selectedMainTab) {
+            Tab("الرئيسية", systemImage: "house.fill", value: 0) {
+                NavigationStack { HomeView() }
+            }
 
-            NavigationStack { MenuView(restaurantId: appState.uid) }
-                .tabItem { Label("المنتجات", systemImage: "menucard.fill") }
-                .tag(1)
+            Tab("المنتجات", systemImage: "menucard.fill", value: 1) {
+                NavigationStack { MenuView(restaurantId: appState.currentUser?.uid ?? "") }
+            }
 
-            NavigationStack { OwnerDashboardView() }
-                .tabItem { Label("لوحة التحكم", systemImage: "chart.bar.fill") }
-                .tag(2)
+            Tab("لوحة التحكم", systemImage: "chart.bar.fill", value: 2) {
+                NavigationStack { OwnerDashboardView() }
+            }
 
-            NavigationStack { ProfileView() }
-                .tabItem { Label("حسابي", systemImage: "person.fill") }
-                .tag(9)
+            Tab("حسابي", systemImage: "person.fill", value: 9) {
+                NavigationStack { ProfileView() }
+            }
         }
         .tint(SofraColors.gold400)
     }
 
     // MARK: - Courier Tabs (5 tabs)
     private var courierTabs: some View {
-        @Bindable var appState = appState
-        return TabView(selection: $appState.selectedMainTab) {
-            NavigationStack { HomeView() }
-                .tabItem { Label("الرئيسية", systemImage: "house.fill") }
-                .tag(0)
+        TabView(selection: Bindable(appState).selectedMainTab) {
+            Tab("الرئيسية", systemImage: "house.fill", value: 0) {
+                NavigationStack { HomeView() }
+            }
 
-            NavigationStack { RestaurantsListView() }
-                .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
-                .tag(1)
+            Tab("المطاعم", systemImage: "storefront.fill", value: 1) {
+                NavigationStack { RestaurantsListView() }
+            }
 
-            NavigationStack { CourierDashboardView() }
-                .tabItem { Label("التوصيل", systemImage: "car.fill") }
-                .tag(2)
+            Tab("التوصيل", systemImage: "car.fill", value: 2) {
+                NavigationStack { CourierDashboardView() }
+            }
 
-            NavigationStack { OrdersView() }
-                .tabItem { Label("طلباتي", systemImage: "bag.fill") }
-                .tag(3)
+            Tab("طلباتي", systemImage: "bag.fill", value: 3) {
+                NavigationStack { OrdersView() }
+            }
 
-            NavigationStack { ProfileView() }
-                .tabItem { Label("حسابي", systemImage: "person.fill") }
-                .tag(9)
+            Tab("حسابي", systemImage: "person.fill", value: 9) {
+                NavigationStack { ProfileView() }
+            }
         }
         .tint(SofraColors.gold400)
-        
     }
 
     // MARK: - Customer Tabs (5 tabs)
     private var customerTabs: some View {
-        @Bindable var appState = appState
-        return TabView(selection: $appState.selectedMainTab) {
-            NavigationStack { HomeView() }
-                .tabItem { Label("الرئيسية", systemImage: "house.fill") }
-                .tag(0)
+        TabView(selection: Bindable(appState).selectedMainTab) {
+            Tab("الرئيسية", systemImage: "house.fill", value: 0) {
+                NavigationStack { HomeView() }
+            }
 
-            NavigationStack { RestaurantsListView() }
-                .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
-                .tag(1)
+            Tab("المطاعم", systemImage: "storefront.fill", value: 1) {
+                NavigationStack { RestaurantsListView() }
+            }
 
-            NavigationStack { CartView() }
-                .tabItem { Label("السلة", systemImage: "cart.fill") }
-                .badge(cartVM.items.count)
-                .tag(2)
+            Tab("السلة", systemImage: "cart.fill", value: 2) {
+                NavigationStack { CartView() }
+            }
+            .badge(cartVM.items.count)
 
-            NavigationStack { OrdersView() }
-                .tabItem { Label("طلباتي", systemImage: "bag.fill") }
-                .tag(3)
+            Tab("طلباتي", systemImage: "bag.fill", value: 3) {
+                NavigationStack { OrdersView() }
+            }
 
-            NavigationStack { ProfileView() }
-                .tabItem { Label("حسابي", systemImage: "person.fill") }
-                .tag(9)
+            Tab("حسابي", systemImage: "person.fill", value: 9) {
+                NavigationStack { ProfileView() }
+            }
         }
         .tint(SofraColors.gold400)
-        
     }
 
     // MARK: - Supervisor Tabs (5 tabs)
     private var supervisorTabs: some View {
-        @Bindable var appState = appState
-        return TabView(selection: $appState.selectedMainTab) {
-            NavigationStack { SupervisorDashboardView() }
-                .tabItem { Label("الإشراف", systemImage: "shield.fill") }
-                .tag(0)
+        TabView(selection: Bindable(appState).selectedMainTab) {
+            Tab("الإشراف", systemImage: "shield.fill", value: 0) {
+                NavigationStack { SupervisorDashboardView() }
+            }
 
-            NavigationStack { RestaurantsListView() }
-                .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
-                .tag(1)
+            Tab("المطاعم", systemImage: "storefront.fill", value: 1) {
+                NavigationStack { RestaurantsListView() }
+            }
 
-            NavigationStack { OrdersView() }
-                .tabItem { Label("طلباتي", systemImage: "bag.fill") }
-                .tag(3)
+            Tab("طلباتي", systemImage: "bag.fill", value: 3) {
+                NavigationStack { OrdersView() }
+            }
 
-            NavigationStack { CartView() }
-                .tabItem { Label("السلة", systemImage: "cart.fill") }
-                .badge(cartVM.items.count)
-                .tag(7)
+            Tab("السلة", systemImage: "cart.fill", value: 7) {
+                NavigationStack { CartView() }
+            }
+            .badge(cartVM.items.count)
 
-            NavigationStack { ProfileView() }
-                .tabItem { Label("حسابي", systemImage: "person.fill") }
-                .tag(9)
+            Tab("حسابي", systemImage: "person.fill", value: 9) {
+                NavigationStack { ProfileView() }
+            }
         }
         .tint(SofraColors.gold400)
-        
     }
 
     // MARK: - Developer Tabs (5 tabs — full access, no restaurant)
     private var developerTabs: some View {
-        @Bindable var appState = appState
-        return TabView(selection: $appState.selectedMainTab) {
-            NavigationStack { DeveloperDashboardView() }
-                .tabItem { Label("المطور", systemImage: "wrench.and.screwdriver.fill") }
-                .tag(0)
+        TabView(selection: Bindable(appState).selectedMainTab) {
+            Tab("المطور", systemImage: "wrench.and.screwdriver.fill", value: 0) {
+                NavigationStack { DeveloperDashboardView() }
+            }
 
-            NavigationStack { RestaurantsListView() }
-                .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
-                .tag(1)
+            Tab("المطاعم", systemImage: "storefront.fill", value: 1) {
+                NavigationStack { RestaurantsListView() }
+            }
 
-            NavigationStack { OrdersView() }
-                .tabItem { Label("طلباتي", systemImage: "bag.fill") }
-                .tag(3)
+            Tab("طلباتي", systemImage: "bag.fill", value: 3) {
+                NavigationStack { OrdersView() }
+            }
 
-            NavigationStack { NotificationsView() }
-                .tabItem { Label("الإشعارات", systemImage: "bell.fill") }
-                .tag(4)
+            Tab("الإشعارات", systemImage: "bell.fill", value: 4) {
+                NavigationStack { NotificationsView() }
+            }
 
-            NavigationStack { ProfileView() }
-                .tabItem { Label("حسابي", systemImage: "person.fill") }
-                .tag(9)
+            Tab("حسابي", systemImage: "person.fill", value: 9) {
+                NavigationStack { ProfileView() }
+            }
         }
         .tint(SofraColors.gold400)
-        
     }
 }
 
