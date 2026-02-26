@@ -293,6 +293,74 @@ final class OwnerDashboardViewModel {
         return docId
     }
 
+    // MARK: - Update Menu Item
+    func updateMenuItem(
+        itemId: String,
+        name: String,
+        description: String,
+        price: Double,
+        category: String,
+        imageData: Data?,
+        ownerId: String,
+        token: String?
+    ) async -> Bool {
+        guard let token else { return false }
+
+        // 1) Update local immediately
+        if let idx = menuItems.firstIndex(where: { $0.id == itemId }) {
+            menuItems[idx].name = name
+            menuItems[idx].description = description.isEmpty ? nil : description
+            menuItems[idx].price = price
+            menuItems[idx].category = category.isEmpty ? nil : category
+        }
+
+        // 2) Build fields to update
+        var fields: [String: Any] = [
+            "name": name,
+            "price": price,
+        ]
+        if !description.isEmpty { fields["desc"] = description }
+        if !category.isEmpty { fields["category"] = category }
+
+        // 3) Background: update Firestore + optional image upload
+        do {
+            try await firestoreService.updateDocument(
+                collection: "menuItems", id: itemId,
+                fields: fields,
+                idToken: token
+            )
+
+            // Upload new image if provided
+            if let imageData {
+                Task.detached { [firestoreService, storageService, weak self] in
+                    do {
+                        let path = "menuItems/\(ownerId)/\(itemId).jpg"
+                        let imageUrl = try await storageService.uploadImage(data: imageData, path: path, token: token)
+                        try await firestoreService.updateDocument(
+                            collection: "menuItems", id: itemId,
+                            fields: ["imageUrl": imageUrl],
+                            idToken: token
+                        )
+                        await MainActor.run {
+                            if let idx = self?.menuItems.firstIndex(where: { $0.id == itemId }) {
+                                self?.menuItems[idx].imageUrl = imageUrl
+                            }
+                        }
+                    } catch {
+                        Logger.log("Update menu item image error: \(error)", level: .error)
+                    }
+                }
+            }
+
+            Logger.log("Menu item updated: \(name)", level: .info)
+            return true
+        } catch {
+            Logger.log("Update menu item error: \(error)", level: .error)
+            errorMessage = "تعذر تعديل الصنف"
+            return false
+        }
+    }
+
     // MARK: - Delete Menu Item
     func deleteMenuItem(itemId: String, ownerId: String, token: String?) async {
         guard let token else { return }
