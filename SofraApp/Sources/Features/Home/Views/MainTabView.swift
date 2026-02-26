@@ -47,7 +47,7 @@ struct MainTabView: View {
             }
 
             Tab("المنتجات", systemImage: "menucard.fill", value: 1) {
-                NavigationStack { MenuView(restaurantId: appState.currentUser?.uid ?? "") }
+                NavigationStack { OwnerDashboardView(initialTab: 1) }
             }
 
             Tab("لوحة التحكم", systemImage: "chart.bar.fill", value: 2) {
