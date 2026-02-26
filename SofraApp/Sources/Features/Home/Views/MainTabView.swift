@@ -39,7 +39,7 @@ struct MainTabView: View {
         }
     }
 
-    // MARK: - Owner Tabs (4 tabs — no cart or customer orders)
+    // MARK: - Owner Tabs (4 tabs)
     private var ownerTabs: some View {
         @Bindable var appState = appState
         return TabView(selection: $appState.selectedMainTab) {
@@ -47,8 +47,8 @@ struct MainTabView: View {
                 .tabItem { Label("الرئيسية", systemImage: "house.fill") }
                 .tag(0)
 
-            NavigationStack { RestaurantsListView() }
-                .tabItem { Label("المطاعم", systemImage: "storefront.fill") }
+            NavigationStack { MenuView(restaurantId: appState.uid) }
+                .tabItem { Label("المنتجات", systemImage: "menucard.fill") }
                 .tag(1)
 
             NavigationStack { OwnerDashboardView() }
@@ -60,7 +60,6 @@ struct MainTabView: View {
                 .tag(9)
         }
         .tint(SofraColors.gold400)
-        
     }
 
     // MARK: - Courier Tabs (5 tabs)

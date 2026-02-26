@@ -963,7 +963,6 @@ struct DeveloperDashboardView: View {
                 SofraButton(title: "إغلاق", icon: "xmark") {
                     editingCommission = nil
                 }
-                }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
 
                 Spacer()

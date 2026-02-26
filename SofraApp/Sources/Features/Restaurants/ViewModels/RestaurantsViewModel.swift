@@ -15,7 +15,7 @@ final class RestaurantsViewModel {
 
     private let firestoreService = FirestoreService()
 
-    func loadRestaurants(token: String?, userLat: Double = 0, userLng: Double = 0) async {
+    func loadRestaurants(token: String?, userLat: Double = 0, userLng: Double = 0, showAll: Bool = false) async {
         guard let token else {
             errorMessage = "يرجى تسجيل الدخول"
             return
@@ -41,25 +41,28 @@ final class RestaurantsViewModel {
                 return hasName && hasPhone && hasMenuItems
             }
 
-            // Filter by distance (20km) if user has location
-            let hasUserLocation = userLat != 0 || userLng != 0
-            if hasUserLocation {
-                allRestaurants = allRestaurants.filter { restaurant in
-                    // If restaurant has no coordinates, still show it (don't penalize)
-                    guard let km = restaurant.distanceKm(fromLat: userLat, fromLng: userLng) else {
-                        return true
-                    }
-                    return km <= Self.maxDistanceKm
-                }
-                // Sort by distance (closest first), then by open status
-                allRestaurants.sort { a, b in
-                    let distA = a.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
-                    let distB = b.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
-                    if a.isOpen != b.isOpen { return a.isOpen && !b.isOpen }
-                    return distA < distB
-                }
-            } else {
+            // Skip distance filter when showAll is true (for owner dashboard)
+            if showAll {
                 allRestaurants.sort { ($0.isOpen ? 1 : 0) > ($1.isOpen ? 1 : 0) }
+            } else {
+                // Filter by distance (20km) if user has location
+                let hasUserLocation = userLat != 0 || userLng != 0
+                if hasUserLocation {
+                    allRestaurants = allRestaurants.filter { restaurant in
+                        guard let km = restaurant.distanceKm(fromLat: userLat, fromLng: userLng) else {
+                            return true
+                        }
+                        return km <= Self.maxDistanceKm
+                    }
+                    allRestaurants.sort { a, b in
+                        let distA = a.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
+                        let distB = b.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
+                        if a.isOpen != b.isOpen { return a.isOpen && !b.isOpen }
+                        return distA < distB
+                    }
+                } else {
+                    allRestaurants.sort { ($0.isOpen ? 1 : 0) > ($1.isOpen ? 1 : 0) }
+                }
             }
 
             restaurants = allRestaurants

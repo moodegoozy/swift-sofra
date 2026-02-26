@@ -38,6 +38,7 @@ struct OwnerDashboardView: View {
                 ownerReports.tag(3)
                 ownerHiring.tag(4)
                 ownerSettings.tag(5)
+                ownerRestaurants.tag(6)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
@@ -115,6 +116,7 @@ struct OwnerDashboardView: View {
                 ownerTabPill("التقارير", icon: "chart.bar.fill", tag: 3)
                 ownerTabPill("التوظيف", icon: "person.3.fill", tag: 4, badge: pendingApplicationsCount)
                 ownerTabPill("الإعدادات", icon: "gearshape.fill", tag: 5)
+                ownerTabPill("المطاعم", icon: "storefront.fill", tag: 6)
             }
             .padding(.horizontal, SofraSpacing.screenHorizontal)
             .padding(.vertical, SofraSpacing.sm)
@@ -1496,6 +1498,183 @@ struct OwnerDashboardView: View {
                     .frame(width: 28)
             }
         }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - 7) المطاعم — All Restaurants Tab
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    @State private var restaurantsVM = RestaurantsViewModel()
+    @State private var restSearchText = ""
+
+    private var ownerRestaurants: some View {
+        ScrollView {
+            LazyVStack(spacing: SofraSpacing.md) {
+                // Info banner
+                HStack(spacing: SofraSpacing.xs) {
+                    Text("جميع المطاعم المفعّلة على المنصة")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textMuted)
+                    Spacer()
+                    Image(systemName: "storefront.fill")
+                        .font(.caption2)
+                        .foregroundStyle(SofraColors.primary)
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+
+                if restaurantsVM.isLoading && restaurantsVM.restaurants.isEmpty {
+                    ForEach(0..<5, id: \.self) { _ in
+                        SkeletonCard()
+                    }
+                } else if let error = restaurantsVM.errorMessage {
+                    ErrorStateView(message: error) {
+                        await loadAllRestaurants()
+                    }
+                } else if filteredAllRestaurants.isEmpty {
+                    EmptyStateView(
+                        icon: "magnifyingglass",
+                        title: "لا توجد نتائج",
+                        message: restSearchText.isEmpty
+                            ? "لا توجد مطاعم مفعّلة حالياً"
+                            : "لم نجد مطاعم تطابق '\(restSearchText)'"
+                    )
+                } else {
+                    // Search bar
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(SofraColors.textMuted)
+                        TextField("ابحث عن مطعم...", text: $restSearchText)
+                            .font(SofraTypography.body)
+                            .textFieldStyle(.plain)
+                        if !restSearchText.isEmpty {
+                            Button {
+                                restSearchText = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(SofraColors.textMuted)
+                            }
+                        }
+                    }
+                    .padding(SofraSpacing.sm)
+                    .background(SofraColors.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+
+                    Text("\(filteredAllRestaurants.count) مطعم")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.horizontal, SofraSpacing.screenHorizontal)
+
+                    ForEach(filteredAllRestaurants) { restaurant in
+                        ownerRestaurantRow(restaurant)
+                    }
+                }
+            }
+            .padding(.top, SofraSpacing.md)
+            .padding(.bottom, SofraSpacing.xxxl)
+        }
+        .refreshable {
+            await loadAllRestaurants()
+        }
+        .task {
+            if restaurantsVM.restaurants.isEmpty {
+                await loadAllRestaurants()
+            }
+        }
+    }
+
+    private func loadAllRestaurants() async {
+        await restaurantsVM.loadRestaurants(
+            token: try? await appState.validToken(),
+            showAll: true
+        )
+    }
+
+    private var filteredAllRestaurants: [Restaurant] {
+        if restSearchText.isEmpty { return restaurantsVM.restaurants }
+        return restaurantsVM.restaurants.filter {
+            $0.name.localizedCaseInsensitiveContains(restSearchText) ||
+            ($0.city?.localizedCaseInsensitiveContains(restSearchText) ?? false)
+        }
+    }
+
+    private func ownerRestaurantRow(_ restaurant: Restaurant) -> some View {
+        HStack(spacing: SofraSpacing.md) {
+            // Info
+            VStack(alignment: .trailing, spacing: SofraSpacing.xs) {
+                HStack(spacing: SofraSpacing.xs) {
+                    StatusBadge(
+                        text: restaurant.isOpen ? "مفتوح" : "مغلق",
+                        color: restaurant.isOpen ? SofraColors.success : SofraColors.error
+                    )
+                    Spacer()
+                    Text(restaurant.name)
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(SofraColors.textPrimary)
+                        .lineLimit(1)
+                }
+
+                HStack {
+                    if let count = restaurant.menuItemCount, count > 0 {
+                        Text("\(count) منتج")
+                            .font(.caption2)
+                            .foregroundStyle(SofraColors.textMuted)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(SofraColors.sky100)
+                            .clipShape(Capsule())
+                    }
+                    if let city = restaurant.city {
+                        Text(city)
+                            .font(.caption2)
+                            .foregroundStyle(SofraColors.textMuted)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(SofraColors.sky100)
+                            .clipShape(Capsule())
+                    }
+                    Spacer()
+                    if let phone = restaurant.phone, !phone.isEmpty {
+                        Text(phone)
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textSecondary)
+                    }
+                }
+
+                HStack {
+                    Text(restaurant.packageType == .premium ? "ذهبية" : "أساسية")
+                        .font(.caption2.bold())
+                        .foregroundStyle(restaurant.packageType == .premium ? SofraColors.gold400 : SofraColors.textMuted)
+                    Spacer()
+                    if let orders = restaurant.totalOrders, orders > 0 {
+                        Text("\(orders) طلب")
+                            .font(.caption2)
+                            .foregroundStyle(SofraColors.textSecondary)
+                    }
+                }
+            }
+
+            // Logo
+            CachedPhaseImage(url: URL(string: restaurant.logoUrl ?? restaurant.coverUrl ?? "")) { phase in
+                switch phase {
+                case .success(let img):
+                    img.resizable().aspectRatio(contentMode: .fill)
+                default:
+                    ZStack {
+                        SofraColors.sky100
+                        Image(systemName: "storefront.fill")
+                            .foregroundStyle(SofraColors.sky300)
+                    }
+                }
+            }
+            .frame(width: 56, height: 56)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
