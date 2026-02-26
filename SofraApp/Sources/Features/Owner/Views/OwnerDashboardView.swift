@@ -6,7 +6,6 @@ import SwiftUI
 import PhotosUI
 
 struct OwnerDashboardView: View {
-    var initialTab: Int = 0
     @Environment(AppState.self) var appState
     @State private var vm = OwnerDashboardViewModel()
     @State private var selectedTab = 0
@@ -46,11 +45,6 @@ struct OwnerDashboardView: View {
         .ramadanBackground()
         .navigationTitle(vm.restaurant?.name ?? "لوحة المطعم")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            if initialTab != 0 {
-                selectedTab = initialTab
-            }
-        }
         .task {
             guard let uid = appState.currentUser?.uid else { return }
             await vm.loadDashboard(ownerId: uid, token: try? await appState.validToken())

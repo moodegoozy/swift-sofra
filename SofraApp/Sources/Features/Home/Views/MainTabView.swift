@@ -47,7 +47,7 @@ struct MainTabView: View {
             }
 
             Tab("المنتجات", systemImage: "menucard.fill", value: 1) {
-                NavigationStack { OwnerDashboardView(initialTab: 1) }
+                NavigationStack { OwnerProductsView() }
             }
 
             Tab("لوحة التحكم", systemImage: "chart.bar.fill", value: 2) {
