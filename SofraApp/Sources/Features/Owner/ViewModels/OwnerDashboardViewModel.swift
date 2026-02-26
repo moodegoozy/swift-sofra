@@ -9,6 +9,7 @@ final class OwnerDashboardViewModel {
     var restaurant: Restaurant?
     var orders: [Order] = []
     var menuItems: [MenuItem] = []
+    var hiringApplications: [CourierApplication] = []
     var isLoading = false
     var errorMessage: String?
     var isUploadingImage = false
@@ -380,6 +381,24 @@ final class OwnerDashboardViewModel {
         } catch {
             Logger.log("Delete menu item error: \(error)", level: .error)
             errorMessage = "تعذر حذف الصنف"
+        }
+    }
+
+    // MARK: - Hiring Applications
+    func loadHiringApplications(ownerId: String, token: String?) async {
+        guard let token else { return }
+        do {
+            let docs = try await firestoreService.query(
+                collection: "courierApplications",
+                filters: [QueryFilter(field: "restaurantId", op: "EQUAL", value: ownerId)],
+                orderBy: "createdAt",
+                descending: true,
+                limit: 50,
+                idToken: token
+            )
+            self.hiringApplications = docs.map { CourierApplication(from: $0) }
+        } catch {
+            Logger.log("Load hiring applications error: \(error)", level: .error)
         }
     }
 }
