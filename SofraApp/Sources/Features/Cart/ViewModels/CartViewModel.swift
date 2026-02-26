@@ -15,6 +15,15 @@ struct CartItem: Identifiable, Codable, Equatable, Sendable {
 
     var lineTotal: Double { price * Double(qty) }
 
+    /// Memberwise init (needed because custom init(from:) suppresses the default)
+    init(id: String, name: String, price: Double, qty: Int, ownerId: String) {
+        self.id = id
+        self.name = name
+        self.price = price
+        self.qty = qty
+        self.ownerId = ownerId
+    }
+
     /// Migration: decode old items where ownerId was optional
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
