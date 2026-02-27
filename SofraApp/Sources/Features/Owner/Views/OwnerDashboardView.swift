@@ -30,9 +30,16 @@ struct OwnerDashboardView: View {
     @State private var orderRefreshTask: Task<Void, Never>?
     // Cancel order confirmation
     @State private var cancellingOrder: Order?
+    @State private var showCancelSheet = false
+    @State private var cancelReason = ""
 
     var body: some View {
         VStack(spacing: 0) {
+            // Quick access bar for orders (always visible)
+            if pendingOrdersCount > 0 {
+                quickOrdersBar
+            }
+            
             ownerTabBar
 
             TabView(selection: $selectedTab) {
@@ -112,26 +119,178 @@ struct OwnerDashboardView: View {
         } message: {
             Text("هل أنت متأكد من حذف «\(deletingItem?.name ?? "")»؟ لا يمكن التراجع.")
         }
-        .confirmationDialog("إلغاء الطلب", isPresented: .init(
-            get: { cancellingOrder != nil },
-            set: { if !$0 { cancellingOrder = nil } }
-        )) {
-            Button("إلغاء الطلب", role: .destructive) {
+        .sheet(isPresented: $showCancelSheet) {
+            cancelOrderSheet
+        }
+    }
+    
+    // MARK: - Quick Orders Bar (shortcut)
+    private var quickOrdersBar: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) { selectedTab = 2 }
+        } label: {
+            HStack(spacing: SofraSpacing.sm) {
+                // Pulsing indicator
+                Circle()
+                    .fill(SofraColors.error)
+                    .frame(width: 10, height: 10)
+                    .overlay(
+                        Circle()
+                            .stroke(SofraColors.error.opacity(0.5), lineWidth: 2)
+                            .scaleEffect(1.5)
+                    )
+                
+                Text("لديك \(pendingOrdersCount) طلبات جديدة")
+                    .font(SofraTypography.calloutSemibold)
+                    .foregroundStyle(.white)
+                
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Text("عرض الطلبات")
+                        .font(SofraTypography.caption)
+                    Image(systemName: "chevron.left")
+                        .font(.caption)
+                }
+                .foregroundStyle(.white.opacity(0.8))
+            }
+            .padding(.horizontal, SofraSpacing.screenHorizontal)
+            .padding(.vertical, SofraSpacing.sm)
+            .background(
+                LinearGradient(
+                    colors: [Color(hex: "#EF4444"), Color(hex: "#DC2626")],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+        }
+    }
+    
+    // MARK: - Cancel Order Sheet
+    private var cancelOrderSheet: some View {
+        NavigationStack {
+            VStack(spacing: SofraSpacing.lg) {
+                // Order info
                 if let order = cancellingOrder {
-                    let viewModel = vm
-                    Task {
-                        await viewModel.cancelOrder(
-                            orderId: order.id,
-                            customerId: order.customerId,
-                            token: try? await appState.validToken()
-                        )
+                    SofraCard {
+                        HStack {
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("#\(order.id.prefix(8))")
+                                    .font(SofraTypography.headline)
+                                if let name = order.customerName, !name.isEmpty {
+                                    Text(name)
+                                        .font(SofraTypography.caption)
+                                        .foregroundStyle(SofraColors.textMuted)
+                                }
+                            }
+                            Spacer()
+                            Text("\(order.total, specifier: "%.2f") ر.س")
+                                .font(SofraTypography.price)
+                                .foregroundStyle(SofraColors.primaryDark)
+                        }
                     }
-                    cancellingOrder = nil
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                }
+                
+                // Reason input
+                VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                    Text("سبب الإلغاء (مطلوب)")
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(SofraColors.textPrimary)
+                    
+                    TextEditor(text: $cancelReason)
+                        .frame(minHeight: 100)
+                        .font(SofraTypography.body)
+                        .scrollContentBackground(.hidden)
+                        .padding(SofraSpacing.sm)
+                        .background(SofraColors.surfaceElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(SofraColors.sky200, lineWidth: 1)
+                        )
+                    
+                    Text("سيتم إرسال السبب للعميل وإشعار الإدارة")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // Quick reasons
+                VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                    Text("أسباب شائعة")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textMuted)
+                    
+                    FlowLayout(spacing: 8) {
+                        quickReasonChip("المكونات غير متوفرة")
+                        quickReasonChip("المطعم مغلق")
+                        quickReasonChip("ضغط عمل كبير")
+                        quickReasonChip("خطأ في الطلب")
+                        quickReasonChip("العنوان غير واضح")
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                Spacer()
+                
+                // Actions
+                VStack(spacing: SofraSpacing.sm) {
+                    SofraButton(
+                        title: "إلغاء الطلب",
+                        icon: "xmark.circle.fill",
+                        style: .destructive,
+                        isDisabled: cancelReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ) {
+                        if let order = cancellingOrder {
+                            Task {
+                                await vm.cancelOrderWithReason(
+                                    order: order,
+                                    reason: cancelReason.trimmingCharacters(in: .whitespacesAndNewlines),
+                                    restaurantName: vm.restaurant?.name ?? "المطعم",
+                                    token: try? await appState.validToken()
+                                )
+                                cancelReason = ""
+                                cancellingOrder = nil
+                                showCancelSheet = false
+                            }
+                        }
+                    }
+                    
+                    SofraButton(title: "تراجع", style: .ghost) {
+                        cancelReason = ""
+                        showCancelSheet = false
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                .padding(.bottom, SofraSpacing.lg)
+            }
+            .padding(.top, SofraSpacing.md)
+            .navigationTitle("إلغاء الطلب")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("إغلاق") {
+                        cancelReason = ""
+                        showCancelSheet = false
+                    }
                 }
             }
-            Button("تراجع", role: .cancel) { cancellingOrder = nil }
-        } message: {
-            Text("هل تريد إلغاء الطلب #\(cancellingOrder?.id.prefix(8) ?? "")؟ سيتم إشعار العميل.")
+        }
+        .presentationDetents([.medium, .large])
+    }
+    
+    private func quickReasonChip(_ reason: String) -> some View {
+        Button {
+            cancelReason = reason
+        } label: {
+            Text(reason)
+                .font(SofraTypography.caption)
+                .foregroundStyle(cancelReason == reason ? .white : SofraColors.textSecondary)
+                .padding(.horizontal, SofraSpacing.sm)
+                .padding(.vertical, 6)
+                .background(cancelReason == reason ? SofraColors.primary : SofraColors.sky100)
+                .clipShape(Capsule())
         }
     }
 
@@ -869,6 +1028,7 @@ struct OwnerDashboardView: View {
                 
                 Button {
                     cancellingOrder = order
+                    showCancelSheet = true
                 } label: {
                     premiumActionButton(
                         text: "رفض",
@@ -878,34 +1038,46 @@ struct OwnerDashboardView: View {
                 }
             }
         case .accepted:
-            Button {
-                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .preparing, customerId: order.customerId, token: try? await appState.validToken()) }
-            } label: {
-                premiumActionButton(
-                    text: "بدء التحضير",
-                    icon: "flame.fill",
-                    style: .preparing
-                )
+            HStack(spacing: SofraSpacing.sm) {
+                Button {
+                    Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .preparing, customerId: order.customerId, token: try? await appState.validToken()) }
+                } label: {
+                    premiumActionButton(
+                        text: "بدء التحضير",
+                        icon: "flame.fill",
+                        style: .preparing
+                    )
+                }
+                
+                cancelOrderButton(order)
             }
         case .preparing:
-            Button {
-                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .ready, customerId: order.customerId, token: try? await appState.validToken()) }
-            } label: {
-                premiumActionButton(
-                    text: "الطلب جاهز",
-                    icon: "checkmark.seal.fill",
-                    style: .ready
-                )
+            HStack(spacing: SofraSpacing.sm) {
+                Button {
+                    Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .ready, customerId: order.customerId, token: try? await appState.validToken()) }
+                } label: {
+                    premiumActionButton(
+                        text: "الطلب جاهز",
+                        icon: "checkmark.seal.fill",
+                        style: .ready
+                    )
+                }
+                
+                cancelOrderButton(order)
             }
         case .ready:
-            Button {
-                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .outForDelivery, customerId: order.customerId, token: try? await appState.validToken()) }
-            } label: {
-                premiumActionButton(
-                    text: "إرسال للتوصيل",
-                    icon: "car.side.front.open.fill",
-                    style: .delivery
-                )
+            HStack(spacing: SofraSpacing.sm) {
+                Button {
+                    Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .outForDelivery, customerId: order.customerId, token: try? await appState.validToken()) }
+                } label: {
+                    premiumActionButton(
+                        text: "إرسال للتوصيل",
+                        icon: "car.side.front.open.fill",
+                        style: .delivery
+                    )
+                }
+                
+                cancelOrderButton(order)
             }
         case .outForDelivery:
             Button {
@@ -919,6 +1091,26 @@ struct OwnerDashboardView: View {
             }
         default:
             EmptyView()
+        }
+    }
+    
+    private func cancelOrderButton(_ order: Order) -> some View {
+        Button {
+            cancellingOrder = order
+            showCancelSheet = true
+        } label: {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(SofraColors.error)
+                .padding(SofraSpacing.sm)
+                .background(
+                    Circle()
+                        .fill(SofraColors.error.opacity(0.1))
+                )
+                .overlay(
+                    Circle()
+                        .stroke(SofraColors.error.opacity(0.3), lineWidth: 1)
+                )
         }
     }
     

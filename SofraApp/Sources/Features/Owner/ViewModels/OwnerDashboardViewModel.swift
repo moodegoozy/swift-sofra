@@ -223,6 +223,88 @@ final class OwnerDashboardViewModel {
             Logger.log("Owner cancel order error: \(error)", level: .error)
         }
     }
+    
+    /// إلغاء الطلب مع ذكر السبب - يُشعر العميل والمطور
+    func cancelOrderWithReason(order: Order, reason: String, restaurantName: String, token: String?) async {
+        guard let token else { return }
+        do {
+            // 1. تحديث حالة الطلب مع سبب الإلغاء
+            try await firestoreService.updateDocument(
+                collection: "orders", id: order.id,
+                fields: [
+                    "status": "cancelled",
+                    "cancellationReason": reason,
+                    "cancelledBy": "restaurant",
+                    "cancelledAt": Date()
+                ],
+                idToken: token
+            )
+            
+            if let idx = orders.firstIndex(where: { $0.id == order.id }) {
+                orders[idx].status = .cancelled
+            }
+            
+            // 2. إشعار العميل بالسبب
+            let customerName = order.customerName ?? "عميل"
+            let customerId = order.customerId
+            if !customerId.isEmpty {
+                let customerNotifId = UUID().uuidString
+                let customerNotifFields: [String: Any] = [
+                    "userId": customerId,
+                    "title": "❌ تم إلغاء طلبك",
+                    "body": "قام مطعم \(restaurantName) بإلغاء الطلب #\(order.id.prefix(8))\n\n📝 السبب: \(reason)",
+                    "type": "order_cancelled_by_restaurant",
+                    "read": false,
+                    "orderId": order.id,
+                    "cancellationReason": reason,
+                    "createdAt": Date()
+                ]
+                try? await firestoreService.createDocument(
+                    collection: "notifications", id: customerNotifId,
+                    fields: customerNotifFields, idToken: token
+                )
+            }
+            
+            // 3. إشعار المطور/الإدارة
+            let devNotifId = UUID().uuidString
+            let devNotifFields: [String: Any] = [
+                "userId": "developer",  // سيصل للمطور
+                "title": "⚠️ إلغاء طلب من مطعم",
+                "body": """
+                🔴 تم إلغاء طلب من المطعم
+                
+                📋 الطلب: #\(order.id.prefix(8))
+                💰 المبلغ: \(String(format: "%.2f", order.total)) ر.س
+                
+                👤 العميل: \(customerName)
+                🆔 معرف العميل: \(customerId.prefix(12))...
+                
+                🏪 المطعم: \(restaurantName)
+                
+                📝 سبب الإلغاء:
+                \(reason)
+                """,
+                "type": "restaurant_cancelled_order",
+                "read": false,
+                "orderId": order.id,
+                "customerId": customerId,
+                "customerName": customerName,
+                "restaurantName": restaurantName,
+                "cancellationReason": reason,
+                "orderTotal": order.total,
+                "createdAt": Date()
+            ]
+            try? await firestoreService.createDocument(
+                collection: "notifications", id: devNotifId,
+                fields: devNotifFields, idToken: token
+            )
+            
+            Logger.log("Order \(order.id) cancelled by restaurant with reason: \(reason)", level: .info)
+            
+        } catch {
+            Logger.log("Cancel order with reason error: \(error)", level: .error)
+        }
+    }
 
     func toggleItemAvailability(itemId: String, available: Bool, token: String?) async {
         guard let token else { return }
