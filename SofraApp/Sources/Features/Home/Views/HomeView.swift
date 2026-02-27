@@ -95,18 +95,39 @@ struct HomeView: View {
                 QuickActionCard(icon: "storefront.fill", title: "المطاعم", color: SofraColors.gold500) {
                     appState.selectedMainTab = 1
                 }
-                if appState.role != .owner {
+
+                switch appState.role {
+                case .owner:
+                    QuickActionCard(icon: "chart.bar.fill", title: "لوحة التحكم", color: SofraColors.lanternOrange) {
+                        appState.selectedMainTab = 2
+                    }
+                case .courier:
+                    QuickActionCard(icon: "car.fill", title: "لوحة التوصيل", color: SofraColors.lanternOrange) {
+                        appState.selectedMainTab = 2
+                    }
+                    QuickActionCard(icon: "bag.fill", title: "طلباتي", color: SofraColors.emerald500) {
+                        appState.selectedMainTab = 3
+                    }
+                case .supervisor, .admin:
+                    QuickActionCard(icon: "cart.fill", title: "السلة", color: SofraColors.lanternOrange) {
+                        appState.selectedMainTab = 7
+                    }
+                    QuickActionCard(icon: "bag.fill", title: "طلباتي", color: SofraColors.emerald500) {
+                        appState.selectedMainTab = 3
+                    }
+                case .developer:
+                    QuickActionCard(icon: "bag.fill", title: "طلباتي", color: SofraColors.emerald500) {
+                        appState.selectedMainTab = 3
+                    }
+                default: // customer
                     QuickActionCard(icon: "cart.fill", title: "السلة", color: SofraColors.lanternOrange) {
                         appState.selectedMainTab = 2
                     }
                     QuickActionCard(icon: "bag.fill", title: "طلباتي", color: SofraColors.emerald500) {
                         appState.selectedMainTab = 3
                     }
-                } else {
-                    QuickActionCard(icon: "chart.bar.fill", title: "لوحة التحكم", color: SofraColors.lanternOrange) {
-                        appState.selectedMainTab = 2
-                    }
                 }
+
                 QuickActionCard(icon: "person.fill", title: "حسابي", color: SofraColors.info) {
                     appState.selectedMainTab = 9
                 }

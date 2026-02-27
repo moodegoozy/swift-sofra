@@ -37,12 +37,10 @@ final class OrderPollingService {
                 }
 
                 do {
+                    // Query without orderBy to avoid composite index requirement
                     let docs = try await firestoreService.query(
                         collection: "orders",
                         filters: [QueryFilter(field: "customerId", op: "EQUAL", value: userId)],
-                        orderBy: "createdAt",
-                        descending: true,
-                        limit: 20,
                         idToken: t
                     )
                     let orders = docs.map { Order(from: $0) }
@@ -92,12 +90,10 @@ final class OrderPollingService {
                 }
 
                 do {
+                    // Query without orderBy to avoid composite index requirement
                     let docs = try await firestoreService.query(
                         collection: "orders",
                         filters: [QueryFilter(field: "restaurantId", op: "EQUAL", value: ownerId)],
-                        orderBy: "createdAt",
-                        descending: true,
-                        limit: 20,
                         idToken: t
                     )
                     let orders = docs.map { Order(from: $0) }

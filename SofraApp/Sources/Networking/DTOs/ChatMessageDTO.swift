@@ -46,7 +46,7 @@ struct ChatMessage: Identifiable {
             "orderId": orderId
         ]
         if let createdAt {
-            fields["createdAt"] = ISO8601DateFormatter().string(from: createdAt)
+            fields["createdAt"] = createdAt
         }
         return fields
     }

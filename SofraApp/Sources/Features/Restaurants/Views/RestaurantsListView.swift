@@ -1,5 +1,5 @@
 // RestaurantsListView.swift
-// Full restaurant listing — filtered by 20km distance from user
+// Full restaurant listing — shows all restaurants with optional 25km nearby filter
 
 import SwiftUI
 
@@ -7,22 +7,22 @@ struct RestaurantsListView: View {
     @Environment(AppState.self) var appState
     @State private var vm = RestaurantsViewModel()
     @State private var searchText = ""
+    @State private var nearbyOnly = false
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: SofraSpacing.md) {
-                // Distance info banner
+                // Filter toggle: الكل / القريبة
                 if appState.hasConfirmedLocation {
-                    HStack(spacing: SofraSpacing.xs) {
-                        Text("يتم عرض المطاعم ضمن \(Int(RestaurantsViewModel.maxDistanceKm)) كم من موقعك")
-                            .font(SofraTypography.caption)
-                            .foregroundStyle(SofraColors.textMuted)
-                        Spacer()
-                        Image(systemName: "location.fill")
-                            .font(.caption2)
-                            .foregroundStyle(SofraColors.success)
+                    Picker("فلتر المسافة", selection: $nearbyOnly) {
+                        Text("الكل").tag(false)
+                        Text("القريبة (\(Int(RestaurantsViewModel.maxDistanceKm)) كم)").tag(true)
                     }
+                    .pickerStyle(.segmented)
                     .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    .onChange(of: nearbyOnly) {
+                        Task { await loadRestaurants() }
+                    }
                 }
 
                 if vm.isLoading && vm.restaurants.isEmpty {
@@ -38,7 +38,7 @@ struct RestaurantsListView: View {
                         icon: "magnifyingglass",
                         title: "لا توجد نتائج",
                         message: searchText.isEmpty
-                            ? (appState.hasConfirmedLocation
+                            ? (nearbyOnly
                                 ? "لا توجد مطاعم قريبة منك ضمن \(Int(RestaurantsViewModel.maxDistanceKm)) كم"
                                 : "لا توجد مطاعم مسجلة حالياً")
                             : "لم نجد مطاعم تطابق '\(searchText)'"
@@ -99,7 +99,8 @@ struct RestaurantsListView: View {
         await vm.loadRestaurants(
             token: try? await appState.validToken(),
             userLat: appState.userLatitude,
-            userLng: appState.userLongitude
+            userLng: appState.userLongitude,
+            nearbyOnly: nearbyOnly
         )
     }
 

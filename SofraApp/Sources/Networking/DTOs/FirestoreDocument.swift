@@ -145,6 +145,8 @@ enum FirestoreValue: Decodable {
 
     var dateVal: Date? {
         if case .timestamp(let v) = self { return Date(firestoreTimestamp: v) }
+        // Also handle ISO 8601 strings stored as stringValue
+        if case .string(let v) = self { return Date(firestoreTimestamp: v) }
         return nil
     }
 

@@ -1,5 +1,5 @@
 // RestaurantsViewModel.swift
-// Loads and manages restaurant list data with 20km distance filter
+// Loads and manages restaurant list data
 
 import Foundation
 import Observation
@@ -10,12 +10,12 @@ final class RestaurantsViewModel {
     var isLoading = false
     var errorMessage: String?
 
-    /// Maximum distance in km to show restaurants
-    static let maxDistanceKm: Double = 20.0
+    /// Maximum distance in km for "nearby" filter
+    static let maxDistanceKm: Double = 25.0
 
     private let firestoreService = FirestoreService()
 
-    func loadRestaurants(token: String?, userLat: Double = 0, userLng: Double = 0, showAll: Bool = false) async {
+    func loadRestaurants(token: String?, userLat: Double = 0, userLng: Double = 0, showAll: Bool = false, nearbyOnly: Bool = false) async {
         guard let token else {
             errorMessage = "يرجى تسجيل الدخول"
             return
@@ -32,39 +32,36 @@ final class RestaurantsViewModel {
             )
             var allRestaurants = docs.map { Restaurant(from: $0) }
 
-            if !showAll {
-                // Filter out incomplete restaurants (missing name, phone, or no menu items)
+            // For owner dashboard (showAll), skip all client filters
+            if showAll {
+                allRestaurants.sort { ($0.isOpen ? 1 : 0) > ($1.isOpen ? 1 : 0) }
+                restaurants = allRestaurants
+                isLoading = false
+                return
+            }
+
+            // Sort: open first, then by distance or popularity
+            let hasUserLocation = userLat != 0 || userLng != 0
+
+            // Nearby filter: only show restaurants within 25km
+            if nearbyOnly && hasUserLocation {
                 allRestaurants = allRestaurants.filter { restaurant in
-                    let hasName = !restaurant.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        && restaurant.name != "مطعم"
-                    let hasPhone = !(restaurant.phone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    let hasMenuItems = (restaurant.menuItemCount ?? 0) > 0
-                    return hasName && hasPhone && hasMenuItems
+                    guard let km = restaurant.distanceKm(fromLat: userLat, fromLng: userLng) else {
+                        return true // show restaurants without coordinates
+                    }
+                    return km <= Self.maxDistanceKm
                 }
             }
 
-            // Skip distance filter when showAll is true (for owner dashboard)
-            if showAll {
-                allRestaurants.sort { ($0.isOpen ? 1 : 0) > ($1.isOpen ? 1 : 0) }
-            } else {
-                // Filter by distance (20km) if user has location
-                let hasUserLocation = userLat != 0 || userLng != 0
-                if hasUserLocation {
-                    allRestaurants = allRestaurants.filter { restaurant in
-                        guard let km = restaurant.distanceKm(fromLat: userLat, fromLng: userLng) else {
-                            return true
-                        }
-                        return km <= Self.maxDistanceKm
-                    }
-                    allRestaurants.sort { a, b in
-                        let distA = a.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
-                        let distB = b.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
-                        if a.isOpen != b.isOpen { return a.isOpen && !b.isOpen }
-                        return distA < distB
-                    }
-                } else {
-                    allRestaurants.sort { ($0.isOpen ? 1 : 0) > ($1.isOpen ? 1 : 0) }
+            if hasUserLocation {
+                allRestaurants.sort { a, b in
+                    let distA = a.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
+                    let distB = b.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
+                    if a.isOpen != b.isOpen { return a.isOpen && !b.isOpen }
+                    return distA < distB
                 }
+            } else {
+                allRestaurants.sort { ($0.isOpen ? 1 : 0) > ($1.isOpen ? 1 : 0) }
             }
 
             restaurants = allRestaurants

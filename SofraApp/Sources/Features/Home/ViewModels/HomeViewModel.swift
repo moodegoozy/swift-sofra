@@ -1,5 +1,5 @@
 // HomeViewModel.swift
-// Loads featured restaurants for the home screen — filtered by 20km
+// Loads featured restaurants for the home screen
 
 import Foundation
 import Observation
@@ -28,25 +28,22 @@ final class HomeViewModel {
                 pageSize: 50
             )
             var restaurants = docs.map { Restaurant(from: $0) }
-                .filter { $0.isOpen }
 
-            // Filter by 20km if user has location
+            // Sort: open first
             let hasUserLocation = userLat != 0 || userLng != 0
             if hasUserLocation {
-                restaurants = restaurants.filter { restaurant in
-                    guard let km = restaurant.distanceKm(fromLat: userLat, fromLng: userLng) else {
-                        return true // show restaurants without coordinates
-                    }
-                    return km <= RestaurantsViewModel.maxDistanceKm
-                }
                 // Sort by distance
                 restaurants.sort { a, b in
                     let distA = a.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
                     let distB = b.distanceKm(fromLat: userLat, fromLng: userLng) ?? Double.greatestFiniteMagnitude
+                    if a.isOpen != b.isOpen { return a.isOpen && !b.isOpen }
                     return distA < distB
                 }
             } else {
-                restaurants.sort { ($0.totalOrders ?? 0) > ($1.totalOrders ?? 0) }
+                restaurants.sort {
+                    if $0.isOpen != $1.isOpen { return $0.isOpen && !$1.isOpen }
+                    return ($0.totalOrders ?? 0) > ($1.totalOrders ?? 0)
+                }
             }
 
             featuredRestaurants = restaurants

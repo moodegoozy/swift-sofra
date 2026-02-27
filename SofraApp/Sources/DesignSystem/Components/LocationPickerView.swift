@@ -16,10 +16,6 @@ struct LocationPickerView: View {
     @State private var selectedCoordinate: CLLocationCoordinate2D?
     @State private var addressText = ""
     @State private var isGeocoding = false
-    @State private var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 24.7136, longitude: 46.6753), // الرياض default
-        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-    )
 
     private let locationManager = LocationManager.shared
     private let geocoder = CLGeocoder()

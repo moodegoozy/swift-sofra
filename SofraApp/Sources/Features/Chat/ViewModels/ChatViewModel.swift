@@ -31,14 +31,15 @@ final class ChatViewModel {
         let previousIds = Set(messages.map { $0.id })
 
         do {
+            // Query without orderBy to avoid composite index requirement
+            // Sort client-side instead
             let docs = try await firestoreService.query(
                 collection: "chatMessages",
                 filters: [QueryFilter(field: "orderId", op: "EQUAL", value: orderId)],
-                orderBy: "createdAt",
-                descending: false,
                 idToken: token
             )
             self.messages = docs.map { ChatMessage(from: $0, orderId: orderId) }
+                .sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
 
             // Notify for new messages from others (only during polling, not initial load)
             if previousCount > 0 {
@@ -105,15 +106,22 @@ final class ChatViewModel {
     }
 
     // MARK: - Start Polling (every 5 seconds)
-    func startPolling(orderId: String, token: String?) {
+    /// Token provider closure refreshes the token on each poll cycle
+    func startPolling(orderId: String, tokenProvider: @escaping () async -> String?) {
         stopPolling()
         pollingTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(5))
                 guard !Task.isCancelled else { break }
-                await self?.loadMessages(orderId: orderId, token: token)
+                let freshToken = await tokenProvider()
+                await self?.loadMessages(orderId: orderId, token: freshToken)
             }
         }
+    }
+
+    /// Legacy convenience — static token (not recommended for long sessions)
+    func startPolling(orderId: String, token: String?) {
+        startPolling(orderId: orderId) { token }
     }
 
     // MARK: - Stop Polling

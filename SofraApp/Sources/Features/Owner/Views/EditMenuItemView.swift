@@ -168,7 +168,7 @@ struct EditMenuItemView: View {
             token: try? await appState.validToken()
         )
 
-        if ok { dismiss() }
         isSaving = false
+        if ok { dismiss() }
     }
 }

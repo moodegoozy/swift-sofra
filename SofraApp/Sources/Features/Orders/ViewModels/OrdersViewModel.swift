@@ -34,14 +34,15 @@ final class OrdersViewModel {
         errorMessage = nil
 
         do {
+            // Query without orderBy to avoid composite index requirement
+            // Sort client-side instead
             let docs = try await firestoreService.query(
                 collection: "orders",
                 filters: [QueryFilter(field: "customerId", op: "EQUAL", value: userId)],
-                orderBy: "createdAt",
-                descending: true,
                 idToken: token
             )
             self.orders = docs.map { Order(from: $0) }
+                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
 
             // Notify for status changes (not on first load)
             if !isFirstLoad {
@@ -63,7 +64,7 @@ final class OrdersViewModel {
         isLoading = false
     }
 
-    func cancelOrder(orderId: String, token: String?) async {
+    func cancelOrder(orderId: String, restaurantId: String?, customerName: String?, token: String?) async {
         guard let token else { return }
         do {
             try await firestoreService.updateDocument(
@@ -71,8 +72,31 @@ final class OrdersViewModel {
                 fields: ["status": "cancelled"],
                 idToken: token
             )
+
             if let idx = orders.firstIndex(where: { $0.id == orderId }) {
                 orders[idx].status = .cancelled
+            }
+
+            // Determine restaurantId from parameter or fallback to order data
+            let rid = restaurantId ?? orders.first(where: { $0.id == orderId })?.restaurantId
+
+            // إشعار صاحب المطعم بإلغاء الطلب
+            if let rid, !rid.isEmpty {
+                let displayName = (customerName ?? "").isEmpty ? "العميل" : customerName!
+                let notifId = UUID().uuidString
+                let notifFields: [String: Any] = [
+                    "userId": rid,
+                    "title": "❌ تم إلغاء طلب",
+                    "body": "\(displayName) ألغى الطلب #\(orderId.prefix(8))",
+                    "type": "order_cancelled",
+                    "read": false,
+                    "orderId": orderId,
+                    "createdAt": Date()
+                ]
+                try? await firestoreService.createDocument(
+                    collection: "notifications", id: notifId,
+                    fields: notifFields, idToken: token
+                )
             }
         } catch {
             Logger.log("Cancel order error: \(error)", level: .error)

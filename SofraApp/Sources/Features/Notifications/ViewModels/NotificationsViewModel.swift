@@ -9,12 +9,12 @@ struct AppNotification: Identifiable {
     let title: String
     let body: String
     let type: String?
-    let read: Bool
+    var read: Bool
     let createdAt: Date?
     // Dev message reply fields
     let devMessageId: String?
     let canReply: Bool
-    let hasReplied: Bool
+    var hasReplied: Bool
 
     init(from doc: FirestoreDocumentResponse) {
         self.id = doc.documentId ?? UUID().uuidString
@@ -93,10 +93,9 @@ final class NotificationsViewModel {
                 fields: ["read": true],
                 idToken: token
             )
-            // Update local state
+            // Update local state — mark as read instead of removing
             if let idx = notifications.firstIndex(where: { $0.id == notifId }) {
-                notifications.remove(at: idx)
-                // Reload to get fresh data
+                notifications[idx].read = true
             }
         } catch {
             Logger.log("Mark read error: \(error)", level: .error)

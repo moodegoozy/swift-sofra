@@ -26,6 +26,10 @@ struct OwnerDashboardView: View {
     // Packages & promotions
     @State private var showPackages = false
     @State private var showPromotions = false
+    // Auto-refresh timer for orders
+    @State private var orderRefreshTask: Task<Void, Never>?
+    // Cancel order confirmation
+    @State private var cancellingOrder: Order?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,6 +56,12 @@ struct OwnerDashboardView: View {
                 editRestName = rest.name == "مطعم" ? "" : rest.name
                 editRestPhone = rest.phone ?? ""
             }
+            // تحديث تلقائي للطلبات كل 15 ثانية
+            startOrderRefreshTimer(uid: uid)
+        }
+        .onDisappear {
+            orderRefreshTask?.cancel()
+            orderRefreshTask = nil
         }
         .sheet(isPresented: $showWallet) {
             WalletView(orders: vm.orders, restaurantName: vm.restaurant?.name ?? "المطعم")
@@ -101,6 +111,42 @@ struct OwnerDashboardView: View {
             Button("إلغاء", role: .cancel) { deletingItem = nil }
         } message: {
             Text("هل أنت متأكد من حذف «\(deletingItem?.name ?? "")»؟ لا يمكن التراجع.")
+        }
+        .confirmationDialog("إلغاء الطلب", isPresented: .init(
+            get: { cancellingOrder != nil },
+            set: { if !$0 { cancellingOrder = nil } }
+        )) {
+            Button("إلغاء الطلب", role: .destructive) {
+                if let order = cancellingOrder {
+                    let viewModel = vm
+                    Task {
+                        await viewModel.cancelOrder(
+                            orderId: order.id,
+                            customerId: order.customerId,
+                            token: try? await appState.validToken()
+                        )
+                    }
+                    cancellingOrder = nil
+                }
+            }
+            Button("تراجع", role: .cancel) { cancellingOrder = nil }
+        } message: {
+            Text("هل تريد إلغاء الطلب #\(cancellingOrder?.id.prefix(8) ?? "")؟ سيتم إشعار العميل.")
+        }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - Order Auto-Refresh Timer
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    private func startOrderRefreshTimer(uid: String) {
+        orderRefreshTask?.cancel()
+        orderRefreshTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(15))
+                guard !Task.isCancelled else { break }
+                let token = try? await appState.validToken()
+                await vm.loadOrders(ownerId: uid, token: token)
+            }
         }
     }
 
@@ -603,6 +649,7 @@ struct OwnerDashboardView: View {
         case ready = "جاهز للاستلام"
         case delivery = "جاري التوصيل"
         case delivered = "تم التسليم"
+        case cancelled = "ملغية"
 
         var matchingStatuses: [OrderStatus] {
             switch self {
@@ -611,6 +658,7 @@ struct OwnerDashboardView: View {
             case .ready: return [.ready]
             case .delivery: return [.outForDelivery]
             case .delivered: return [.delivered]
+            case .cancelled: return [.cancelled]
             }
         }
 
@@ -621,6 +669,7 @@ struct OwnerDashboardView: View {
             case .ready: return "bag.fill"
             case .delivery: return "car.fill"
             case .delivered: return "checkmark.seal.fill"
+            case .cancelled: return "xmark.circle.fill"
             }
         }
     }
@@ -793,32 +842,39 @@ struct OwnerDashboardView: View {
     private func orderActionButton(_ order: Order) -> some View {
         switch order.status {
         case .pending:
-            Button {
-                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .accepted, token: try? await appState.validToken()) }
-            } label: {
-                actionPill("قبول", icon: "checkmark", color: SofraColors.success)
+            HStack(spacing: SofraSpacing.xs) {
+                Button {
+                    Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .accepted, customerId: order.customerId, token: try? await appState.validToken()) }
+                } label: {
+                    actionPill("قبول", icon: "checkmark", color: SofraColors.success)
+                }
+                Button {
+                    cancellingOrder = order
+                } label: {
+                    actionPill("رفض", icon: "xmark", color: SofraColors.error)
+                }
             }
         case .accepted:
             Button {
-                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .preparing, token: try? await appState.validToken()) }
+                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .preparing, customerId: order.customerId, token: try? await appState.validToken()) }
             } label: {
                 actionPill("تحضير", icon: "flame", color: SofraColors.info)
             }
         case .preparing:
             Button {
-                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .ready, token: try? await appState.validToken()) }
+                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .ready, customerId: order.customerId, token: try? await appState.validToken()) }
             } label: {
                 actionPill("جاهز", icon: "checkmark.circle", color: SofraColors.primary)
             }
         case .ready:
             Button {
-                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .outForDelivery, token: try? await appState.validToken()) }
+                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .outForDelivery, customerId: order.customerId, token: try? await appState.validToken()) }
             } label: {
                 actionPill("توصيل", icon: "car.fill", color: SofraColors.warning)
             }
         case .outForDelivery:
             Button {
-                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .delivered, token: try? await appState.validToken()) }
+                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .delivered, customerId: order.customerId, token: try? await appState.validToken()) }
             } label: {
                 actionPill("تم التسليم", icon: "checkmark.seal.fill", color: SofraColors.success)
             }

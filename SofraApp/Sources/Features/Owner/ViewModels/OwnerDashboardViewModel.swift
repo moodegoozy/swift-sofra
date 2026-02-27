@@ -77,15 +77,15 @@ final class OwnerDashboardViewModel {
         let isFirstLoad = orders.isEmpty
 
         do {
+            // Query without orderBy to avoid composite index requirement
+            // Sort client-side instead
             let docs = try await firestoreService.query(
                 collection: "orders",
                 filters: [QueryFilter(field: "restaurantId", op: "EQUAL", value: ownerId)],
-                orderBy: "createdAt",
-                descending: true,
-                limit: 50,
                 idToken: token
             )
             self.orders = docs.map { Order(from: $0) }
+                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
 
             // Notify for new orders (not on first load)
             if !isFirstLoad {
@@ -149,7 +149,7 @@ final class OwnerDashboardViewModel {
         }
     }
 
-    func updateOrderStatus(orderId: String, newStatus: OrderStatus, token: String?) async {
+    func updateOrderStatus(orderId: String, newStatus: OrderStatus, customerId: String? = nil, token: String?) async {
         guard let token else { return }
         do {
             try await firestoreService.updateDocument(
@@ -160,8 +160,67 @@ final class OwnerDashboardViewModel {
             if let idx = orders.firstIndex(where: { $0.id == orderId }) {
                 orders[idx].status = newStatus
             }
+
+            // إنشاء إشعار Firestore للعميل عند تغيير حالة الطلب
+            let cid = customerId ?? orders.first(where: { $0.id == orderId })?.customerId
+            if let cid, !cid.isEmpty {
+                let restName = restaurant?.name ?? "المطعم"
+                let notifId = UUID().uuidString
+                let notifFields: [String: Any] = [
+                    "userId": cid,
+                    "title": newStatus.notificationTitle,
+                    "body": "\(restName) — الطلب #\(orderId.prefix(8)): \(newStatus.arabicLabel)",
+                    "type": "order_status",
+                    "read": false,
+                    "orderId": orderId,
+                    "createdAt": Date()
+                ]
+                try? await firestoreService.createDocument(
+                    collection: "notifications",
+                    id: notifId,
+                    fields: notifFields,
+                    idToken: token
+                )
+            }
         } catch {
             Logger.log("Update order status error: \(error)", level: .error)
+        }
+    }
+
+    /// إلغاء الطلب من قبل المالك
+    func cancelOrder(orderId: String, customerId: String?, token: String?) async {
+        guard let token else { return }
+        do {
+            try await firestoreService.updateDocument(
+                collection: "orders", id: orderId,
+                fields: ["status": "cancelled"],
+                idToken: token
+            )
+            if let idx = orders.firstIndex(where: { $0.id == orderId }) {
+                orders[idx].status = .cancelled
+            }
+
+            // إشعار العميل
+            let cid = customerId ?? orders.first(where: { $0.id == orderId })?.customerId
+            if let cid, !cid.isEmpty {
+                let restName = restaurant?.name ?? "المطعم"
+                let notifId = UUID().uuidString
+                let notifFields: [String: Any] = [
+                    "userId": cid,
+                    "title": "❌ تم إلغاء طلبك",
+                    "body": "\(restName) ألغى الطلب #\(orderId.prefix(8))",
+                    "type": "order_cancelled",
+                    "read": false,
+                    "orderId": orderId,
+                    "createdAt": Date()
+                ]
+                try? await firestoreService.createDocument(
+                    collection: "notifications", id: notifId,
+                    fields: notifFields, idToken: token
+                )
+            }
+        } catch {
+            Logger.log("Owner cancel order error: \(error)", level: .error)
         }
     }
 

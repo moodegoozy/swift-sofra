@@ -139,12 +139,12 @@ struct Order: Identifiable {
         }
     }
 
-    /// Status icon for display
+    /// Status icon for display (consistent .fill style)
     var statusIcon: String {
         switch status {
-        case .pending:         return "clock"
-        case .accepted:        return "checkmark.circle"
-        case .preparing:       return "flame"
+        case .pending:         return "clock.fill"
+        case .accepted:        return "checkmark.circle.fill"
+        case .preparing:       return "flame.fill"
         case .ready:           return "bag.fill"
         case .outForDelivery:  return "car.fill"
         case .delivered:       return "checkmark.seal.fill"
@@ -183,6 +183,18 @@ enum OrderStatus: String, CaseIterable {
         case .outForDelivery: return "في الطريق"
         case .delivered:      return "تم التوصيل"
         case .cancelled:      return "ملغي"
+        }
+    }
+
+    var notificationTitle: String {
+        switch self {
+        case .pending:        return "🔔 طلب جديد"
+        case .accepted:       return "✅ تم قبول طلبك"
+        case .preparing:      return "🍳 طلبك قيد التحضير"
+        case .ready:          return "📦 طلبك جاهز"
+        case .outForDelivery: return "🚛 طلبك في الطريق"
+        case .delivered:      return "✅ تم التوصيل"
+        case .cancelled:      return "❌ تم إلغاء الطلب"
         }
     }
 }

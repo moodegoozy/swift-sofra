@@ -149,7 +149,12 @@ struct OrderDetailView: View {
         .confirmationDialog("هل تريد إلغاء هذا الطلب؟", isPresented: $showCancelConfirm) {
             Button("إلغاء الطلب", role: .destructive) {
                 Task {
-                    await vm.cancelOrder(orderId: order.id, token: try? await appState.validToken())
+                    await vm.cancelOrder(
+                        orderId: order.id,
+                        restaurantId: order.restaurantId,
+                        customerName: order.customerName,
+                        token: try? await appState.validToken()
+                    )
                     order.status = .cancelled
                 }
             }

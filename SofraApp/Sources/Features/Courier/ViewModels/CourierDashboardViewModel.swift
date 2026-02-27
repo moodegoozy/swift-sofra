@@ -255,11 +255,32 @@ final class CourierDashboardViewModel {
                 ],
                 idToken: token
             )
+
+            var movedOrder: Order?
             if let idx = restaurantOrders.firstIndex(where: { $0.id == orderId }) {
                 var order = restaurantOrders.remove(at: idx)
                 order.status = .outForDelivery
                 order.courierId = courierId
                 activeOrders.insert(order, at: 0)
+                movedOrder = order
+            }
+
+            // إشعار العميل بأن الطلب في الطريق
+            if let cid = movedOrder?.customerId, !cid.isEmpty {
+                let notifId = UUID().uuidString
+                let notifFields: [String: Any] = [
+                    "userId": cid,
+                    "title": "🚛 طلبك في الطريق!",
+                    "body": "المندوب في طريقه إليك",
+                    "type": "order_status",
+                    "read": false,
+                    "orderId": orderId,
+                    "createdAt": ISO8601DateFormatter().string(from: Date())
+                ]
+                try? await firestoreService.createDocument(
+                    collection: "notifications", id: notifId,
+                    fields: notifFields, idToken: token
+                )
             }
         } catch {
             Logger.log("Accept delivery error: \(error)", level: .error)
@@ -275,11 +296,50 @@ final class CourierDashboardViewModel {
                 fields: ["status": "delivered"],
                 idToken: token
             )
+
+            var deliveredOrder: Order?
             if let idx = activeOrders.firstIndex(where: { $0.id == orderId }) {
                 var order = activeOrders.remove(at: idx)
                 order.status = .delivered
                 deliveredOrders.insert(order, at: 0)
                 totalDeliveries += 1
+                deliveredOrder = order
+            }
+
+            // إشعار العميل بإتمام التوصيل
+            if let cid = deliveredOrder?.customerId, !cid.isEmpty {
+                let notifId = UUID().uuidString
+                let notifFields: [String: Any] = [
+                    "userId": cid,
+                    "title": "✅ تم التوصيل!",
+                    "body": "تم توصيل طلبك بنجاح. بالعافية!",
+                    "type": "order_status",
+                    "read": false,
+                    "orderId": orderId,
+                    "createdAt": ISO8601DateFormatter().string(from: Date())
+                ]
+                try? await firestoreService.createDocument(
+                    collection: "notifications", id: notifId,
+                    fields: notifFields, idToken: token
+                )
+            }
+
+            // إشعار صاحب المطعم بإتمام التوصيل
+            if let rid = deliveredOrder?.restaurantId, !rid.isEmpty {
+                let notifId2 = UUID().uuidString
+                let notifFields2: [String: Any] = [
+                    "userId": rid,
+                    "title": "✅ تم توصيل الطلب",
+                    "body": "الطلب #\(orderId.prefix(8)) تم توصيله للعميل",
+                    "type": "order_delivered",
+                    "read": false,
+                    "orderId": orderId,
+                    "createdAt": ISO8601DateFormatter().string(from: Date())
+                ]
+                try? await firestoreService.createDocument(
+                    collection: "notifications", id: notifId2,
+                    fields: notifFields2, idToken: token
+                )
             }
         } catch {
             Logger.log("Mark delivered error: \(error)", level: .error)

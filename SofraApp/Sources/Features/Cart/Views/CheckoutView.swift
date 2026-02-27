@@ -281,7 +281,7 @@ struct CheckoutView: View {
             "notes": notes,
             "restaurantId": restaurantId,
             "restaurantName": cartVM.restaurantName,
-            "createdAt": ISO8601DateFormatter().string(from: Date())
+            "createdAt": Date()
         ]
 
         // Add supervisor ID if present
@@ -307,6 +307,25 @@ struct CheckoutView: View {
                 fields: orderFields,
                 idToken: token
             )
+
+            // إنشاء إشعار Firestore لصاحب المطعم
+            let notifId = UUID().uuidString
+            let notifFields: [String: Any] = [
+                "userId": restaurantId,
+                "title": "🔔 طلب جديد!",
+                "body": "طلب جديد بقيمة \(String(format: "%.2f", total)) ر.س من \(customerName)",
+                "type": "new_order",
+                "read": false,
+                "orderId": orderId,
+                "createdAt": Date()
+            ]
+            try? await service.createDocument(
+                collection: "notifications",
+                id: notifId,
+                fields: notifFields,
+                idToken: token
+            )
+
             cartVM.clear()
             showSuccess = true
         } catch {

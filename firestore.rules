@@ -72,7 +72,7 @@ service cloud.firestore {
       // Customer who placed the order, restaurant owner, assigned courier, or staff can read
       allow read: if isAuthenticated() && (
         resource.data.customerId == request.auth.uid ||
-        resource.data.restaurantOwnerId == request.auth.uid ||
+        resource.data.restaurantId == request.auth.uid ||
         resource.data.courierId == request.auth.uid ||
         isStaff()
       );
@@ -81,7 +81,7 @@ service cloud.firestore {
       // Participants and staff can update orders
       allow update: if isAuthenticated() && (
         resource.data.customerId == request.auth.uid ||
-        resource.data.restaurantOwnerId == request.auth.uid ||
+        resource.data.restaurantId == request.auth.uid ||
         resource.data.courierId == request.auth.uid ||
         isStaff()
       );
