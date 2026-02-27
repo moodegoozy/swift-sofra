@@ -57,11 +57,6 @@ struct OwnerDashboardView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            
-            // Fixed bottom orders shortcut bar
-            if selectedTab != 2 {
-                ordersShortcutBar
-            }
         }
         .ramadanBackground()
         .navigationTitle(vm.restaurant?.name ?? "لوحة المطعم")
@@ -309,94 +304,7 @@ struct OwnerDashboardView: View {
         }
     }
     
-    // MARK: - Fixed Bottom Orders Shortcut Bar
-    private var ordersShortcutBar: some View {
-        HStack(spacing: 0) {
-            // Orders summary
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) { selectedTab = 2 }
-            } label: {
-                HStack(spacing: SofraSpacing.sm) {
-                    // Orders icon with badge
-                    ZStack(alignment: .topTrailing) {
-                        Image(systemName: "list.clipboard.fill")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(SofraColors.gold500)
-                        
-                        if pendingOrdersCount > 0 {
-                            Text("\(pendingOrdersCount)")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(SofraColors.error)
-                                .clipShape(Capsule())
-                                .offset(x: 8, y: -8)
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("الطلبات")
-                            .font(SofraTypography.calloutSemibold)
-                            .foregroundStyle(SofraColors.textPrimary)
-                        
-                        HStack(spacing: 4) {
-                            if pendingOrdersCount > 0 {
-                                Text("\(pendingOrdersCount) جديد")
-                                    .foregroundStyle(SofraColors.error)
-                            }
-                            if activeOrdersCount > 0 {
-                                Text("• \(activeOrdersCount) نشط")
-                                    .foregroundStyle(SofraColors.info)
-                            }
-                        }
-                        .font(SofraTypography.caption)
-                    }
-                }
-            }
-            
-            Spacer()
-            
-            // Quick stats
-            HStack(spacing: SofraSpacing.md) {
-                orderStatPill(icon: "clock.fill", count: pendingOrdersCount, color: SofraColors.warning)
-                orderStatPill(icon: "flame.fill", count: preparingOrdersCount, color: Color(hex: "#F97316"))
-                orderStatPill(icon: "bag.fill", count: readyOrdersCount, color: SofraColors.gold500)
-            }
-        }
-        .padding(.horizontal, SofraSpacing.screenHorizontal)
-        .padding(.vertical, SofraSpacing.sm)
-        .background(
-            SofraColors.cardBackground
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: -4)
-        )
-    }
-    
-    private func orderStatPill(icon: String, count: Int, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
-            Text("\(count)")
-                .font(SofraTypography.calloutSemibold)
-        }
-        .foregroundStyle(color)
-        .padding(.horizontal, SofraSpacing.sm)
-        .padding(.vertical, 6)
-        .background(color.opacity(0.1))
-        .clipShape(Capsule())
-    }
-    
-    private var activeOrdersCount: Int {
-        vm.orders.filter { $0.status == .accepted || $0.status == .preparing || $0.status == .ready || $0.status == .outForDelivery }.count
-    }
-    
-    private var preparingOrdersCount: Int {
-        vm.orders.filter { $0.status == .preparing }.count
-    }
-    
-    private var readyOrdersCount: Int {
-        vm.orders.filter { $0.status == .ready }.count
-    }
+
     
     // MARK: - Order Status Picker Sheet
     private func orderStatusPickerSheet(_ order: Order) -> some View {

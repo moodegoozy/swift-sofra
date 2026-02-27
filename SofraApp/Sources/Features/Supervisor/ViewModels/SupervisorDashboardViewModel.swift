@@ -192,4 +192,83 @@ final class SupervisorDashboardViewModel {
     func users(byRole role: UserRole) -> [AppUser] {
         users.filter { $0.role == role }
     }
+    
+    // MARK: - My Restaurants (registered by this supervisor)
+    func myRestaurants(supervisorId: String) -> [Restaurant] {
+        restaurants.filter { $0.supervisorId == supervisorId }
+    }
+    
+    // MARK: - Orders for My Restaurants
+    func ordersForMyRestaurants(supervisorId: String) -> [Order] {
+        let myRestIds = Set(myRestaurants(supervisorId: supervisorId).map { $0.id })
+        return orders.filter { myRestIds.contains($0.restaurantOwnerId ?? "") }
+    }
+    
+    // MARK: - Register Restaurant Owner (by Supervisor)
+    private let authService = FirebaseAuthService()
+    
+    func registerRestaurantOwner(
+        email: String,
+        password: String,
+        restaurantName: String,
+        phone: String,
+        city: String,
+        supervisorId: String,
+        supervisorToken: String
+    ) async throws -> (userId: String, restaurantId: String) {
+        // 1. Create user account in Firebase Auth
+        let authResponse = try await authService.signUp(email: email, password: password)
+        let newUserId = authResponse.localId
+        let newUserToken = authResponse.idToken
+        
+        // 2. Create user document in Firestore (using new user's token)
+        let userFields: [String: Any] = [
+            "uid": newUserId,
+            "email": email,
+            "name": restaurantName,
+            "phone": phone,
+            "city": city,
+            "role": "owner",
+            "createdAt": ISO8601DateFormatter().string(from: Date()),
+            "registeredBySupervisor": supervisorId
+        ]
+        try await firestoreService.createDocument(
+            collection: "users",
+            id: newUserId,
+            fields: userFields,
+            idToken: newUserToken
+        )
+        
+        // 3. Create restaurant document with supervisorId
+        let restaurantFields: [String: Any] = [
+            "name": restaurantName,
+            "ownerId": newUserId,
+            "email": email,
+            "phone": phone,
+            "city": city,
+            "isOpen": true,
+            "allowDelivery": true,
+            "allowPickup": false,
+            "packageType": "free",
+            "isVerified": true, // Auto-verify since added by supervisor
+            "sellerTier": "bronze",
+            "commissionRate": 0,
+            "isHiring": false,
+            "menuItemCount": 0,
+            "supervisorId": supervisorId,
+            "createdAt": ISO8601DateFormatter().string(from: Date())
+        ]
+        try await firestoreService.createDocument(
+            collection: "restaurants",
+            id: newUserId,
+            fields: restaurantFields,
+            idToken: newUserToken
+        )
+        
+        // 4. Reload data using supervisor's token
+        await loadRestaurants(token: supervisorToken)
+        await loadUsers(token: supervisorToken)
+        
+        return (newUserId, newUserId)
+    }
 }

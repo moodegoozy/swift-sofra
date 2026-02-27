@@ -39,7 +39,9 @@ struct MainTabView: View {
         }
     }
 
-    // MARK: - Owner Tabs (4 tabs)
+    // MARK: - Owner Tabs (5 tabs)
+    @State private var ownerOrdersVM = OrdersViewModel()
+    
     private var ownerTabs: some View {
         TabView(selection: Bindable(appState).selectedMainTab) {
             Tab("الرئيسية", systemImage: "house.fill", value: 0) {
@@ -49,6 +51,11 @@ struct MainTabView: View {
             Tab("المنتجات", systemImage: "menucard.fill", value: 1) {
                 NavigationStack { OwnerProductsView() }
             }
+            
+            Tab("الطلبات", systemImage: "list.clipboard.fill", value: 3) {
+                NavigationStack { OwnerOrdersTabView() }
+            }
+            .badge(ownerPendingOrdersCount)
 
             Tab("لوحة التحكم", systemImage: "chart.bar.fill", value: 2) {
                 NavigationStack { OwnerDashboardView() }
@@ -59,6 +66,14 @@ struct MainTabView: View {
             }
         }
         .tint(SofraColors.gold400)
+        .task {
+            guard let uid = appState.currentUser?.uid else { return }
+            await ownerOrdersVM.loadOrders(userId: uid, role: .owner, token: try? await appState.validToken())
+        }
+    }
+    
+    private var ownerPendingOrdersCount: Int {
+        ownerOrdersVM.orders.filter { $0.status == .pending }.count
     }
 
     // MARK: - Courier Tabs (5 tabs)
