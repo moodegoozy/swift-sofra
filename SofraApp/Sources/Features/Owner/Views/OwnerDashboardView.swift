@@ -32,30 +32,45 @@ struct OwnerDashboardView: View {
     @State private var cancellingOrder: Order?
     @State private var showCancelSheet = false
     @State private var cancelReason = ""
+    // Order status management
+    @State private var showStatusPicker = false
+    @State private var statusPickerOrder: Order?
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Quick access bar for orders (always visible)
-            if pendingOrdersCount > 0 {
-                quickOrdersBar
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                // Quick access bar for orders (always visible)
+                if pendingOrdersCount > 0 && selectedTab != 2 {
+                    quickOrdersBar
+                }
+                
+                ownerTabBar
+
+                TabView(selection: $selectedTab) {
+                    ownerHome.tag(0)
+                    ownerProducts.tag(1)
+                    ownerOrders.tag(2)
+                    ownerReports.tag(3)
+                    ownerHiring.tag(4)
+                    ownerSettings.tag(5)
+                    ownerRestaurants.tag(6)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
             
-            ownerTabBar
-
-            TabView(selection: $selectedTab) {
-                ownerHome.tag(0)
-                ownerProducts.tag(1)
-                ownerOrders.tag(2)
-                ownerReports.tag(3)
-                ownerHiring.tag(4)
-                ownerSettings.tag(5)
-                ownerRestaurants.tag(6)
+            // Fixed bottom orders shortcut bar
+            if selectedTab != 2 {
+                ordersShortcutBar
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
         }
         .ramadanBackground()
         .navigationTitle(vm.restaurant?.name ?? "لوحة المطعم")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showStatusPicker) {
+            if let order = statusPickerOrder {
+                orderStatusPickerSheet(order)
+            }
+        }
         .task {
             guard let uid = appState.currentUser?.uid else { return }
             await vm.loadDashboard(ownerId: uid, token: try? await appState.validToken())
@@ -291,6 +306,290 @@ struct OwnerDashboardView: View {
                 .padding(.vertical, 6)
                 .background(cancelReason == reason ? SofraColors.primary : SofraColors.sky100)
                 .clipShape(Capsule())
+        }
+    }
+    
+    // MARK: - Fixed Bottom Orders Shortcut Bar
+    private var ordersShortcutBar: some View {
+        HStack(spacing: 0) {
+            // Orders summary
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { selectedTab = 2 }
+            } label: {
+                HStack(spacing: SofraSpacing.sm) {
+                    // Orders icon with badge
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "list.clipboard.fill")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(SofraColors.gold500)
+                        
+                        if pendingOrdersCount > 0 {
+                            Text("\(pendingOrdersCount)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(SofraColors.error)
+                                .clipShape(Capsule())
+                                .offset(x: 8, y: -8)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("الطلبات")
+                            .font(SofraTypography.calloutSemibold)
+                            .foregroundStyle(SofraColors.textPrimary)
+                        
+                        HStack(spacing: 4) {
+                            if pendingOrdersCount > 0 {
+                                Text("\(pendingOrdersCount) جديد")
+                                    .foregroundStyle(SofraColors.error)
+                            }
+                            if activeOrdersCount > 0 {
+                                Text("• \(activeOrdersCount) نشط")
+                                    .foregroundStyle(SofraColors.info)
+                            }
+                        }
+                        .font(SofraTypography.caption)
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            // Quick stats
+            HStack(spacing: SofraSpacing.md) {
+                orderStatPill(icon: "clock.fill", count: pendingOrdersCount, color: SofraColors.warning)
+                orderStatPill(icon: "flame.fill", count: preparingOrdersCount, color: Color(hex: "#F97316"))
+                orderStatPill(icon: "bag.fill", count: readyOrdersCount, color: SofraColors.gold500)
+            }
+        }
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
+        .padding(.vertical, SofraSpacing.sm)
+        .background(
+            SofraColors.cardBackground
+                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: -4)
+        )
+    }
+    
+    private func orderStatPill(icon: String, count: Int, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+            Text("\(count)")
+                .font(SofraTypography.calloutSemibold)
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, SofraSpacing.sm)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.1))
+        .clipShape(Capsule())
+    }
+    
+    private var activeOrdersCount: Int {
+        vm.orders.filter { $0.status == .accepted || $0.status == .preparing || $0.status == .ready || $0.status == .outForDelivery }.count
+    }
+    
+    private var preparingOrdersCount: Int {
+        vm.orders.filter { $0.status == .preparing }.count
+    }
+    
+    private var readyOrdersCount: Int {
+        vm.orders.filter { $0.status == .ready }.count
+    }
+    
+    // MARK: - Order Status Picker Sheet
+    private func orderStatusPickerSheet(_ order: Order) -> some View {
+        NavigationStack {
+            VStack(spacing: SofraSpacing.lg) {
+                // Order info header
+                SofraCard {
+                    HStack {
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("#\(order.id.prefix(8))")
+                                .font(SofraTypography.headline)
+                            if let name = order.customerName, !name.isEmpty {
+                                Text(name)
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(SofraColors.textMuted)
+                            }
+                        }
+                        Spacer()
+                        StatusBadge(text: order.status.arabicLabel, color: order.status.uiColor)
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // Status options
+                VStack(spacing: SofraSpacing.sm) {
+                    Text("تغيير الحالة")
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(SofraColors.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    
+                    ScrollView {
+                        VStack(spacing: SofraSpacing.sm) {
+                            ForEach(availableStatuses(for: order.status), id: \.self) { status in
+                                statusOptionCard(order: order, targetStatus: status)
+                            }
+                        }
+                        .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    }
+                }
+                
+                Spacer()
+                
+                // Cancel option
+                if order.status != .delivered && order.status != .cancelled {
+                    SofraButton(
+                        title: "إلغاء الطلب",
+                        icon: "xmark.circle.fill",
+                        style: .destructive
+                    ) {
+                        showStatusPicker = false
+                        cancellingOrder = order
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            showCancelSheet = true
+                        }
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    .padding(.bottom, SofraSpacing.lg)
+                }
+            }
+            .padding(.top, SofraSpacing.md)
+            .navigationTitle("إدارة الطلب")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("إغلاق") {
+                        showStatusPicker = false
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+    
+    private func availableStatuses(for currentStatus: OrderStatus) -> [OrderStatus] {
+        switch currentStatus {
+        case .pending:
+            return [.accepted]
+        case .accepted:
+            return [.preparing, .pending] // Can go back to pending
+        case .preparing:
+            return [.ready, .accepted] // Can go back
+        case .ready:
+            return [.outForDelivery, .preparing] // Can go back
+        case .outForDelivery:
+            return [.delivered, .ready] // Can go back
+        case .delivered, .cancelled:
+            return []
+        }
+    }
+    
+    private func statusOptionCard(order: Order, targetStatus: OrderStatus) -> some View {
+        let isForward = statusIndex(targetStatus) > statusIndex(order.status)
+        let config = statusConfig(for: targetStatus, isForward: isForward)
+        
+        return Button {
+            Task {
+                await vm.updateOrderStatus(
+                    orderId: order.id,
+                    newStatus: targetStatus,
+                    customerId: order.customerId,
+                    token: try? await appState.validToken()
+                )
+                showStatusPicker = false
+            }
+        } label: {
+            HStack(spacing: SofraSpacing.md) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(config.gradient)
+                        .frame(width: 50, height: 50)
+                        .shadow(color: config.color.opacity(0.3), radius: 6, x: 0, y: 3)
+                    
+                    Image(systemName: config.icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(config.title)
+                            .font(SofraTypography.headline)
+                            .foregroundStyle(SofraColors.textPrimary)
+                        
+                        if !isForward {
+                            Text("رجوع")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(SofraColors.warning)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    
+                    Text(config.subtitle)
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+                
+                Spacer()
+                
+                Image(systemName: isForward ? "arrow.left.circle.fill" : "arrow.right.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(config.color.opacity(0.7))
+            }
+            .padding(SofraSpacing.md)
+            .background(SofraColors.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
+                    .stroke(config.color.opacity(0.2), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+        }
+    }
+    
+    private func statusIndex(_ status: OrderStatus) -> Int {
+        switch status {
+        case .pending: return 0
+        case .accepted: return 1
+        case .preparing: return 2
+        case .ready: return 3
+        case .outForDelivery: return 4
+        case .delivered: return 5
+        case .cancelled: return -1
+        }
+    }
+    
+    private func statusConfig(for status: OrderStatus, isForward: Bool) -> (icon: String, title: String, subtitle: String, color: Color, gradient: LinearGradient) {
+        switch status {
+        case .pending:
+            return ("clock.fill", "انتظار", "إرجاع للمراجعة", SofraColors.warning,
+                   LinearGradient(colors: [SofraColors.warning, SofraColors.warning.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        case .accepted:
+            return ("checkmark.circle.fill", "مقبول", isForward ? "قبول الطلب" : "إرجاع لمقبول", Color(hex: "#10B981"),
+                   LinearGradient(colors: [Color(hex: "#10B981"), Color(hex: "#059669")], startPoint: .topLeading, endPoint: .bottomTrailing))
+        case .preparing:
+            return ("flame.fill", "تحضير", isForward ? "بدء التحضير" : "إرجاع للتحضير", Color(hex: "#F97316"),
+                   LinearGradient(colors: [Color(hex: "#F97316"), Color(hex: "#EA580C")], startPoint: .topLeading, endPoint: .bottomTrailing))
+        case .ready:
+            return ("bag.fill", "جاهز", isForward ? "الطلب جاهز" : "إرجاع لجاهز", SofraColors.gold500,
+                   LinearGradient(colors: [SofraColors.gold500, SofraColors.gold600], startPoint: .topLeading, endPoint: .bottomTrailing))
+        case .outForDelivery:
+            return ("car.fill", "في الطريق", isForward ? "إرسال للتوصيل" : "إرجاع للتوصيل", Color(hex: "#6366F1"),
+                   LinearGradient(colors: [Color(hex: "#6366F1"), Color(hex: "#4F46E5")], startPoint: .topLeading, endPoint: .bottomTrailing))
+        case .delivered:
+            return ("gift.fill", "تم التسليم", "تأكيد التسليم", Color(hex: "#10B981"),
+                   LinearGradient(colors: [Color(hex: "#10B981"), Color(hex: "#047857")], startPoint: .topLeading, endPoint: .bottomTrailing))
+        case .cancelled:
+            return ("xmark.circle.fill", "ملغي", "تم الإلغاء", SofraColors.error,
+                   LinearGradient(colors: [SofraColors.error, SofraColors.error.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
         }
     }
 
@@ -1016,186 +1315,259 @@ struct OwnerDashboardView: View {
         switch order.status {
         case .pending:
             HStack(spacing: SofraSpacing.sm) {
+                // Accept button - premium
                 Button {
                     Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .accepted, customerId: order.customerId, token: try? await appState.validToken()) }
                 } label: {
-                    premiumActionButton(
-                        text: "قبول الطلب",
+                    luxuryActionButton(
+                        text: "قبول",
                         icon: "checkmark.circle.fill",
-                        style: .accept
+                        config: .accept
                     )
                 }
                 
+                // Reject button
                 Button {
                     cancellingOrder = order
                     showCancelSheet = true
                 } label: {
-                    premiumActionButton(
+                    luxuryActionButton(
                         text: "رفض",
                         icon: "xmark.circle.fill",
-                        style: .reject
+                        config: .reject
                     )
                 }
             }
+            
         case .accepted:
             HStack(spacing: SofraSpacing.sm) {
                 Button {
                     Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .preparing, customerId: order.customerId, token: try? await appState.validToken()) }
                 } label: {
-                    premiumActionButton(
-                        text: "بدء التحضير",
+                    luxuryActionButton(
+                        text: "تحضير",
                         icon: "flame.fill",
-                        style: .preparing
+                        config: .preparing
                     )
                 }
                 
-                cancelOrderButton(order)
+                statusManageButton(order)
             }
+            
         case .preparing:
             HStack(spacing: SofraSpacing.sm) {
                 Button {
                     Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .ready, customerId: order.customerId, token: try? await appState.validToken()) }
                 } label: {
-                    premiumActionButton(
-                        text: "الطلب جاهز",
-                        icon: "checkmark.seal.fill",
-                        style: .ready
+                    luxuryActionButton(
+                        text: "جاهز",
+                        icon: "bag.fill",
+                        config: .ready
                     )
                 }
                 
-                cancelOrderButton(order)
+                statusManageButton(order)
             }
+            
         case .ready:
             HStack(spacing: SofraSpacing.sm) {
                 Button {
                     Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .outForDelivery, customerId: order.customerId, token: try? await appState.validToken()) }
                 } label: {
-                    premiumActionButton(
-                        text: "إرسال للتوصيل",
-                        icon: "car.side.front.open.fill",
-                        style: .delivery
+                    luxuryActionButton(
+                        text: "توصيل",
+                        icon: "car.fill",
+                        config: .delivery
                     )
                 }
                 
-                cancelOrderButton(order)
+                statusManageButton(order)
             }
+            
         case .outForDelivery:
-            Button {
-                Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .delivered, customerId: order.customerId, token: try? await appState.validToken()) }
-            } label: {
-                premiumActionButton(
-                    text: "تم التسليم",
-                    icon: "gift.fill",
-                    style: .complete
-                )
+            HStack(spacing: SofraSpacing.sm) {
+                Button {
+                    Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .delivered, customerId: order.customerId, token: try? await appState.validToken()) }
+                } label: {
+                    luxuryActionButton(
+                        text: "تم",
+                        icon: "gift.fill",
+                        config: .complete
+                    )
+                }
+                
+                statusManageButton(order)
             }
+            
         default:
             EmptyView()
         }
     }
     
-    private func cancelOrderButton(_ order: Order) -> some View {
+    private func statusManageButton(_ order: Order) -> some View {
         Button {
-            cancellingOrder = order
-            showCancelSheet = true
+            statusPickerOrder = order
+            showStatusPicker = true
         } label: {
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(SofraColors.error)
-                .padding(SofraSpacing.sm)
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(SofraColors.textSecondary)
+                .padding(12)
                 .background(
                     Circle()
-                        .fill(SofraColors.error.opacity(0.1))
+                        .fill(SofraColors.sky100)
                 )
                 .overlay(
                     Circle()
-                        .stroke(SofraColors.error.opacity(0.3), lineWidth: 1)
+                        .stroke(SofraColors.sky200, lineWidth: 1)
                 )
         }
     }
     
-    // MARK: - Premium Button Styles
-    private enum ActionButtonStyle {
+    // MARK: - Luxury Action Button
+    private enum LuxuryButtonConfig {
         case accept, reject, preparing, ready, delivery, complete
         
         var gradient: LinearGradient {
             switch self {
             case .accept:
                 return LinearGradient(
-                    colors: [Color(hex: "#10B981"), Color(hex: "#059669")],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    stops: [
+                        .init(color: Color(hex: "#22C55E"), location: 0),
+                        .init(color: Color(hex: "#16A34A"), location: 0.5),
+                        .init(color: Color(hex: "#15803D"), location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
             case .reject:
                 return LinearGradient(
-                    colors: [Color(hex: "#EF4444"), Color(hex: "#DC2626")],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    stops: [
+                        .init(color: Color(hex: "#F87171"), location: 0),
+                        .init(color: Color(hex: "#EF4444"), location: 0.5),
+                        .init(color: Color(hex: "#DC2626"), location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
             case .preparing:
                 return LinearGradient(
-                    colors: [Color(hex: "#F97316"), Color(hex: "#EA580C")],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    stops: [
+                        .init(color: Color(hex: "#FB923C"), location: 0),
+                        .init(color: Color(hex: "#F97316"), location: 0.5),
+                        .init(color: Color(hex: "#EA580C"), location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
             case .ready:
                 return LinearGradient(
-                    colors: [SofraColors.gold500, SofraColors.gold600],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    stops: [
+                        .init(color: SofraColors.gold400, location: 0),
+                        .init(color: SofraColors.gold500, location: 0.5),
+                        .init(color: SofraColors.gold600, location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
             case .delivery:
                 return LinearGradient(
-                    colors: [Color(hex: "#6366F1"), Color(hex: "#4F46E5")],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    stops: [
+                        .init(color: Color(hex: "#818CF8"), location: 0),
+                        .init(color: Color(hex: "#6366F1"), location: 0.5),
+                        .init(color: Color(hex: "#4F46E5"), location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
             case .complete:
                 return LinearGradient(
-                    colors: [Color(hex: "#10B981"), Color(hex: "#047857")],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    stops: [
+                        .init(color: Color(hex: "#34D399"), location: 0),
+                        .init(color: Color(hex: "#10B981"), location: 0.5),
+                        .init(color: Color(hex: "#059669"), location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
             }
         }
         
-        var shadowColor: Color {
+        var glowColor: Color {
             switch self {
-            case .accept, .complete: return Color(hex: "#10B981").opacity(0.4)
-            case .reject: return Color(hex: "#EF4444").opacity(0.4)
-            case .preparing: return Color(hex: "#F97316").opacity(0.4)
-            case .ready: return SofraColors.gold500.opacity(0.4)
-            case .delivery: return Color(hex: "#6366F1").opacity(0.4)
+            case .accept, .complete: return Color(hex: "#22C55E")
+            case .reject: return Color(hex: "#EF4444")
+            case .preparing: return Color(hex: "#F97316")
+            case .ready: return SofraColors.gold500
+            case .delivery: return Color(hex: "#6366F1")
             }
         }
         
-        var isCompact: Bool {
-            self == .reject
+        var iconBackground: Color {
+            switch self {
+            case .accept, .complete: return Color(hex: "#166534")
+            case .reject: return Color(hex: "#991B1B")
+            case .preparing: return Color(hex: "#9A3412")
+            case .ready: return SofraColors.gold700
+            case .delivery: return Color(hex: "#3730A3")
+            }
         }
     }
-
-    private func premiumActionButton(text: String, icon: String, style: ActionButtonStyle) -> some View {
+    
+    private func luxuryActionButton(text: String, icon: String, config: LuxuryButtonConfig) -> some View {
         HStack(spacing: SofraSpacing.xs) {
-            Image(systemName: icon)
-                .font(.system(size: style.isCompact ? 14 : 16, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
+            // Icon with circular background
+            ZStack {
+                Circle()
+                    .fill(config.iconBackground.opacity(0.5))
+                    .frame(width: 26, height: 26)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.white)
+            }
             
             Text(text)
-                .font(SofraTypography.calloutSemibold)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
         }
-        .foregroundStyle(.white)
-        .padding(.horizontal, style.isCompact ? SofraSpacing.md : SofraSpacing.lg)
-        .padding(.vertical, SofraSpacing.sm + 2)
+        .padding(.leading, 6)
+        .padding(.trailing, 14)
+        .padding(.vertical, 10)
         .background(
-            style.gradient
-                .shadow(.inner(color: .white.opacity(0.2), radius: 0, x: 0, y: 1))
+            ZStack {
+                // Main gradient
+                config.gradient
+                
+                // Inner highlight at top
+                LinearGradient(
+                    colors: [.white.opacity(0.25), .clear],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+                
+                // Subtle inner shadow at bottom
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.15)],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+            }
         )
-        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.buttonRadius, style: .continuous))
-        .shadow(color: style.shadowColor, radius: 8, x: 0, y: 4)
+        .clipShape(Capsule())
         .overlay(
-            RoundedRectangle(cornerRadius: SofraSpacing.buttonRadius, style: .continuous)
-                .stroke(.white.opacity(0.15), lineWidth: 1)
+            Capsule()
+                .stroke(
+                    LinearGradient(
+                        colors: [.white.opacity(0.4), .white.opacity(0.1)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
         )
+        .shadow(color: config.glowColor.opacity(0.4), radius: 8, x: 0, y: 4)
+        .shadow(color: config.glowColor.opacity(0.2), radius: 16, x: 0, y: 8)
     }
     
     // MARK: - Order Progress Indicator
