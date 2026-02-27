@@ -68,7 +68,7 @@ struct MainTabView: View {
         .tint(SofraColors.gold400)
         .task {
             guard let uid = appState.currentUser?.uid else { return }
-            await ownerOrdersVM.loadOrders(userId: uid, role: .owner, token: try? await appState.validToken())
+            await ownerOrdersVM.loadOrders(userId: uid, token: try? await appState.validToken())
         }
     }
     
