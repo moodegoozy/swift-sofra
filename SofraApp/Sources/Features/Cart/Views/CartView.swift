@@ -7,6 +7,8 @@ struct CartView: View {
     @Environment(CartViewModel.self) var cartVM
     @Environment(AppState.self) var appState
     @State private var showCheckout = false
+    
+    private let minimumOrderAmount: Double = 15.0 // Minimum order amount in SAR
 
     /// Customer must have name, phone, and location to order
     private var isProfileComplete: Bool {
@@ -15,6 +17,14 @@ struct CartView: View {
         let hasPhone = !(user.phone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let hasLocation = appState.hasConfirmedLocation || (user.savedLocation != nil && user.savedLocation!.lat != 0)
         return hasName && hasPhone && hasLocation
+    }
+    
+    private var meetsMinimumOrder: Bool {
+        cartVM.subtotal >= minimumOrderAmount
+    }
+    
+    private var canCheckout: Bool {
+        isProfileComplete && meetsMinimumOrder
     }
 
     private var missingFields: [String] {
@@ -69,15 +79,27 @@ struct CartView: View {
                             Text("رسوم التوصيل تُحدد عند الدفع")
                                 .font(SofraTypography.caption)
                                 .foregroundStyle(SofraColors.textMuted)
+                            
+                            // Minimum order notice
+                            if !meetsMinimumOrder {
+                                HStack(spacing: SofraSpacing.xs) {
+                                    Image(systemName: "info.circle.fill")
+                                        .foregroundStyle(SofraColors.warning)
+                                    Text("الحد الأدنى للطلب \(Int(minimumOrderAmount)) ر.س - أضف المزيد بـ \(Int(minimumOrderAmount - cartVM.subtotal)) ر.س")
+                                        .font(SofraTypography.caption)
+                                        .foregroundStyle(SofraColors.warning)
+                                }
+                                .padding(.top, SofraSpacing.xs)
+                            }
                         }
                         .padding(.horizontal, SofraSpacing.screenHorizontal)
 
                         // Actions
                         VStack(spacing: SofraSpacing.sm) {
                             SofraButton(
-                                title: "إتمام الطلب",
-                                icon: "creditcard.fill",
-                                isDisabled: !isProfileComplete
+                                title: meetsMinimumOrder ? "إتمام الطلب" : "أضف المزيد (\(Int(minimumOrderAmount - cartVM.subtotal)) ر.س)",
+                                icon: meetsMinimumOrder ? "creditcard.fill" : "plus.circle.fill",
+                                isDisabled: !canCheckout
                             ) {
                                 showCheckout = true
                             }

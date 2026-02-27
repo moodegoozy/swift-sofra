@@ -74,8 +74,12 @@ final class AuthViewModel {
 
     // MARK: - Validation
     private func validateLogin() -> Bool {
-        if loginEmail.trimmed.isEmpty {
-            errorMessage = "يرجى إدخال البريد الإلكتروني"
+        // Proper email validation
+        let emailPattern = #"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"#
+        let emailRegex = try? NSRegularExpression(pattern: emailPattern)
+        let emailRange = NSRange(loginEmail.trimmed.startIndex..., in: loginEmail.trimmed)
+        if loginEmail.trimmed.isEmpty || emailRegex?.firstMatch(in: loginEmail.trimmed, range: emailRange) == nil {
+            errorMessage = "يرجى إدخال بريد إلكتروني صحيح"
             showError = true
             return false
         }
@@ -93,13 +97,30 @@ final class AuthViewModel {
             showError = true
             return false
         }
-        if registerEmail.trimmed.isEmpty || !registerEmail.contains("@") {
+        if registerName.trimmed.count < 2 {
+            errorMessage = "الاسم يجب أن يكون حرفين على الأقل"
+            showError = true
+            return false
+        }
+        // Proper email validation using regex
+        let emailPattern = #"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"#
+        let emailRegex = try? NSRegularExpression(pattern: emailPattern)
+        let emailRange = NSRange(registerEmail.trimmed.startIndex..., in: registerEmail.trimmed)
+        if registerEmail.trimmed.isEmpty || emailRegex?.firstMatch(in: registerEmail.trimmed, range: emailRange) == nil {
             errorMessage = "يرجى إدخال بريد إلكتروني صحيح"
             showError = true
             return false
         }
         if registerPassword.count < 6 {
             errorMessage = "كلمة المرور يجب أن تكون 6 أحرف على الأقل"
+            showError = true
+            return false
+        }
+        // Check password strength (at least one letter and one number)
+        let hasLetter = registerPassword.rangeOfCharacter(from: .letters) != nil
+        let hasNumber = registerPassword.rangeOfCharacter(from: .decimalDigits) != nil
+        if !hasLetter || !hasNumber {
+            errorMessage = "كلمة المرور يجب أن تحتوي على أحرف وأرقام"
             showError = true
             return false
         }

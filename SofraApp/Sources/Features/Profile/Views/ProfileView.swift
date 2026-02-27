@@ -279,9 +279,35 @@ struct ProfileView: View {
 
     private func saveProfile() async {
         guard let uid = appState.currentUser?.uid else { return }
+        
+        // Validation
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedPhone = phone.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if trimmedName.isEmpty {
+            vm.errorMessage = "يرجى إدخال الاسم"
+            return
+        }
+        
+        if trimmedName.count < 2 {
+            vm.errorMessage = "الاسم يجب أن يكون حرفين على الأقل"
+            return
+        }
+        
+        // Phone validation (Saudi format: 05XXXXXXXX)
+        if !trimmedPhone.isEmpty {
+            let phonePattern = #"^05\d{8}$"#
+            let phoneRegex = try? NSRegularExpression(pattern: phonePattern)
+            let range = NSRange(trimmedPhone.startIndex..., in: trimmedPhone)
+            if phoneRegex?.firstMatch(in: trimmedPhone, range: range) == nil {
+                vm.errorMessage = "رقم الهاتف غير صحيح (مثال: 0512345678)"
+                return
+            }
+        }
+        
         var fields: [String: Any] = [
-            "name": name,
-            "phone": phone,
+            "name": trimmedName,
+            "phone": trimmedPhone,
             "address": address
         ]
         // Include location if set
@@ -301,9 +327,13 @@ struct ProfileView: View {
             token: try? await appState.validToken()
         )
         if success {
-            appState.currentUser?.name = name
-            appState.currentUser?.phone = phone
-            appState.currentUser?.address = address
+            // Update the entire struct to ensure @Observable triggers
+            if var updatedUser = appState.currentUser {
+                updatedUser.name = trimmedName
+                updatedUser.phone = trimmedPhone
+                updatedUser.address = address
+                appState.currentUser = updatedUser
+            }
         }
     }
 

@@ -359,20 +359,37 @@ struct CourierDashboardView: View {
         SofraCard {
             VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
                 HStack {
-                    Button("قبول التوصيل") {
+                    Button {
                         Task {
                             await vm.acceptDelivery(
                                 orderId: order.id,
                                 token: try? await appState.validToken()
                             )
                         }
+                    } label: {
+                        HStack(spacing: SofraSpacing.xs) {
+                            Image(systemName: "shippingbox.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("قبول التوصيل")
+                                .font(SofraTypography.calloutSemibold)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, SofraSpacing.lg)
+                        .padding(.vertical, SofraSpacing.sm + 2)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(hex: "#10B981"), Color(hex: "#059669")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.buttonRadius, style: .continuous))
+                        .shadow(color: Color(hex: "#10B981").opacity(0.4), radius: 8, x: 0, y: 4)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: SofraSpacing.buttonRadius, style: .continuous)
+                                .stroke(.white.opacity(0.15), lineWidth: 1)
+                        )
                     }
-                    .font(SofraTypography.calloutSemibold)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, SofraSpacing.md)
-                    .padding(.vertical, SofraSpacing.sm)
-                    .background(SofraColors.success)
-                    .clipShape(Capsule())
 
                     Spacer()
 
@@ -498,20 +515,37 @@ struct CourierDashboardView: View {
 
             HStack {
                 if order.status == .outForDelivery {
-                    Button("تم التوصيل ✓") {
+                    Button {
                         Task {
                             await vm.markDelivered(
                                 orderId: order.id,
                                 token: try? await appState.validToken()
                             )
                         }
+                    } label: {
+                        HStack(spacing: SofraSpacing.xs) {
+                            Image(systemName: "gift.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("تم التوصيل")
+                                .font(SofraTypography.calloutSemibold)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, SofraSpacing.lg)
+                        .padding(.vertical, SofraSpacing.sm + 2)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(hex: "#10B981"), Color(hex: "#047857")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.buttonRadius, style: .continuous))
+                        .shadow(color: Color(hex: "#10B981").opacity(0.4), radius: 8, x: 0, y: 4)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: SofraSpacing.buttonRadius, style: .continuous)
+                                .stroke(.white.opacity(0.15), lineWidth: 1)
+                        )
                     }
-                    .font(SofraTypography.calloutSemibold)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, SofraSpacing.md)
-                    .padding(.vertical, SofraSpacing.sm)
-                    .background(SofraColors.success)
-                    .clipShape(Capsule())
                 }
                 Spacer()
                 Text("\(order.total, specifier: "%.2f") ر.س")

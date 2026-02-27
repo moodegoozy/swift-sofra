@@ -216,9 +216,17 @@ struct CheckoutView: View {
     }
 
     // MARK: - Submit Order
+    private let minimumOrderAmount: Double = 15.0 // Minimum order amount in SAR
+    
     private func submitOrder() async {
         guard let user = appState.currentUser else {
             errorMessage = "يرجى تسجيل الدخول"
+            return
+        }
+        
+        // Minimum order amount validation
+        if cartVM.subtotal < minimumOrderAmount {
+            errorMessage = "الحد الأدنى للطلب \(Int(minimumOrderAmount)) ر.س"
             return
         }
 

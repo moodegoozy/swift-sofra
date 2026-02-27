@@ -23,7 +23,11 @@ final class MenuViewModel {
     }
 
     func loadMenu(restaurantId: String, token: String?) async {
-        guard let token else { return }
+        guard let token else {
+            errorMessage = "يرجى تسجيل الدخول"
+            isLoading = false
+            return
+        }
 
         isLoading = true
         errorMessage = nil
