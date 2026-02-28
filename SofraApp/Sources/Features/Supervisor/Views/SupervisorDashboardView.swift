@@ -637,7 +637,7 @@ struct SupervisorDashboardView: View {
     
     // MARK: - My Restaurant Row
     private func myRestaurantRow(_ restaurant: Restaurant) -> some View {
-        let restaurantOrders = vm.orders.filter { $0.restaurantOwnerId == restaurant.id }
+        let restaurantOrders = vm.orders.filter { $0.restaurantId == restaurant.id }
         let pendingCount = restaurantOrders.filter { $0.status == .pending }.count
         let activeCount = restaurantOrders.filter { $0.status != .delivered && $0.status != .cancelled && $0.status != .pending }.count
         
@@ -961,7 +961,7 @@ struct SupervisorDashboardView: View {
                     .padding(.horizontal, SofraSpacing.screenHorizontal)
                     
                     let restaurantOrders = vm.orders
-                        .filter { $0.restaurantOwnerId == restaurant.id }
+                        .filter { $0.restaurantId == restaurant.id }
                         .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
                     
                     if restaurantOrders.isEmpty {

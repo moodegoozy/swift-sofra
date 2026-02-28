@@ -201,7 +201,7 @@ final class SupervisorDashboardViewModel {
     // MARK: - Orders for My Restaurants
     func ordersForMyRestaurants(supervisorId: String) -> [Order] {
         let myRestIds = Set(myRestaurants(supervisorId: supervisorId).map { $0.id })
-        return orders.filter { myRestIds.contains($0.restaurantOwnerId ?? "") }
+        return orders.filter { myRestIds.contains($0.restaurantId ?? "") }
     }
     
     // MARK: - Register Restaurant Owner (by Supervisor)
