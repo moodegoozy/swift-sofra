@@ -758,39 +758,39 @@ struct SupervisorDashboardView: View {
                     VStack(spacing: SofraSpacing.md) {
                         SofraTextField(
                             label: "اسم المطعم",
-                            icon: "storefront",
                             text: $regRestaurantName,
+                            icon: "storefront",
                             placeholder: "اسم المطعم"
                         )
                         
                         SofraTextField(
                             label: "البريد الإلكتروني",
-                            icon: "envelope",
                             text: $regEmail,
+                            icon: "envelope",
                             placeholder: "email@example.com",
                             keyboardType: .emailAddress
                         )
                         
                         SofraTextField(
                             label: "كلمة المرور",
-                            icon: "lock",
                             text: $regPassword,
+                            icon: "lock",
                             placeholder: "••••••••",
                             isSecure: true
                         )
                         
                         SofraTextField(
                             label: "رقم الهاتف",
-                            icon: "phone",
                             text: $regPhone,
+                            icon: "phone",
                             placeholder: "05xxxxxxxx",
                             keyboardType: .phonePad
                         )
                         
                         SofraTextField(
                             label: "المدينة",
-                            icon: "mappin",
                             text: $regCity,
+                            icon: "mappin",
                             placeholder: "المدينة"
                         )
                     }
@@ -894,7 +894,7 @@ struct SupervisorDashboardView: View {
             Logger.log("Registration error: \(error)", level: .error)
             if let apiError = error as? APIError {
                 switch apiError {
-                case .serverError(let message):
+                case .firebaseError(let message):
                     if message.contains("EMAIL_EXISTS") {
                         registrationError = "البريد الإلكتروني مستخدم بالفعل"
                     } else if message.contains("WEAK_PASSWORD") {
