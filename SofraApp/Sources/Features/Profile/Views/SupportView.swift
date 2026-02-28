@@ -51,7 +51,7 @@ struct SupportView: View {
                             supportOption(
                                 icon: "envelope.fill",
                                 title: "البريد الإلكتروني",
-                                subtitle: "support@sofra-albayt.com",
+                                subtitle: "afrtalbyt2026@gmail.com",
                                 action: { emailSupport() }
                             )
                         }
@@ -216,13 +216,13 @@ struct SupportView: View {
     }
 
     private func callSupport() {
-        if let url = URL(string: "tel://+966000000000") {
+        if let url = URL(string: "tel://0535534208") {
             UIApplication.shared.open(url)
         }
     }
 
     private func emailSupport() {
-        if let url = URL(string: "mailto:support@sofra-albayt.com") {
+        if let url = URL(string: "mailto:afrtalbyt2026@gmail.com") {
             UIApplication.shared.open(url)
         }
     }
