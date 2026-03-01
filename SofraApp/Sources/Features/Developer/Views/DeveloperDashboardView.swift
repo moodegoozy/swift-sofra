@@ -1,16 +1,20 @@
 // DeveloperDashboardView.swift
-// Full admin/developer dashboard — system analytics, user management,
-// restaurant management, commission settings, order control
+// لوحة تحكم المطور - تصميم فخم بأيقونات واضحة
 
 import SwiftUI
 
+// MARK: - Main Dashboard View
 struct DeveloperDashboardView: View {
     @Environment(AppState.self) var appState
     @State private var vm = DeveloperDashboardViewModel()
-    @State private var selectedTab = 0
+    @State private var selectedSection: DashboardSection?
+    @State private var showMessaging = false
+    
+    // Sheets
     @State private var editingCommission: Restaurant?
     @State private var editingUserRole: AppUser?
     @State private var selectedRole: UserRole = .customer
+    
     // Package management
     @State private var showPriceEditor = false
     @State private var editPremiumMonthly: String = "99"
@@ -18,489 +22,450 @@ struct DeveloperDashboardView: View {
     @State private var packageRequests: [PackageRequest] = []
     @State private var loadingRequests = false
     @State private var isSavingPrices = false
-    @State private var showMessaging = false
-
+    
+    enum DashboardSection: String, CaseIterable, Identifiable {
+        case restaurants = "المطاعم"
+        case families = "الأسر المنتجة"
+        case supervisors = "المشرفات"
+        case users = "المستخدمين"
+        case reports = "التقارير"
+        case licenses = "التراخيص"
+        case settings = "الإعدادات"
+        
+        var id: String { rawValue }
+        
+        var icon: String {
+            switch self {
+            case .restaurants: return "fork.knife"
+            case .families: return "house.fill"
+            case .supervisors: return "person.2.badge.gearshape.fill"
+            case .users: return "person.3.fill"
+            case .reports: return "chart.bar.xaxis"
+            case .licenses: return "doc.text.fill"
+            case .settings: return "gearshape.fill"
+            }
+        }
+        
+        var color: Color {
+            switch self {
+            case .restaurants: return Color(hex: "#F97316")
+            case .families: return Color(hex: "#8B5CF6")
+            case .supervisors: return Color(hex: "#06B6D4")
+            case .users: return Color(hex: "#3B82F6")
+            case .reports: return Color(hex: "#10B981")
+            case .licenses: return Color(hex: "#F59E0B")
+            case .settings: return Color(hex: "#6366F1")
+            }
+        }
+        
+        var gradient: LinearGradient {
+            LinearGradient(
+                colors: [color, color.opacity(0.7)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+    
     var body: some View {
-        VStack(spacing: 0) {
-            // Tab Bar
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: SofraSpacing.sm) {
-                    devTab("التحليلات", icon: "chart.bar.fill", tag: 0)
-                    devTab("الطلبات", icon: "list.clipboard.fill", tag: 1)
-                    devTab("المطاعم", icon: "storefront.fill", tag: 2)
-                    devTab("المستخدمين", icon: "person.3.fill", tag: 3)
-                    devTab("الباقات", icon: "crown.fill", tag: 4)
-                    devTab("النظام", icon: "gearshape.2.fill", tag: 5)
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: SofraSpacing.lg) {
+                    // Hero Stats
+                    heroStatsSection
+                    
+                    // Quick Stats Row
+                    quickStatsRow
+                    
+                    // Section Icons Grid
+                    sectionIconsGrid
+                    
+                    Spacer(minLength: SofraSpacing.xxxl)
                 }
-                .padding(.horizontal, SofraSpacing.screenHorizontal)
-                .padding(.vertical, SofraSpacing.sm)
+                .padding(.top, SofraSpacing.md)
             }
-            .background(SofraColors.cardBackground)
-
-            TabView(selection: $selectedTab) {
-                analyticsTab.tag(0)
-                ordersTab.tag(1)
-                restaurantsTab.tag(2)
-                usersTab.tag(3)
-                packagesTab.tag(4)
-                systemTab.tag(5)
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-        }
-        .ramadanBackground()
-        .navigationTitle("لوحة المطور")
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await vm.loadDashboard(token: try? await appState.validToken())
-        }
-        .sheet(item: $editingCommission) { restaurant in
-            commissionEditor(restaurant)
-        }
-        .sheet(item: $editingUserRole) { user in
-            roleEditor(user)
-        }
-        .sheet(isPresented: $showMessaging) {
-            DevMessagingView()
-        }
-    }
-
-    // MARK: - Dev Tab Button
-    private func devTab(_ title: String, icon: String, tag: Int) -> some View {
-        Button {
-            withAnimation { selectedTab = tag }
-        } label: {
-            HStack(spacing: SofraSpacing.xs) {
-                Text(title)
-                    .font(SofraTypography.calloutSemibold)
-                Image(systemName: icon)
-            }
-            .padding(.horizontal, SofraSpacing.md)
-            .padding(.vertical, SofraSpacing.sm)
-            .background(selectedTab == tag ? SofraColors.primaryDark : SofraColors.sky100)
-            .foregroundStyle(selectedTab == tag ? .white : SofraColors.textSecondary)
-            .clipShape(Capsule())
-        }
-    }
-
-    // MARK: - Analytics Tab
-    private var analyticsTab: some View {
-        ScrollView {
-            VStack(spacing: SofraSpacing.lg) {
-                if vm.isLoading {
-                    ForEach(0..<3, id: \.self) { _ in SkeletonCard() }
-                        .padding(.horizontal, SofraSpacing.screenHorizontal)
-                } else {
-                    // Platform Earnings Hero
-                    VStack(spacing: SofraSpacing.md) {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.system(size: 40))
+            .ramadanBackground()
+            .navigationTitle("لوحة التحكم")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showMessaging = true } label: {
+                        Image(systemName: "paperplane.fill")
                             .foregroundStyle(SofraColors.gold400)
-
-                        Text("أرباح المنصة")
-                            .font(SofraTypography.calloutSemibold)
-                            .foregroundStyle(SofraColors.textSecondary)
-
-                        Text("\(vm.netPlatformEarnings, specifier: "%.2f") ر.س")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundStyle(SofraColors.success)
-
-                        HStack(spacing: SofraSpacing.lg) {
-                            VStack(spacing: 2) {
-                                Text("\(vm.totalCommission, specifier: "%.0f") ر.س")
-                                    .font(SofraTypography.headline)
-                                    .foregroundStyle(SofraColors.info)
-                                Text("رسوم الخدمة")
-                                    .font(SofraTypography.caption2)
-                                    .foregroundStyle(SofraColors.textMuted)
-                            }
-                            VStack(spacing: 2) {
-                                Text("\(vm.courierPlatformFees, specifier: "%.0f") ر.س")
-                                    .font(SofraTypography.headline)
-                                    .foregroundStyle(SofraColors.warning)
-                                Text("رسوم المندوبين")
-                                    .font(SofraTypography.caption2)
-                                    .foregroundStyle(SofraColors.textMuted)
-                            }
-                        }
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(SofraSpacing.xl)
-                    .background(
+                }
+            }
+            .task {
+                await vm.loadDashboard(token: try? await appState.validToken())
+            }
+            .refreshable {
+                await vm.loadDashboard(token: try? await appState.validToken())
+            }
+            .sheet(item: $selectedSection) { section in
+                sectionDetailView(section)
+            }
+            .sheet(isPresented: $showMessaging) {
+                DevMessagingView()
+            }
+            .sheet(item: $editingCommission) { restaurant in
+                commissionEditorSheet(restaurant)
+            }
+            .sheet(item: $editingUserRole) { user in
+                roleEditorSheet(user)
+            }
+        }
+    }
+    
+    // MARK: - Hero Stats Section
+    private var heroStatsSection: some View {
+        VStack(spacing: SofraSpacing.md) {
+            // Platform Earnings
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
                         LinearGradient(
-                            colors: [SofraColors.cardBackground, SofraColors.sky100],
-                            startPoint: .top, endPoint: .bottom
+                            stops: [
+                                .init(color: SofraColors.gold600, location: 0),
+                                .init(color: SofraColors.gold500, location: 0.5),
+                                .init(color: SofraColors.gold400, location: 1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
-                    .shadow(color: .black.opacity(0.06), radius: 10, y: 5)
-                    .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                    // Stats Grid
-                    LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
-                        statCard("إجمالي الطلبات", value: "\(vm.totalOrders)", icon: "bag.fill", color: SofraColors.primary)
-                        statCard("طلبات اليوم", value: "\(vm.todayOrders)", icon: "calendar", color: SofraColors.warning)
-                        statCard("إيرادات اليوم", value: String(format: "%.0f ر.س", vm.todayRevenue), icon: "banknote", color: SofraColors.success)
-                        statCard("إجمالي الإيرادات", value: String(format: "%.0f ر.س", vm.totalRevenue), icon: "banknote.fill", color: SofraColors.primaryDark)
-                    }
-                    .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                    // User Breakdown
-                    SofraCard {
-                        Text("توزيع المستخدمين")
-                            .font(SofraTypography.headline)
-
-                        LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
-                            userStatBadge("العملاء", count: vm.customerCount, icon: "person.fill", color: SofraColors.primary)
-                            userStatBadge("أصحاب المطاعم", count: vm.ownerCount, icon: "storefront.fill", color: SofraColors.success)
-                            userStatBadge("المندوبين", count: vm.courierCount, icon: "car.fill", color: SofraColors.warning)
-                            userStatBadge("المشرفين", count: vm.supervisorCount, icon: "shield.fill", color: SofraColors.info)
-                        }
-                    }
-                    .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                    // Restaurant Breakdown
-                    SofraCard {
-                        Text("حالة المطاعم")
-                            .font(SofraTypography.headline)
-
-                        HStack(spacing: SofraSpacing.lg) {
-                            VStack(spacing: 4) {
-                                Text("\(vm.verifiedRestaurants.count)")
-                                    .font(SofraTypography.title2)
-                                    .foregroundStyle(SofraColors.success)
-                                Text("موثق")
-                                    .font(SofraTypography.caption)
-                                    .foregroundStyle(SofraColors.textMuted)
-                            }
-                            .frame(maxWidth: .infinity)
-
-                            Divider().frame(height: 40)
-
-                            VStack(spacing: 4) {
-                                Text("\(vm.unverifiedRestaurants.count)")
-                                    .font(SofraTypography.title2)
-                                    .foregroundStyle(SofraColors.error)
-                                Text("بانتظار التوثيق")
-                                    .font(SofraTypography.caption)
-                                    .foregroundStyle(SofraColors.textMuted)
-                            }
-                            .frame(maxWidth: .infinity)
-
-                            Divider().frame(height: 40)
-
-                            VStack(spacing: 4) {
-                                Text("\(vm.totalRestaurants)")
-                                    .font(SofraTypography.title2)
-                                    .foregroundStyle(SofraColors.textPrimary)
-                                Text("الإجمالي")
-                                    .font(SofraTypography.caption)
-                                    .foregroundStyle(SofraColors.textMuted)
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                    // Order Status Breakdown
-                    SofraCard {
-                        Text("حالة الطلبات")
-                            .font(SofraTypography.headline)
-
-                        ForEach(OrderStatus.allCases, id: \.self) { status in
-                            let count = vm.orders.filter { $0.status == status }.count
-                            if count > 0 {
-                                HStack {
-                                    Text("\(count)")
-                                        .font(SofraTypography.headline)
-                                        .foregroundStyle(status.uiColor)
-                                        .frame(width: 40)
-                                    // Progress bar
-                                    GeometryReader { geo in
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .fill(status.uiColor.opacity(0.3))
-                                            .frame(width: geo.size.width)
-                                            .overlay(alignment: .trailing) {
-                                                RoundedRectangle(cornerRadius: 4)
-                                                    .fill(status.uiColor)
-                                                    .frame(width: geo.size.width * CGFloat(count) / CGFloat(max(vm.totalOrders, 1)))
-                                            }
-                                    }
-                                    .frame(height: 8)
-                                    Spacer()
-                                    Text(status.arabicLabel)
-                                        .font(SofraTypography.caption)
-                                        .foregroundStyle(SofraColors.textSecondary)
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, SofraSpacing.screenHorizontal)
-                }
-
-                Spacer(minLength: SofraSpacing.xxxl)
-            }
-            .padding(.top, SofraSpacing.md)
-        }
-        .refreshable {
-            await vm.loadDashboard(token: try? await appState.validToken())
-        }
-    }
-
-    // MARK: - Orders Tab
-    private var ordersTab: some View {
-        ScrollView {
-            VStack(spacing: SofraSpacing.md) {
-                if vm.orders.isEmpty {
-                    EmptyStateView(icon: "list.clipboard", title: "لا توجد طلبات", message: "")
-                } else {
-                    ForEach(vm.orders) { order in
-                        devOrderCard(order)
-                    }
-                }
-            }
-            .padding(.top, SofraSpacing.md)
-        }
-        .refreshable {
-            if let token = try? await appState.validToken() {
-                await vm.loadOrders(token: token)
-            }
-        }
-    }
-
-    // MARK: - Restaurants Tab
-    private var restaurantsTab: some View {
-        ScrollView {
-            VStack(spacing: SofraSpacing.md) {
-                if vm.restaurants.isEmpty {
-                    EmptyStateView(icon: "storefront", title: "لا توجد مطاعم", message: "")
-                } else {
-                    ForEach(vm.restaurants, id: \.id) { restaurant in
-                        devRestaurantCard(restaurant)
-                    }
-                }
-            }
-            .padding(.top, SofraSpacing.md)
-        }
-        .refreshable {
-            if let token = try? await appState.validToken() {
-                await vm.loadRestaurants(token: token)
-            }
-        }
-    }
-
-    // MARK: - Users Tab
-    private var usersTab: some View {
-        ScrollView {
-            VStack(spacing: SofraSpacing.md) {
-                if vm.users.isEmpty {
-                    EmptyStateView(icon: "person.3", title: "لا يوجد مستخدمين", message: "")
-                } else {
-                    ForEach(vm.users, id: \.uid) { user in
-                        devUserCard(user)
-                    }
-                }
-            }
-            .padding(.top, SofraSpacing.md)
-        }
-        .refreshable {
-            if let token = try? await appState.validToken() {
-                await vm.loadUsers(token: token)
-            }
-        }
-    }
-
-    // MARK: - Packages Tab
-    private var packagesTab: some View {
-        ScrollView {
-            VStack(spacing: SofraSpacing.lg) {
-                // Price Settings
-                SofraCard {
-                    VStack(alignment: .trailing, spacing: SofraSpacing.md) {
-                        HStack(spacing: SofraSpacing.xs) {
-                            Text("أسعار الباقات")
+                    .shadow(color: SofraColors.gold500.opacity(0.4), radius: 20, y: 10)
+                
+                VStack(spacing: SofraSpacing.sm) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 36, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                    
+                    Text("أرباح المنصة")
+                        .font(SofraTypography.calloutSemibold)
+                        .foregroundStyle(.white.opacity(0.8))
+                    
+                    Text("\(vm.netPlatformEarnings, specifier: "%.2f") ر.س")
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    
+                    HStack(spacing: SofraSpacing.xl) {
+                        VStack(spacing: 2) {
+                            Text("\(vm.totalCommission, specifier: "%.0f")")
                                 .font(SofraTypography.headline)
-                            Image(systemName: "tag.fill")
-                                .foregroundStyle(SofraColors.gold400)
+                            Text("رسوم الخدمة")
+                                .font(.caption2)
                         }
-
-                        VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
-                            HStack {
-                                HStack(spacing: 4) {
-                                    Text("ر.س/شهر")
-                                        .font(SofraTypography.caption)
-                                        .foregroundStyle(SofraColors.textMuted)
-                                    TextField("99", text: $editPremiumMonthly)
-                                        .keyboardType(.decimalPad)
-                                        .multilineTextAlignment(.center)
-                                        .frame(width: 80)
-                                        .padding(.vertical, 6)
-                                        .background(SofraColors.surfaceElevated)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-                                Spacer()
-                                Text("الباقة الذهبية (شهري)")
-                                    .font(SofraTypography.body)
-                                    .foregroundStyle(SofraColors.textPrimary)
-                            }
-
-                            HStack {
-                                HStack(spacing: 4) {
-                                    Text("ر.س/سنة")
-                                        .font(SofraTypography.caption)
-                                        .foregroundStyle(SofraColors.textMuted)
-                                    TextField("999", text: $editPremiumYearly)
-                                        .keyboardType(.decimalPad)
-                                        .multilineTextAlignment(.center)
-                                        .frame(width: 80)
-                                        .padding(.vertical, 6)
-                                        .background(SofraColors.surfaceElevated)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-                                Spacer()
-                                Text("الباقة الذهبية (سنوي)")
-                                    .font(SofraTypography.body)
-                                    .foregroundStyle(SofraColors.textPrimary)
-                            }
-                        }
-
-                        SofraButton(
-                            title: isSavingPrices ? "جاري الحفظ..." : "حفظ الأسعار",
-                            style: .primary
-                        ) {
-                            Task { await savePackagePrices() }
-                        }
-                        .disabled(isSavingPrices)
-                    }
-                }
-                .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                // Package Requests
-                SofraCard {
-                    HStack(spacing: SofraSpacing.xs) {
-                        if loadingRequests {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        }
-                        Text("طلبات الترقية (\(packageRequests.count))")
-                            .font(SofraTypography.headline)
-                        Image(systemName: "arrow.up.circle.fill")
-                            .foregroundStyle(SofraColors.warning)
-                    }
-                }
-                .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                if packageRequests.isEmpty && !loadingRequests {
-                    EmptyStateView(
-                        icon: "crown",
-                        title: "لا توجد طلبات",
-                        message: "عندما يطلب مطعم ترقية ستظهر هنا"
-                    )
-                } else {
-                    ForEach(packageRequests) { request in
-                        packageRequestCard(request)
-                    }
-                }
-
-                // Restaurants with packages overview
-                SofraCard {
-                    VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
-                        HStack(spacing: SofraSpacing.xs) {
-                            Text("ملخص الباقات")
+                        
+                        Rectangle()
+                            .fill(.white.opacity(0.3))
+                            .frame(width: 1, height: 30)
+                        
+                        VStack(spacing: 2) {
+                            Text("\(vm.courierPlatformFees, specifier: "%.0f")")
                                 .font(SofraTypography.headline)
-                            Image(systemName: "chart.pie.fill")
-                                .foregroundStyle(SofraColors.info)
-                        }
-
-                        let premiumCount = vm.restaurants.filter { $0.packageType == .premium }.count
-                        let freeCount = vm.restaurants.filter { $0.packageType == .free }.count
-
-                        HStack {
-                            Text("\(premiumCount)")
-                                .font(SofraTypography.price)
-                                .foregroundStyle(SofraColors.gold400)
-                            Spacer()
-                            HStack(spacing: SofraSpacing.xs) {
-                                Text("مطاعم ذهبية")
-                                    .font(SofraTypography.body)
-                                Image(systemName: "crown.fill")
-                                    .foregroundStyle(SofraColors.gold400)
-                            }
-                        }
-
-                        HStack {
-                            Text("\(freeCount)")
-                                .font(SofraTypography.price)
-                                .foregroundStyle(SofraColors.textSecondary)
-                            Spacer()
-                            HStack(spacing: SofraSpacing.xs) {
-                                Text("مطاعم أساسية")
-                                    .font(SofraTypography.body)
-                                Image(systemName: "tag.fill")
-                                    .foregroundStyle(SofraColors.textMuted)
-                            }
+                            Text("رسوم المندوبين")
+                                .font(.caption2)
                         }
                     }
+                    .foregroundStyle(.white.opacity(0.9))
                 }
-                .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                Spacer(minLength: SofraSpacing.xxxl)
+                .padding(.vertical, SofraSpacing.xl)
             }
-            .padding(.top, SofraSpacing.md)
-        }
-        .task {
-            await loadPackageData()
-        }
-        .refreshable {
-            await loadPackageData()
+            .frame(height: 220)
+            .padding(.horizontal, SofraSpacing.screenHorizontal)
         }
     }
-
-    // MARK: - Package Request Card
-    private func packageRequestCard(_ request: PackageRequest) -> some View {
+    
+    // MARK: - Quick Stats Row
+    private var quickStatsRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: SofraSpacing.md) {
+                quickStatCard(
+                    title: "الطلبات",
+                    value: "\(vm.totalOrders)",
+                    subtitle: "اليوم: \(vm.todayOrders)",
+                    icon: "bag.fill",
+                    color: SofraColors.primary
+                )
+                
+                quickStatCard(
+                    title: "الإيرادات",
+                    value: "\(Int(vm.totalRevenue))",
+                    subtitle: "اليوم: \(Int(vm.todayRevenue))",
+                    icon: "banknote.fill",
+                    color: SofraColors.success
+                )
+                
+                quickStatCard(
+                    title: "المطاعم",
+                    value: "\(vm.totalRestaurants)",
+                    subtitle: "موثق: \(vm.verifiedRestaurants.count)",
+                    icon: "storefront.fill",
+                    color: Color(hex: "#F97316")
+                )
+                
+                quickStatCard(
+                    title: "المستخدمين",
+                    value: "\(vm.users.count)",
+                    subtitle: "عملاء: \(vm.customerCount)",
+                    icon: "person.3.fill",
+                    color: SofraColors.info
+                )
+            }
+            .padding(.horizontal, SofraSpacing.screenHorizontal)
+        }
+    }
+    
+    private func quickStatCard(title: String, value: String, subtitle: String, icon: String, color: Color) -> some View {
         VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
             HStack {
-                // Action Buttons
-                if request.status == .pending {
-                    HStack(spacing: SofraSpacing.sm) {
-                        Button {
-                            Task { await handlePackageRequest(request, approve: false) }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(SofraColors.error)
-                        }
-
-                        Button {
-                            Task { await handlePackageRequest(request, approve: true) }
-                        } label: {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(SofraColors.success)
-                        }
-                    }
-                } else {
-                    StatusBadge(text: request.statusLabel, color: request.statusColor)
-                }
-
                 Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(request.restaurantName)
-                        .font(SofraTypography.headline)
-                    Text("طلب: \(request.requestedPackage == "premium" ? "الذهبية" : request.requestedPackage)")
-                        .font(SofraTypography.caption)
-                        .foregroundStyle(SofraColors.gold400)
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.15))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(color)
                 }
             }
+            
+            Text(value)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(SofraColors.textPrimary)
+            
+            Text(title)
+                .font(SofraTypography.calloutSemibold)
+                .foregroundStyle(SofraColors.textSecondary)
+            
+            Text(subtitle)
+                .font(SofraTypography.caption2)
+                .foregroundStyle(SofraColors.textMuted)
+        }
+        .frame(width: 140)
+        .padding(SofraSpacing.md)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 4)
+    }
+    
+    // MARK: - Section Icons Grid
+    private var sectionIconsGrid: some View {
+        VStack(alignment: .trailing, spacing: SofraSpacing.md) {
+            Text("الأقسام")
+                .font(SofraTypography.title3)
+                .foregroundStyle(SofraColors.textPrimary)
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: SofraSpacing.md) {
+                ForEach(DashboardSection.allCases) { section in
+                    sectionIconButton(section)
+                }
+            }
+            .padding(.horizontal, SofraSpacing.screenHorizontal)
+        }
+    }
+    
+    private func sectionIconButton(_ section: DashboardSection) -> some View {
+        Button {
+            selectedSection = section
+        } label: {
+            VStack(spacing: SofraSpacing.sm) {
+                ZStack {
+                    Circle()
+                        .fill(section.gradient)
+                        .frame(width: 64, height: 64)
+                        .shadow(color: section.color.opacity(0.4), radius: 8, y: 4)
+                    
+                    Image(systemName: section.icon)
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                
+                Text(section.rawValue)
+                    .font(SofraTypography.calloutSemibold)
+                    .foregroundStyle(SofraColors.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, SofraSpacing.md)
+            .background(SofraColors.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: .black.opacity(0.03), radius: 6, y: 3)
+        }
+    }
+    
+    // MARK: - Section Detail Views
+    @ViewBuilder
+    private func sectionDetailView(_ section: DashboardSection) -> some View {
+        NavigationStack {
+            Group {
+                switch section {
+                case .restaurants:
+                    restaurantsDetailView
+                case .families:
+                    familiesDetailView
+                case .supervisors:
+                    supervisorsDetailView
+                case .users:
+                    usersDetailView
+                case .reports:
+                    reportsDetailView
+                case .licenses:
+                    licensesDetailView
+                case .settings:
+                    settingsDetailView
+                }
+            }
+            .navigationTitle(section.rawValue)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("إغلاق") { selectedSection = nil }
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+}
 
+// MARK: - Restaurants Section
+extension DeveloperDashboardView {
+    private var restaurantsDetailView: some View {
+        ScrollView {
+            VStack(spacing: SofraSpacing.md) {
+                // Stats
+                HStack(spacing: SofraSpacing.md) {
+                    restaurantStatCard("نشط", count: vm.verifiedRestaurants.filter { $0.isOpen }.count, color: SofraColors.success)
+                    restaurantStatCard("موقوف", count: vm.verifiedRestaurants.filter { !$0.isOpen }.count, color: SofraColors.error)
+                    restaurantStatCard("بانتظار", count: vm.unverifiedRestaurants.count, color: SofraColors.warning)
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // Restaurants List
+                if vm.restaurants.isEmpty {
+                    EmptyStateView(icon: "storefront", title: "لا توجد مطاعم", message: "")
+                        .padding(.top, SofraSpacing.xxxl)
+                } else {
+                    ForEach(vm.restaurants, id: \.id) { restaurant in
+                        restaurantDetailCard(restaurant)
+                    }
+                }
+            }
+            .padding(.top, SofraSpacing.md)
+        }
+        .ramadanBackground()
+    }
+    
+    private func restaurantStatCard(_ title: String, count: Int, color: Color) -> some View {
+        VStack(spacing: SofraSpacing.xs) {
+            Text("\(count)")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(color)
+            Text(title)
+                .font(SofraTypography.caption)
+                .foregroundStyle(SofraColors.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, SofraSpacing.md)
+        .background(color.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private func restaurantDetailCard(_ restaurant: Restaurant) -> some View {
+        let restaurantOrders = vm.orders.filter { $0.restaurantId == restaurant.id }
+        let totalSales = restaurantOrders.filter { $0.status == .delivered }.reduce(0.0) { $0 + $1.total }
+        
+        return VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+            // Header
             HStack {
-                Text("\(request.premiumPrice, specifier: "%.0f") ر.س/شهر")
-                    .font(SofraTypography.priceSmall)
-                    .foregroundStyle(SofraColors.success)
-                Spacer()
-                if let date = request.createdAt {
-                    Text(date.formatted(.dateTime.day().month().year()))
+                // Status Badge
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(restaurant.isVerified ? (restaurant.isOpen ? SofraColors.success : SofraColors.error) : SofraColors.warning)
+                        .frame(width: 8, height: 8)
+                    Text(restaurant.isVerified ? (restaurant.isOpen ? "نشط" : "موقوف") : "بانتظار")
                         .font(SofraTypography.caption2)
+                        .foregroundStyle(restaurant.isVerified ? (restaurant.isOpen ? SofraColors.success : SofraColors.error) : SofraColors.warning)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(restaurant.isVerified ? (restaurant.isOpen ? SofraColors.success.opacity(0.1) : SofraColors.error.opacity(0.1)) : SofraColors.warning.opacity(0.1))
+                .clipShape(Capsule())
+                
+                Spacer()
+                
+                Text(restaurant.name)
+                    .font(SofraTypography.headline)
+                    .foregroundStyle(SofraColors.textPrimary)
+            }
+            
+            Divider()
+            
+            // Stats
+            HStack(spacing: SofraSpacing.lg) {
+                VStack(spacing: 2) {
+                    Text("\(restaurantOrders.count)")
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(SofraColors.info)
+                    Text("الطلبات")
+                        .font(SofraTypography.caption2)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+                
+                VStack(spacing: 2) {
+                    Text("\(Int(totalSales))")
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(SofraColors.success)
+                    Text("المبيعات")
+                        .font(SofraTypography.caption2)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+                
+                Spacer()
+                
+                // Actions
+                HStack(spacing: SofraSpacing.sm) {
+                    Button {
+                        editingCommission = restaurant
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 16))
+                            .foregroundStyle(SofraColors.info)
+                            .padding(10)
+                            .background(SofraColors.info.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    
+                    Button {
+                        Task {
+                            await vm.verifyRestaurant(restaurantId: restaurant.id, verified: !restaurant.isVerified, token: try? await appState.validToken())
+                        }
+                    } label: {
+                        Image(systemName: restaurant.isVerified ? "xmark.shield" : "checkmark.shield")
+                            .font(.system(size: 16))
+                            .foregroundStyle(restaurant.isVerified ? SofraColors.error : SofraColors.success)
+                            .padding(10)
+                            .background((restaurant.isVerified ? SofraColors.error : SofraColors.success).opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                }
+            }
+            
+            // Contact Info
+            if let phone = restaurant.phone, !phone.isEmpty {
+                HStack {
+                    Text(phone)
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textMuted)
+                    Image(systemName: "phone.fill")
+                        .font(.caption2)
                         .foregroundStyle(SofraColors.textMuted)
                 }
             }
@@ -508,263 +473,141 @@ struct DeveloperDashboardView: View {
         .padding(SofraSpacing.cardPadding)
         .background(SofraColors.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
-                .strokeBorder(
-                    request.status == .pending ? SofraColors.warning.opacity(0.3) : Color.clear,
-                    lineWidth: 1
-                )
-        )
         .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
         .padding(.horizontal, SofraSpacing.screenHorizontal)
     }
+}
 
-    // MARK: - Package Data Loading
-    private func loadPackageData() async {
-        loadingRequests = true
-        do {
-            let token = try await appState.validToken()
-
-            // Load prices
-            let priceDoc = try? await FirestoreService().getDocument(
-                collection: "config", id: "packages", idToken: token
-            )
-            if let f = priceDoc?.fields {
-                editPremiumMonthly = String(format: "%.0f", f["premiumMonthly"]?.doubleVal ?? 99)
-                editPremiumYearly = String(format: "%.0f", f["premiumYearly"]?.doubleVal ?? 999)
-            }
-
-            // Load package requests
-            let docs = try await FirestoreService().listDocuments(
-                collection: "packageRequests", idToken: token, pageSize: 100
-            )
-            packageRequests = docs.map { PackageRequest(from: $0) }
-                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-        } catch {
-            Logger.log("Load package data error: \(error)", level: .error)
-        }
-        loadingRequests = false
-    }
-
-    // MARK: - Save Package Prices
-    private func savePackagePrices() async {
-        isSavingPrices = true
-        do {
-            let token = try await appState.validToken()
-            let monthly = Double(editPremiumMonthly) ?? 99
-            let yearly = Double(editPremiumYearly) ?? 999
-
-            try await FirestoreService().createDocument(
-                collection: "config",
-                id: "packages",
-                fields: [
-                    "premiumMonthly": monthly,
-                    "premiumYearly": yearly,
-                    "updatedAt": ISO8601DateFormatter().string(from: Date())
-                ],
-                idToken: token
-            )
-        } catch {
-            Logger.log("Save prices error: \(error)", level: .error)
-        }
-        isSavingPrices = false
-    }
-
-    // MARK: - Handle Package Request (approve/reject)
-    private func handlePackageRequest(_ request: PackageRequest, approve: Bool) async {
-        do {
-            let token = try await appState.validToken()
-            let firestoreService = FirestoreService()
-
-            // Update request status
-            try await firestoreService.updateDocument(
-                collection: "packageRequests",
-                id: request.id,
-                fields: [
-                    "status": approve ? "approved" : "rejected",
-                    "reviewedAt": ISO8601DateFormatter().string(from: Date())
-                ],
-                idToken: token
-            )
-
-            // If approved, update restaurant's packageType
-            if approve {
-                try await firestoreService.updateDocument(
-                    collection: "restaurants",
-                    id: request.restaurantId,
-                    fields: ["packageType": "premium"],
-                    idToken: token
-                )
-
-                // Update local restaurant data
-                if let idx = vm.restaurants.firstIndex(where: { $0.id == request.restaurantId }) {
-                    vm.restaurants[idx].packageType = .premium
-                }
-            }
-
-            // Update local request
-            if let idx = packageRequests.firstIndex(where: { $0.id == request.id }) {
-                packageRequests[idx].status = approve ? .approved : .rejected
-            }
-        } catch {
-            Logger.log("Handle package request error: \(error)", level: .error)
-        }
-    }
-
-    // MARK: - System Tab
-    private var systemTab: some View {
+// MARK: - Families Section (الأسر المنتجة)
+extension DeveloperDashboardView {
+    private var familiesDetailView: some View {
         ScrollView {
-            VStack(spacing: SofraSpacing.lg) {
-                // Platform Config
-                SofraCard {
-                    VStack(alignment: .trailing, spacing: SofraSpacing.md) {
-                        HStack(spacing: SofraSpacing.xs) {
-                            Text("إعدادات المنصة")
-                                .font(SofraTypography.headline)
-                            Image(systemName: "gearshape.2.fill")
-                                .foregroundStyle(SofraColors.primaryDark)
-                        }
-
-                        Group {
-                            infoRow("معرف المشروع", value: Endpoints.projectId)
-                            infoRow("رسوم الخدمة", value: "\(ServiceFee.perItem) ر.س/صنف")
-                            infoRow("رسوم المندوب", value: "3.75 ر.س/طلب")
-                            infoRow("إجمالي المستخدمين", value: "\(vm.totalUsers)")
-                            infoRow("إجمالي المطاعم", value: "\(vm.totalRestaurants)")
-                            infoRow("إجمالي الطلبات", value: "\(vm.totalOrders)")
-                        }
+            VStack(spacing: SofraSpacing.md) {
+                // Info Banner
+                HStack(spacing: SofraSpacing.md) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(SofraColors.info)
+                    
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("الأسر المنتجة")
+                            .font(SofraTypography.headline)
+                        Text("المطاعم المسجلة كأسر منتجة (من خلال المشرفات)")
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                    }
+                    
+                    Spacer()
+                }
+                .padding(SofraSpacing.md)
+                .background(SofraColors.info.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // Families (restaurants with supervisorId)
+                let families = vm.restaurants.filter { $0.supervisorId != nil }
+                
+                if families.isEmpty {
+                    EmptyStateView(icon: "house", title: "لا توجد أسر منتجة", message: "الأسر المسجلة عن طريق المشرفات ستظهر هنا")
+                        .padding(.top, SofraSpacing.xxxl)
+                } else {
+                    // Stats
+                    HStack(spacing: SofraSpacing.md) {
+                        familyStatCard("الإجمالي", count: families.count, color: SofraColors.primary)
+                        familyStatCard("نشط", count: families.filter { $0.isVerified && $0.isOpen }.count, color: SofraColors.success)
+                        familyStatCard("معلق", count: families.filter { !$0.isVerified }.count, color: SofraColors.warning)
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    
+                    ForEach(families, id: \.id) { family in
+                        familyCard(family)
                     }
                 }
-                .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                // Revenue Summary
-                SofraCard {
-                    VStack(alignment: .trailing, spacing: SofraSpacing.md) {
-                        HStack(spacing: SofraSpacing.xs) {
-                            Text("ملخص الإيرادات")
-                                .font(SofraTypography.headline)
-                            Image(systemName: "chart.pie.fill")
-                                .foregroundStyle(SofraColors.success)
-                        }
-
-                        infoRow("إجمالي المبيعات", value: String(format: "%.2f ر.س", vm.totalRevenue))
-                        infoRow("رسوم الخدمة", value: String(format: "%.2f ر.س", vm.totalCommission))
-                        infoRow("رسوم المندوبين", value: String(format: "%.2f ر.س", vm.courierPlatformFees))
-                        Divider()
-                        HStack {
-                            Text(String(format: "%.2f ر.س", vm.netPlatformEarnings))
-                                .font(SofraTypography.price)
-                                .foregroundStyle(SofraColors.success)
-                            Spacer()
-                            Text("صافي أرباح المنصة")
-                                .font(SofraTypography.headline)
-                                .foregroundStyle(SofraColors.gold400)
-                        }
-                    }
-                }
-                .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                // Quick Actions
-                SofraCard {
-                    Text("إجراءات سريعة")
-                        .font(SofraTypography.headline)
-
-                    LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
-                        quickAction("الرسائل", icon: "envelope.fill", color: SofraColors.gold400) { showMessaging = true }
-                        quickAction("الطلبات", icon: "list.clipboard", color: SofraColors.primary) { selectedTab = 1 }
-                        quickAction("المطاعم", icon: "storefront", color: SofraColors.success) { selectedTab = 2 }
-                        quickAction("المستخدمين", icon: "person.3", color: SofraColors.info) { selectedTab = 3 }
-                        quickAction("التحليلات", icon: "chart.bar", color: SofraColors.warning) { selectedTab = 0 }
-                    }
-                }
-                .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                Spacer(minLength: SofraSpacing.xxxl)
             }
             .padding(.top, SofraSpacing.md)
         }
+        .ramadanBackground()
     }
-
-    // MARK: - Dev Order Card
-    private func devOrderCard(_ order: Order) -> some View {
-        VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+    
+    private func familyStatCard(_ title: String, count: Int, color: Color) -> some View {
+        VStack(spacing: SofraSpacing.xs) {
+            Text("\(count)")
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundStyle(color)
+            Text(title)
+                .font(SofraTypography.caption)
+                .foregroundStyle(SofraColors.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, SofraSpacing.md)
+        .background(color.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private func familyCard(_ family: Restaurant) -> some View {
+        let familyOrders = vm.orders.filter { $0.restaurantId == family.id }
+        let earnings = familyOrders.filter { $0.status == .delivered }.reduce(0.0) { $0 + $1.netAmount }
+        let menuCount = family.menuItemCount ?? 0
+        
+        return VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
             HStack {
-                StatusBadge(text: order.status.arabicLabel, color: order.status.uiColor)
+                StatusBadge(
+                    text: family.isVerified ? "مفعّل" : "معلق",
+                    color: family.isVerified ? SofraColors.success : SofraColors.warning
+                )
+                
                 Spacer()
+                
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(order.restaurantName ?? "مطعم")
+                    Text(family.name)
                         .font(SofraTypography.headline)
-                    Text("#\(order.id.prefix(8))")
-                        .font(SofraTypography.caption2)
-                        .foregroundStyle(SofraColors.textMuted)
-                }
-            }
-
-            // Customer + financials
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(order.total, specifier: "%.0f") ر.س")
-                        .font(SofraTypography.priceSmall)
-                        .foregroundStyle(SofraColors.primaryDark)
-                    if order.commissionAmount > 0 {
-                        Text("رسوم: \(order.commissionAmount, specifier: "%.0f") | صافي: \(order.netAmount, specifier: "%.0f")")
-                            .font(SofraTypography.caption2)
-                            .foregroundStyle(SofraColors.info)
-                    }
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(order.customerName ?? "عميل")
-                        .font(SofraTypography.caption)
-                        .foregroundStyle(SofraColors.textSecondary)
-                    if let date = order.createdAt {
-                        Text(date.relativeArabic)
-                            .font(SofraTypography.caption2)
+                    if let city = family.city {
+                        Text(city)
+                            .font(SofraTypography.caption)
                             .foregroundStyle(SofraColors.textMuted)
                     }
                 }
+                
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: "#8B5CF6").opacity(0.1))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "house.fill")
+                        .foregroundStyle(Color(hex: "#8B5CF6"))
+                }
             }
-
-            // Status change buttons
-            HStack(spacing: SofraSpacing.sm) {
-                if order.status != .cancelled && order.status != .delivered {
-                    Button("إلغاء") {
-                        Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .cancelled, token: try? await appState.validToken()) }
-                    }
-                    .font(SofraTypography.caption)
-                    .foregroundStyle(SofraColors.error)
+            
+            Divider()
+            
+            HStack(spacing: SofraSpacing.lg) {
+                VStack(spacing: 2) {
+                    Text("\(menuCount)")
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(SofraColors.info)
+                    Text("المنتجات")
+                        .font(SofraTypography.caption2)
+                        .foregroundStyle(SofraColors.textMuted)
                 }
-
+                
+                VStack(spacing: 2) {
+                    Text("\(Int(earnings))")
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(SofraColors.success)
+                    Text("الأرباح")
+                        .font(SofraTypography.caption2)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+                
+                VStack(spacing: 2) {
+                    Text("\(familyOrders.count)")
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(SofraColors.warning)
+                    Text("الطلبات")
+                        .font(SofraTypography.caption2)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+                
                 Spacer()
-
-                if order.status == .pending {
-                    Button("قبول") {
-                        Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .accepted, token: try? await appState.validToken()) }
-                    }
-                    .font(SofraTypography.calloutSemibold)
-                    .foregroundStyle(SofraColors.success)
-                }
-                if order.status == .accepted {
-                    Button("تحضير") {
-                        Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .preparing, token: try? await appState.validToken()) }
-                    }
-                    .font(SofraTypography.calloutSemibold)
-                    .foregroundStyle(SofraColors.info)
-                }
-                if order.status == .preparing {
-                    Button("جاهز") {
-                        Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .ready, token: try? await appState.validToken()) }
-                    }
-                    .font(SofraTypography.calloutSemibold)
-                    .foregroundStyle(SofraColors.primary)
-                }
-                if order.status == .ready {
-                    Button("تم التوصيل") {
-                        Task { await vm.updateOrderStatus(orderId: order.id, newStatus: .delivered, token: try? await appState.validToken()) }
-                    }
-                    .font(SofraTypography.calloutSemibold)
-                    .foregroundStyle(SofraColors.success)
-                }
             }
         }
         .padding(SofraSpacing.cardPadding)
@@ -773,73 +616,126 @@ struct DeveloperDashboardView: View {
         .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
         .padding(.horizontal, SofraSpacing.screenHorizontal)
     }
+}
 
-    // MARK: - Dev Restaurant Card
-    private func devRestaurantCard(_ restaurant: Restaurant) -> some View {
-        VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+// MARK: - Supervisors Section
+extension DeveloperDashboardView {
+    private var supervisorsDetailView: some View {
+        ScrollView {
+            VStack(spacing: SofraSpacing.md) {
+                let supervisors = vm.users.filter { $0.role == .supervisor }
+                
+                // Stats
+                HStack(spacing: SofraSpacing.md) {
+                    supervisorStatCard("المشرفات", count: supervisors.count, icon: "person.2.fill", color: Color(hex: "#06B6D4"))
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                if supervisors.isEmpty {
+                    EmptyStateView(icon: "person.2.badge.gearshape", title: "لا توجد مشرفات", message: "")
+                        .padding(.top, SofraSpacing.xxxl)
+                } else {
+                    ForEach(supervisors, id: \.uid) { supervisor in
+                        supervisorCard(supervisor)
+                    }
+                }
+            }
+            .padding(.top, SofraSpacing.md)
+        }
+        .ramadanBackground()
+    }
+    
+    private func supervisorStatCard(_ title: String, count: Int, icon: String, color: Color) -> some View {
+        HStack(spacing: SofraSpacing.md) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 48, height: 48)
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(color)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(count)")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(color)
+                Text(title)
+                    .font(SofraTypography.caption)
+                    .foregroundStyle(SofraColors.textMuted)
+            }
+            
+            Spacer()
+        }
+        .padding(SofraSpacing.md)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+    }
+    
+    private func supervisorCard(_ supervisor: AppUser) -> some View {
+        let supervisorRestaurants = vm.restaurants.filter { $0.supervisorId == supervisor.uid }
+        
+        return VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
             HStack {
                 // Actions
                 HStack(spacing: SofraSpacing.sm) {
                     Button {
+                        editingUserRole = supervisor
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 14))
+                            .foregroundStyle(SofraColors.info)
+                            .padding(8)
+                            .background(SofraColors.info.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    
+                    Button {
                         Task {
-                            await vm.verifyRestaurant(
-                                restaurantId: restaurant.id,
-                                verified: !restaurant.isVerified,
-                                token: try? await appState.validToken()
-                            )
+                            await vm.updateUserRole(userId: supervisor.uid, newRole: .customer, token: try? await appState.validToken())
                         }
                     } label: {
-                        StatusBadge(
-                            text: restaurant.isVerified ? "موثق ✓" : "توثيق",
-                            color: restaurant.isVerified ? SofraColors.success : SofraColors.warning
-                        )
-                    }
-
-                    Button {
-                        editingCommission = restaurant
-                    } label: {
-                        Text("\(ServiceFee.perItem, specifier: "%.2f") ر.س")
-                            .font(SofraTypography.caption)
-                            .foregroundStyle(SofraColors.info)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(SofraColors.info.opacity(0.15))
-                            .clipShape(Capsule())
+                        Image(systemName: "person.badge.minus")
+                            .font(.system(size: 14))
+                            .foregroundStyle(SofraColors.error)
+                            .padding(8)
+                            .background(SofraColors.error.opacity(0.1))
+                            .clipShape(Circle())
                     }
                 }
-
+                
                 Spacer()
-
+                
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(restaurant.name)
+                    Text(supervisor.name ?? "مشرفة")
                         .font(SofraTypography.headline)
-                    Text(restaurant.phone ?? "بدون جوال")
+                    Text(supervisor.email ?? "")
                         .font(SofraTypography.caption)
                         .foregroundStyle(SofraColors.textMuted)
                 }
-
-                CachedPhaseImage(url: URL(string: restaurant.logoUrl ?? "")) { phase in
-                    switch phase {
-                    case .success(let img):
-                        img.resizable().aspectRatio(contentMode: .fill)
-                    default:
-                        Image(systemName: "storefront.fill")
-                            .foregroundStyle(SofraColors.textMuted)
-                    }
+                
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: "#06B6D4").opacity(0.1))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "person.badge.shield.checkmark.fill")
+                        .foregroundStyle(Color(hex: "#06B6D4"))
                 }
-                .frame(width: 44, height: 44)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-
+            
+            Divider()
+            
             HStack {
-                StatusBadge(text: restaurant.isOpen ? "مفتوح" : "مغلق", color: restaurant.isOpen ? SofraColors.success : SofraColors.error)
+                Text("\(supervisorRestaurants.count) أسرة منتجة")
+                    .font(SofraTypography.caption)
+                    .foregroundStyle(SofraColors.textSecondary)
+                
                 Spacer()
-                Text("أصناف: \(restaurant.menuItemCount ?? 0)")
+                
+                Text("الصلاحيات: إدارة الأسر")
                     .font(SofraTypography.caption)
-                    .foregroundStyle(SofraColors.textSecondary)
-                Text("طلبات: \(restaurant.totalOrders ?? 0)")
-                    .font(SofraTypography.caption)
-                    .foregroundStyle(SofraColors.textSecondary)
+                    .foregroundStyle(SofraColors.textMuted)
             }
         }
         .padding(SofraSpacing.cardPadding)
@@ -847,303 +743,725 @@ struct DeveloperDashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
         .padding(.horizontal, SofraSpacing.screenHorizontal)
-        .contextMenu {
-            Button(role: .destructive) {
-                Task { await vm.deleteRestaurant(restaurantId: restaurant.id, token: try? await appState.validToken()) }
-            } label: {
-                Label("حذف المطعم", systemImage: "trash")
-            }
-        }
     }
+}
 
-    // MARK: - Dev User Card
-    private func devUserCard(_ user: AppUser) -> some View {
-        HStack {
-            // Role badge + edit
-            Button {
-                selectedRole = user.role
-                editingUserRole = user
-            } label: {
-                Text(roleLabel(user.role))
-                    .font(SofraTypography.caption2)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(roleColor(user.role))
-                    .clipShape(Capsule())
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(user.displayName)
-                    .font(SofraTypography.headline)
-                Text(user.email)
-                    .font(SofraTypography.caption)
-                    .foregroundStyle(SofraColors.textMuted)
-                if let phone = user.phone {
-                    Text(phone)
-                        .font(SofraTypography.caption2)
-                        .foregroundStyle(SofraColors.textMuted)
-                }
-            }
-
-            Image(systemName: "person.circle.fill")
-                .font(.title2)
-                .foregroundStyle(roleColor(user.role))
-        }
-        .padding(SofraSpacing.cardPadding)
-        .background(SofraColors.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
-        .padding(.horizontal, SofraSpacing.screenHorizontal)
-        .contextMenu {
-            Button(role: .destructive) {
-                Task { await vm.deleteUser(userId: user.uid, token: try? await appState.validToken()) }
-            } label: {
-                Label("حذف المستخدم", systemImage: "trash")
-            }
-        }
-    }
-
-    // MARK: - Commission Editor Sheet
-    private func commissionEditor(_ restaurant: Restaurant) -> some View {
-        NavigationStack {
-            VStack(spacing: SofraSpacing.xl) {
-                Text(restaurant.name)
-                    .font(SofraTypography.title2)
-                    .foregroundStyle(SofraColors.textPrimary)
-
-                VStack(spacing: SofraSpacing.sm) {
-                    Text("رسوم الخدمة")
-                        .font(SofraTypography.headline)
-
-                    Text("\(ServiceFee.perItem, specifier: "%.2f") ر.س")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .foregroundStyle(SofraColors.info)
-
-                    Text("لكل صنف")
-                        .font(SofraTypography.calloutSemibold)
-                        .foregroundStyle(SofraColors.textSecondary)
-
-                    Divider()
-                        .padding(.horizontal, SofraSpacing.xl)
-
-                    VStack(spacing: SofraSpacing.md) {
-                        HStack {
-                            Text(restaurant.supervisorId != nil ? "\(ServiceFee.platformShareWithSupervisor, specifier: "%.2f") ر.س" : "\(ServiceFee.platformShareNoSupervisor, specifier: "%.2f") ر.س")
-                                .font(SofraTypography.headline)
-                                .foregroundStyle(SofraColors.success)
-                            Spacer()
-                            Text("حصة المنصة")
-                                .font(SofraTypography.body)
-                        }
-                        if restaurant.supervisorId != nil {
-                            HStack {
-                                Text("\(ServiceFee.supervisorShare, specifier: "%.2f") ر.س")
-                                    .font(SofraTypography.headline)
-                                    .foregroundStyle(SofraColors.warning)
-                                Spacer()
-                                Text("حصة المشرف")
-                                    .font(SofraTypography.body)
-                            }
-                        }
-                        HStack {
-                            Text(restaurant.supervisorId != nil ? "مضاف من مشرف" : "تسجيل ذاتي")
-                                .font(SofraTypography.caption)
-                                .foregroundStyle(restaurant.supervisorId != nil ? SofraColors.info : SofraColors.textMuted)
-                            Spacer()
-                            Text("نوع التسجيل")
-                                .font(SofraTypography.caption)
-                                .foregroundStyle(SofraColors.textMuted)
-                        }
-                    }
-                    .padding(.horizontal, SofraSpacing.xl)
-                }
-
-                SofraButton(title: "إغلاق", icon: "xmark") {
-                    editingCommission = nil
+// MARK: - Users Section
+extension DeveloperDashboardView {
+    private var usersDetailView: some View {
+        ScrollView {
+            VStack(spacing: SofraSpacing.md) {
+                // Stats
+                LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
+                    userStatCard("العملاء", count: vm.customerCount, icon: "person.fill", color: SofraColors.primary)
+                    userStatCard("المطاعم", count: vm.ownerCount, icon: "storefront.fill", color: Color(hex: "#F97316"))
+                    userStatCard("المندوبين", count: vm.courierCount, icon: "car.fill", color: SofraColors.warning)
+                    userStatCard("المشرفات", count: vm.supervisorCount, icon: "shield.fill", color: Color(hex: "#06B6D4"))
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                Spacer()
-            }
-            .padding(.top, SofraSpacing.xl)
-            .ramadanBackground()
-            .navigationTitle("تعديل العمولة")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("إغلاق") { editingCommission = nil }
-                }
-            }
-        }
-    }
-
-    // MARK: - Role Editor Sheet
-    private func roleEditor(_ user: AppUser) -> some View {
-        NavigationStack {
-            VStack(spacing: SofraSpacing.xl) {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(roleColor(user.role))
-
-                Text(user.displayName)
-                    .font(SofraTypography.title2)
-
-                Text(user.email)
-                    .font(SofraTypography.body)
-                    .foregroundStyle(SofraColors.textMuted)
-
-                VStack(spacing: SofraSpacing.sm) {
-                    Text("تغيير الدور")
-                        .font(SofraTypography.headline)
-
-                    Picker("", selection: $selectedRole) {
-                        ForEach(UserRole.allCases, id: \.self) { role in
-                            Text(roleLabel(role)).tag(role)
-                        }
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(height: 150)
-                }
-
-                SofraButton(title: "حفظ الدور", icon: "checkmark") {
-                    Task {
-                        await vm.updateUserRole(
-                            userId: user.uid,
-                            newRole: selectedRole,
-                            token: try? await appState.validToken()
-                        )
-                        editingUserRole = nil
+                
+                // Users List
+                if vm.users.isEmpty {
+                    EmptyStateView(icon: "person.3", title: "لا يوجد مستخدمين", message: "")
+                        .padding(.top, SofraSpacing.xxxl)
+                } else {
+                    ForEach(vm.users.prefix(50), id: \.uid) { user in
+                        userDetailCard(user)
                     }
                 }
-                .padding(.horizontal, SofraSpacing.screenHorizontal)
-
-                Spacer()
             }
-            .padding(.top, SofraSpacing.xl)
-            .ramadanBackground()
-            .navigationTitle("تعديل الدور")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("إغلاق") { editingUserRole = nil }
-                }
-            }
+            .padding(.top, SofraSpacing.md)
         }
+        .ramadanBackground()
     }
-
-    // MARK: - Helper Views
-    private func statCard(_ title: String, value: String, icon: String, color: Color) -> some View {
+    
+    private func userStatCard(_ title: String, count: Int, icon: String, color: Color) -> some View {
         VStack(spacing: SofraSpacing.sm) {
-            Image(systemName: icon)
-                .font(.title2)
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(color)
+            }
+            
+            Text("\(count)")
+                .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(color)
-            Text(value)
-                .font(SofraTypography.title2)
-                .foregroundStyle(SofraColors.textPrimary)
+            
             Text(title)
                 .font(SofraTypography.caption)
-                .foregroundStyle(SofraColors.textSecondary)
+                .foregroundStyle(SofraColors.textMuted)
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, SofraSpacing.md)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+    }
+    
+    private func userDetailCard(_ user: AppUser) -> some View {
+        let userOrders = vm.orders.filter { $0.customerId == user.uid }
+        let totalSpent = userOrders.filter { $0.status == .delivered }.reduce(0.0) { $0 + $1.total }
+        
+        return VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+            HStack {
+                // Actions
+                HStack(spacing: SofraSpacing.sm) {
+                    Button {
+                        editingUserRole = user
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 14))
+                            .foregroundStyle(SofraColors.info)
+                            .padding(8)
+                            .background(SofraColors.info.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(user.name ?? "مستخدم")
+                        .font(SofraTypography.headline)
+                    Text(roleLabel(user.role))
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(roleColor(user.role))
+                }
+                
+                ZStack {
+                    Circle()
+                        .fill(roleColor(user.role).opacity(0.1))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: roleIcon(user.role))
+                        .foregroundStyle(roleColor(user.role))
+                }
+            }
+            
+            HStack {
+                Text("\(userOrders.count) طلب • \(Int(totalSpent)) ر.س")
+                    .font(SofraTypography.caption)
+                    .foregroundStyle(SofraColors.textMuted)
+                
+                Spacer()
+                
+                if let phone = user.phone {
+                    Text(phone)
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textSecondary)
+                }
+            }
+        }
         .padding(SofraSpacing.cardPadding)
         .background(SofraColors.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
-        .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
     }
-
-    private func userStatBadge(_ title: String, count: Int, icon: String, color: Color) -> some View {
-        HStack(spacing: SofraSpacing.sm) {
-            Text("\(count)")
-                .font(SofraTypography.headline)
-                .foregroundStyle(color)
-            Spacer()
-            HStack(spacing: SofraSpacing.xs) {
-                Text(title)
-                    .font(SofraTypography.caption)
-                Image(systemName: icon)
-                    .foregroundStyle(color)
-            }
-        }
-        .padding(SofraSpacing.sm)
-        .background(color.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func infoRow(_ label: String, value: String) -> some View {
-        HStack {
-            Text(value)
-                .font(SofraTypography.body)
-                .foregroundStyle(SofraColors.textPrimary)
-            Spacer()
-            Text(label)
-                .font(SofraTypography.body)
-                .foregroundStyle(SofraColors.textSecondary)
-        }
-    }
-
-    private func quickAction(_ title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: SofraSpacing.sm) {
-                Image(systemName: icon)
-                    .font(.title3)
-                    .foregroundStyle(color)
-                Text(title)
-                    .font(SofraTypography.caption)
-                    .foregroundStyle(SofraColors.textPrimary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(SofraSpacing.md)
-            .background(color.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-    }
-
+    
     private func roleLabel(_ role: UserRole) -> String {
         switch role {
         case .customer: return "عميل"
-        case .owner: return "مالك مطعم"
+        case .owner: return "صاحب مطعم"
         case .courier: return "مندوب"
         case .admin: return "مدير"
         case .developer: return "مطور"
-        case .supervisor: return "مشرف"
-        case .social_media: return "تواصل اجتماعي"
-        case .support: return "دعم فني"
+        case .supervisor: return "مشرفة"
+        case .social_media: return "تواصل"
+        case .support: return "دعم"
         case .accountant: return "محاسب"
         }
     }
-
+    
     private func roleColor(_ role: UserRole) -> Color {
         switch role {
         case .customer: return SofraColors.primary
-        case .owner: return SofraColors.success
+        case .owner: return Color(hex: "#F97316")
         case .courier: return SofraColors.warning
         case .admin: return SofraColors.error
-        case .developer: return SofraColors.info
-        case .supervisor: return SofraColors.primaryDark
+        case .developer: return SofraColors.primaryDark
+        case .supervisor: return Color(hex: "#06B6D4")
         case .social_media: return SofraColors.gold400
         case .support: return SofraColors.sky400
         case .accountant: return SofraColors.gold600
         }
     }
+    
+    private func roleIcon(_ role: UserRole) -> String {
+        switch role {
+        case .customer: return "person.fill"
+        case .owner: return "storefront.fill"
+        case .courier: return "car.fill"
+        case .admin: return "crown.fill"
+        case .developer: return "hammer.fill"
+        case .supervisor: return "shield.fill"
+        case .social_media: return "megaphone.fill"
+        case .support: return "headphones"
+        case .accountant: return "banknote.fill"
+        }
+    }
 }
 
-// Make Restaurant equatable/hashable for sheet item
-extension Restaurant: Equatable, Hashable {
-    public static func == (lhs: Restaurant, rhs: Restaurant) -> Bool { lhs.id == rhs.id }
-    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+// MARK: - Reports Section
+extension DeveloperDashboardView {
+    private var reportsDetailView: some View {
+        ScrollView {
+            VStack(spacing: SofraSpacing.lg) {
+                // Revenue Report
+                reportCard(
+                    title: "تقرير الأرباح",
+                    icon: "chart.line.uptrend.xyaxis",
+                    color: SofraColors.success,
+                    stats: [
+                        ("إجمالي الأرباح", "\(Int(vm.netPlatformEarnings)) ر.س"),
+                        ("رسوم الخدمة", "\(Int(vm.totalCommission)) ر.س"),
+                        ("رسوم المندوبين", "\(Int(vm.courierPlatformFees)) ر.س")
+                    ]
+                )
+                
+                // Sales Report
+                reportCard(
+                    title: "تقرير المبيعات",
+                    icon: "bag.fill",
+                    color: SofraColors.primary,
+                    stats: [
+                        ("إجمالي المبيعات", "\(Int(vm.totalRevenue)) ر.س"),
+                        ("مبيعات اليوم", "\(Int(vm.todayRevenue)) ر.س"),
+                        ("عدد الطلبات", "\(vm.totalOrders)")
+                    ]
+                )
+                
+                // Orders Report
+                reportCard(
+                    title: "تقرير الطلبات",
+                    icon: "list.clipboard.fill",
+                    color: SofraColors.info,
+                    stats: [
+                        ("طلبات اليوم", "\(vm.todayOrders)"),
+                        ("مكتملة", "\(vm.orders.filter { $0.status == .delivered }.count)"),
+                        ("ملغية", "\(vm.orders.filter { $0.status == .cancelled }.count)")
+                    ]
+                )
+                
+                // Export Buttons
+                VStack(spacing: SofraSpacing.md) {
+                    Text("تصدير التقارير")
+                        .font(SofraTypography.headline)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    
+                    HStack(spacing: SofraSpacing.md) {
+                        exportButton(title: "PDF", icon: "doc.fill", color: SofraColors.error)
+                        exportButton(title: "Excel", icon: "tablecells.fill", color: SofraColors.success)
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+            }
+            .padding(.top, SofraSpacing.md)
+        }
+        .ramadanBackground()
+    }
+    
+    private func reportCard(title: String, icon: String, color: Color, stats: [(String, String)]) -> some View {
+        VStack(alignment: .trailing, spacing: SofraSpacing.md) {
+            HStack {
+                Spacer()
+                Text(title)
+                    .font(SofraTypography.headline)
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.15))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: icon)
+                        .foregroundStyle(color)
+                }
+            }
+            
+            Divider()
+            
+            ForEach(stats, id: \.0) { stat in
+                HStack {
+                    Text(stat.1)
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(color)
+                    Spacer()
+                    Text(stat.0)
+                        .font(SofraTypography.body)
+                        .foregroundStyle(SofraColors.textSecondary)
+                }
+            }
+        }
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+    
+    private func exportButton(title: String, icon: String, color: Color) -> some View {
+        Button {
+            // Export functionality placeholder
+        } label: {
+            HStack(spacing: SofraSpacing.sm) {
+                Image(systemName: icon)
+                Text(title)
+                    .font(SofraTypography.calloutSemibold)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, SofraSpacing.md)
+            .background(color)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
 }
 
-// Make AppUser equatable/hashable for sheet item
-extension AppUser: Equatable, Hashable {
-    public static func == (lhs: AppUser, rhs: AppUser) -> Bool { lhs.uid == rhs.uid }
-    public func hash(into hasher: inout Hasher) { hasher.combine(uid) }
+// MARK: - Licenses Section
+extension DeveloperDashboardView {
+    private var licensesDetailView: some View {
+        ScrollView {
+            VStack(spacing: SofraSpacing.md) {
+                // Info
+                HStack(spacing: SofraSpacing.md) {
+                    Image(systemName: "doc.badge.clock")
+                        .font(.title2)
+                        .foregroundStyle(SofraColors.warning)
+                    
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("التراخيص والمستندات")
+                            .font(SofraTypography.headline)
+                        Text("مراجعة المستندات المرفوعة من المطاعم والأسر المنتجة")
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                    }
+                    
+                    Spacer()
+                }
+                .padding(SofraSpacing.md)
+                .background(SofraColors.warning.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // Pending verifications
+                let unverified = vm.unverifiedRestaurants
+                
+                if unverified.isEmpty {
+                    EmptyStateView(icon: "checkmark.seal", title: "لا توجد طلبات معلقة", message: "جميع المستندات تمت مراجعتها")
+                        .padding(.top, SofraSpacing.xxxl)
+                } else {
+                    ForEach(unverified, id: \.id) { restaurant in
+                        licenseCard(restaurant)
+                    }
+                }
+            }
+            .padding(.top, SofraSpacing.md)
+        }
+        .ramadanBackground()
+    }
+    
+    private func licenseCard(_ restaurant: Restaurant) -> some View {
+        VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+            HStack {
+                StatusBadge(text: "بانتظار المراجعة", color: SofraColors.warning)
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(restaurant.name)
+                        .font(SofraTypography.headline)
+                    if let email = restaurant.email {
+                        Text(email)
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                    }
+                }
+            }
+            
+            Divider()
+            
+            // Actions
+            HStack(spacing: SofraSpacing.md) {
+                Button {
+                    Task {
+                        await vm.verifyRestaurant(restaurantId: restaurant.id, verified: false, token: try? await appState.validToken())
+                        // TODO: Send rejection notification
+                    }
+                } label: {
+                    HStack(spacing: SofraSpacing.xs) {
+                        Image(systemName: "xmark.circle.fill")
+                        Text("رفض")
+                    }
+                    .font(SofraTypography.calloutSemibold)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SofraSpacing.sm)
+                    .background(SofraColors.error)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                
+                Button {
+                    Task {
+                        await vm.verifyRestaurant(restaurantId: restaurant.id, verified: true, token: try? await appState.validToken())
+                        // TODO: Send approval notification
+                    }
+                } label: {
+                    HStack(spacing: SofraSpacing.xs) {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("قبول")
+                    }
+                    .font(SofraTypography.calloutSemibold)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SofraSpacing.sm)
+                    .background(SofraColors.success)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+            }
+        }
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+}
+
+// MARK: - Settings Section
+extension DeveloperDashboardView {
+    private var settingsDetailView: some View {
+        ScrollView {
+            VStack(spacing: SofraSpacing.lg) {
+                // Commission Settings
+                settingsGroup(title: "العمولة والرسوم", icon: "percent") {
+                    settingsRow(title: "رسوم المنصة", value: "\(ServiceFee.perItem) ر.س / منتج", icon: "banknote.fill")
+                    settingsRow(title: "حصة المنصة", value: "\(ServiceFee.platformShare) ر.س", icon: "building.2.fill")
+                    settingsRow(title: "حصة المشرف", value: "\(ServiceFee.supervisorShare) ر.س", icon: "person.badge.shield.checkmark.fill")
+                }
+                
+                // Payment Methods
+                settingsGroup(title: "طرق الدفع", icon: "creditcard.fill") {
+                    settingsRow(title: "الدفع عند الاستلام", value: "مفعّل", icon: "banknote.fill", isEnabled: true)
+                    settingsRow(title: "Apple Pay", value: "قريباً", icon: "apple.logo", isEnabled: false)
+                    settingsRow(title: "STC Pay", value: "قريباً", icon: "phone.fill", isEnabled: false)
+                }
+                
+                // Notifications
+                settingsGroup(title: "الإشعارات", icon: "bell.fill") {
+                    settingsRow(title: "إشعارات الطلبات", value: "مفعّل", icon: "bag.fill", isEnabled: true)
+                    settingsRow(title: "إشعارات المطاعم", value: "مفعّل", icon: "storefront.fill", isEnabled: true)
+                }
+                
+                // Packages Button
+                NavigationLink {
+                    packagesManagementView
+                } label: {
+                    HStack {
+                        Image(systemName: "chevron.left")
+                            .foregroundStyle(SofraColors.textMuted)
+                        
+                        Spacer()
+                        
+                        Text("إدارة الباقات")
+                            .font(SofraTypography.headline)
+                        
+                        ZStack {
+                            Circle()
+                                .fill(SofraColors.gold400.opacity(0.15))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "crown.fill")
+                                .foregroundStyle(SofraColors.gold400)
+                        }
+                    }
+                    .padding(SofraSpacing.cardPadding)
+                    .background(SofraColors.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+                    .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // Promo Codes Button
+                settingsGroup(title: "الأكواد الترويجية", icon: "ticket.fill") {
+                    settingsRow(title: "أكواد نشطة", value: "0", icon: "checkmark.seal.fill")
+                    settingsRow(title: "إضافة كود", value: "", icon: "plus.circle.fill")
+                }
+            }
+            .padding(.top, SofraSpacing.md)
+        }
+        .ramadanBackground()
+    }
+    
+    private func settingsGroup(title: String, icon: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .trailing, spacing: SofraSpacing.md) {
+            HStack {
+                Spacer()
+                Text(title)
+                    .font(SofraTypography.headline)
+                Image(systemName: icon)
+                    .foregroundStyle(SofraColors.primary)
+            }
+            .padding(.horizontal, SofraSpacing.screenHorizontal)
+            
+            VStack(spacing: 1) {
+                content()
+            }
+            .background(SofraColors.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+            .padding(.horizontal, SofraSpacing.screenHorizontal)
+        }
+    }
+    
+    private func settingsRow(title: String, value: String, icon: String, isEnabled: Bool? = nil) -> some View {
+        HStack {
+            if let isEnabled {
+                Circle()
+                    .fill(isEnabled ? SofraColors.success : SofraColors.textMuted)
+                    .frame(width: 8, height: 8)
+            }
+            
+            Text(value)
+                .font(SofraTypography.body)
+                .foregroundStyle(SofraColors.textSecondary)
+            
+            Spacer()
+            
+            Text(title)
+                .font(SofraTypography.body)
+            
+            Image(systemName: icon)
+                .foregroundStyle(SofraColors.textMuted)
+                .frame(width: 24)
+        }
+        .padding(SofraSpacing.md)
+        .background(SofraColors.cardBackground)
+    }
+    
+    private var packagesManagementView: some View {
+        ScrollView {
+            VStack(spacing: SofraSpacing.lg) {
+                // Premium Monthly
+                packagePriceCard(
+                    title: "الباقة الشهرية",
+                    price: "99",
+                    period: "شهر",
+                    color: SofraColors.gold400
+                )
+                
+                // Premium Yearly
+                packagePriceCard(
+                    title: "الباقة السنوية",
+                    price: "999",
+                    period: "سنة",
+                    color: SofraColors.gold500,
+                    discount: "وفّر 17%"
+                )
+                
+                // Save Button
+                SofraButton(title: "حفظ التغييرات", icon: "checkmark.circle.fill") {
+                    // Save prices
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+            }
+            .padding(.top, SofraSpacing.md)
+        }
+        .ramadanBackground()
+        .navigationTitle("إدارة الباقات")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private func packagePriceCard(title: String, price: String, period: String, color: Color, discount: String? = nil) -> some View {
+        VStack(alignment: .trailing, spacing: SofraSpacing.md) {
+            HStack {
+                if let discount {
+                    Text(discount)
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(SofraColors.success)
+                        .clipShape(Capsule())
+                }
+                
+                Spacer()
+                
+                Text(title)
+                    .font(SofraTypography.headline)
+                
+                Image(systemName: "crown.fill")
+                    .foregroundStyle(color)
+            }
+            
+            HStack {
+                Text("/ \(period)")
+                    .font(SofraTypography.body)
+                    .foregroundStyle(SofraColors.textMuted)
+                
+                Text("\(price) ر.س")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(color)
+            }
+        }
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+}
+
+// MARK: - Commission Editor Sheet
+extension DeveloperDashboardView {
+    private func commissionEditorSheet(_ restaurant: Restaurant) -> some View {
+        NavigationStack {
+            VStack(spacing: SofraSpacing.lg) {
+                // Restaurant Info
+                SofraCard {
+                    HStack {
+                        StatusBadge(
+                            text: restaurant.isVerified ? "موثق" : "غير موثق",
+                            color: restaurant.isVerified ? SofraColors.success : SofraColors.warning
+                        )
+                        Spacer()
+                        Text(restaurant.name)
+                            .font(SofraTypography.headline)
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // Fee Info
+                VStack(spacing: SofraSpacing.md) {
+                    HStack {
+                        Text("\(ServiceFee.perItem) ر.س")
+                            .font(SofraTypography.headline)
+                            .foregroundStyle(SofraColors.primary)
+                        Spacer()
+                        Text("رسوم لكل منتج")
+                            .font(SofraTypography.body)
+                    }
+                    
+                    HStack {
+                        Text("\(ServiceFee.platformShare) ر.س")
+                            .font(SofraTypography.headline)
+                            .foregroundStyle(SofraColors.info)
+                        Spacer()
+                        Text("حصة المنصة")
+                            .font(SofraTypography.body)
+                    }
+                    
+                    if restaurant.supervisorId != nil {
+                        HStack {
+                            Text("\(ServiceFee.supervisorShare) ر.س")
+                                .font(SofraTypography.headline)
+                                .foregroundStyle(SofraColors.warning)
+                            Spacer()
+                            Text("حصة المشرف")
+                                .font(SofraTypography.body)
+                        }
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                Spacer()
+                
+                SofraButton(title: "إغلاق", icon: "xmark") {
+                    editingCommission = nil
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                .padding(.bottom, SofraSpacing.lg)
+            }
+            .padding(.top, SofraSpacing.md)
+            .navigationTitle("تفاصيل الرسوم")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.medium])
+    }
+}
+
+// MARK: - Role Editor Sheet
+extension DeveloperDashboardView {
+    private func roleEditorSheet(_ user: AppUser) -> some View {
+        NavigationStack {
+            VStack(spacing: SofraSpacing.lg) {
+                // User Info
+                SofraCard {
+                    HStack {
+                        StatusBadge(text: roleLabel(user.role), color: roleColor(user.role))
+                        Spacer()
+                        VStack(alignment: .trailing) {
+                            Text(user.name ?? "مستخدم")
+                                .font(SofraTypography.headline)
+                            Text(user.email ?? "")
+                                .font(SofraTypography.caption)
+                                .foregroundStyle(SofraColors.textMuted)
+                        }
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // Role Selection
+                VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                    Text("تغيير الدور")
+                        .font(SofraTypography.headline)
+                        .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    
+                    ForEach([UserRole.customer, .owner, .courier, .supervisor, .developer], id: \.self) { role in
+                        Button {
+                            selectedRole = role
+                        } label: {
+                            HStack {
+                                if selectedRole == role {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(SofraColors.success)
+                                }
+                                
+                                Spacer()
+                                
+                                Text(roleLabel(role))
+                                    .font(SofraTypography.body)
+                                    .foregroundStyle(SofraColors.textPrimary)
+                                
+                                Image(systemName: roleIcon(role))
+                                    .foregroundStyle(roleColor(role))
+                                    .frame(width: 24)
+                            }
+                            .padding(SofraSpacing.md)
+                            .background(selectedRole == role ? roleColor(role).opacity(0.1) : SofraColors.cardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                }
+                
+                Spacer()
+                
+                VStack(spacing: SofraSpacing.sm) {
+                    SofraButton(title: "حفظ", icon: "checkmark.circle.fill") {
+                        Task {
+                            await vm.updateUserRole(userId: user.uid, newRole: selectedRole, token: try? await appState.validToken())
+                            editingUserRole = nil
+                        }
+                    }
+                    
+                    SofraButton(title: "إلغاء", style: .ghost) {
+                        editingUserRole = nil
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                .padding(.bottom, SofraSpacing.lg)
+            }
+            .padding(.top, SofraSpacing.md)
+            .navigationTitle("تعديل المستخدم")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                selectedRole = user.role
+            }
+        }
+        .presentationDetents([.large])
+    }
 }
 
 #Preview {
-    NavigationStack {
-        DeveloperDashboardView()
-            .environment(AppState())
-    }
+    DeveloperDashboardView()
+        .environment(AppState())
 }

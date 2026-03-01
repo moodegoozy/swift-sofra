@@ -160,7 +160,7 @@ struct MainTabView: View {
     private var developerTabs: some View {
         TabView(selection: Bindable(appState).selectedMainTab) {
             Tab("المطور", systemImage: "wrench.and.screwdriver.fill", value: 0) {
-                NavigationStack { DeveloperDashboardView() }
+                DeveloperDashboardView()
             }
 
             Tab("المطاعم", systemImage: "storefront.fill", value: 1) {
