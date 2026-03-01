@@ -17,6 +17,9 @@ final class ChatViewModel {
     private var pollingTask: Task<Void, Never>?
     private var orderId: String = ""
     private var currentUserId: String = ""
+    
+    /// IDs of messages that are still being sent (not yet confirmed in Firestore)
+    private var pendingMessageIds: Set<String> = []
 
     // MARK: - Load Messages
     func loadMessages(orderId: String, token: String?, currentUserId: String? = nil) async {
@@ -29,6 +32,9 @@ final class ChatViewModel {
 
         let previousCount = messages.count
         let previousIds = Set(messages.map { $0.id })
+        
+        // Keep optimistic (pending) messages before loading from server
+        let pendingMessages = messages.filter { pendingMessageIds.contains($0.id) }
 
         do {
             // Query without orderBy to avoid composite index requirement
@@ -38,12 +44,22 @@ final class ChatViewModel {
                 filters: [QueryFilter(field: "orderId", op: "EQUAL", value: orderId)],
                 idToken: token
             )
-            self.messages = docs.map { ChatMessage(from: $0, orderId: orderId) }
-                .sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
+            var serverMessages = docs.map { ChatMessage(from: $0, orderId: orderId) }
+            
+            // Remove confirmed messages from pending set
+            let serverIds = Set(serverMessages.map { $0.id })
+            pendingMessageIds = pendingMessageIds.subtracting(serverIds)
+            
+            // Add remaining pending messages (not yet on server)
+            for pendingMsg in pendingMessages where !serverIds.contains(pendingMsg.id) {
+                serverMessages.append(pendingMsg)
+            }
+            
+            self.messages = serverMessages.sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
 
             // Notify for new messages from others (only during polling, not initial load)
             if previousCount > 0 {
-                let newMessages = self.messages.filter { !previousIds.contains($0.id) && $0.senderId != self.currentUserId }
+                let newMessages = self.messages.filter { !previousIds.contains($0.id) && $0.senderId != self.currentUserId && !pendingMessageIds.contains($0.id) }
                 for msg in newMessages {
                     notificationService.notifyNewMessage(
                         senderName: msg.senderName,
@@ -86,6 +102,9 @@ final class ChatViewModel {
             createdAt: now
         )
         messages.append(newMessage)
+        
+        // Mark as pending so polling doesn't remove it
+        pendingMessageIds.insert(messageId)
 
         isSending = true
         do {
@@ -96,8 +115,16 @@ final class ChatViewModel {
                 fields: fields,
                 idToken: token
             )
+            // Message sent successfully - will be confirmed on next poll
+            // Remove from pending after a short delay to ensure Firestore has it
+            Task {
+                try? await Task.sleep(for: .seconds(1))
+                pendingMessageIds.remove(messageId)
+            }
         } catch {
             Logger.log("Send message error: \(error)", level: .error)
+            // Remove from pending
+            pendingMessageIds.remove(messageId)
             // Remove optimistic message on failure
             messages.removeAll { $0.id == messageId }
             errorMessage = "تعذر إرسال الرسالة"
