@@ -47,7 +47,7 @@ final class RestaurantsViewModel {
             if nearbyOnly && hasUserLocation {
                 allRestaurants = allRestaurants.filter { restaurant in
                     guard let km = restaurant.distanceKm(fromLat: userLat, fromLng: userLng) else {
-                        return true // show restaurants without coordinates
+                        return false // hide restaurants without coordinates when filtering nearby
                     }
                     return km <= Self.maxDistanceKm
                 }

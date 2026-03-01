@@ -131,16 +131,31 @@ final class OwnerDashboardViewModel {
         }
     }
 
-    func updateRestaurantInfo(ownerId: String, name: String, phone: String, token: String?) async -> Bool {
+    func updateRestaurantInfo(ownerId: String, name: String, phone: String, lat: Double = 0, lng: Double = 0, address: String = "", token: String?) async -> Bool {
         guard let token else { return false }
         do {
+            var fields: [String: Any] = ["name": name, "phone": phone]
+            
+            // Add location if provided
+            if lat != 0 || lng != 0 {
+                fields["savedLocation"] = [
+                    "lat": lat,
+                    "lng": lng,
+                    "address": address
+                ]
+            }
+            
             try await firestoreService.updateDocument(
                 collection: "restaurants", id: ownerId,
-                fields: ["name": name, "phone": phone],
+                fields: fields,
                 idToken: token
             )
             restaurant?.name = name
             restaurant?.phone = phone
+            if lat != 0 || lng != 0 {
+                restaurant?.latitude = lat
+                restaurant?.longitude = lng
+            }
             return true
         } catch {
             Logger.log("Update restaurant info error: \(error)", level: .error)

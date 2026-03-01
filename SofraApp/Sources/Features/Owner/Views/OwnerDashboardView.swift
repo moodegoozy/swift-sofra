@@ -21,6 +21,10 @@ struct OwnerDashboardView: View {
     // Restaurant info editing
     @State private var editRestName = ""
     @State private var editRestPhone = ""
+    @State private var editRestLat: Double = 0
+    @State private var editRestLng: Double = 0
+    @State private var editRestAddress = ""
+    @State private var showLocationPicker = false
     @State private var isSavingInfo = false
     @State private var infoSaveMessage: String?
     // Packages & promotions
@@ -72,6 +76,11 @@ struct OwnerDashboardView: View {
             if let rest = vm.restaurant {
                 editRestName = rest.name == "مطعم" ? "" : rest.name
                 editRestPhone = rest.phone ?? ""
+                // Load existing location
+                if let lat = rest.latitude, let lng = rest.longitude {
+                    editRestLat = lat
+                    editRestLng = lng
+                }
             }
             // تحديث تلقائي للطلبات كل 15 ثانية
             startOrderRefreshTimer(uid: uid)
@@ -131,6 +140,16 @@ struct OwnerDashboardView: View {
         }
         .sheet(isPresented: $showCancelSheet) {
             cancelOrderSheet
+        }
+        .sheet(isPresented: $showLocationPicker) {
+            LocationPickerView(
+                title: "موقع المطعم",
+                subtitle: "حدد موقع مطعمك على الخريطة ليظهر في البحث القريب"
+            ) { lat, lng, address in
+                editRestLat = lat
+                editRestLng = lng
+                editRestAddress = address
+            }
         }
     }
     
@@ -2101,6 +2120,52 @@ struct OwnerDashboardView: View {
                                 keyboardType: .phonePad
                             )
 
+                            // Location picker
+                            VStack(alignment: .trailing, spacing: SofraSpacing.xs) {
+                                Text("موقع المطعم")
+                                    .font(SofraTypography.calloutSemibold)
+                                    .foregroundStyle(SofraColors.textPrimary)
+                                
+                                Button { showLocationPicker = true } label: {
+                                    HStack {
+                                        Image(systemName: "chevron.left")
+                                            .font(.caption)
+                                            .foregroundStyle(SofraColors.textMuted)
+                                        
+                                        Spacer()
+                                        
+                                        if editRestLat != 0 || editRestLng != 0 {
+                                            VStack(alignment: .trailing, spacing: 2) {
+                                                Text(editRestAddress.isEmpty ? "تم تحديد الموقع ✓" : editRestAddress)
+                                                    .font(SofraTypography.body)
+                                                    .foregroundStyle(SofraColors.success)
+                                                    .lineLimit(1)
+                                            }
+                                        } else {
+                                            Text("اختر موقع المطعم على الخريطة")
+                                                .font(SofraTypography.body)
+                                                .foregroundStyle(SofraColors.textSecondary)
+                                        }
+                                        
+                                        Image(systemName: "map.fill")
+                                            .foregroundStyle(editRestLat != 0 ? SofraColors.success : SofraColors.primary)
+                                    }
+                                    .padding(SofraSpacing.md)
+                                    .background(SofraColors.surfaceElevated.opacity(0.6))
+                                    .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.inputRadius, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: SofraSpacing.inputRadius, style: .continuous)
+                                            .strokeBorder(editRestLat != 0 ? SofraColors.success.opacity(0.3) : SofraColors.gold500.opacity(0.15), lineWidth: 0.8)
+                                    )
+                                }
+                                
+                                if editRestLat == 0 && editRestLng == 0 {
+                                    Text("⚠️ حدد موقعك ليظهر مطعمك في البحث القريب")
+                                        .font(SofraTypography.caption2)
+                                        .foregroundStyle(SofraColors.warning)
+                                }
+                            }
+
                             if let city = rest.city {
                                 HStack {
                                     Spacer()
@@ -2130,6 +2195,9 @@ struct OwnerDashboardView: View {
                                         ownerId: appState.currentUser?.uid ?? "",
                                         name: editRestName.trimmingCharacters(in: .whitespacesAndNewlines),
                                         phone: editRestPhone.trimmingCharacters(in: .whitespacesAndNewlines),
+                                        lat: editRestLat,
+                                        lng: editRestLng,
+                                        address: editRestAddress,
                                         token: try? await appState.validToken()
                                     )
                                     if ok { infoSaveMessage = "تم الحفظ ✓" }
