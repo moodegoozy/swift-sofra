@@ -1097,9 +1097,9 @@ extension DeveloperDashboardView {
                     Task {
                         await vm.verifyRestaurant(restaurantId: restaurant.id, verified: false, token: try? await appState.validToken())
                         // Send rejection notification
-                        if let ownerId = restaurant.ownerId, let token = try? await appState.validToken() {
+                        if let token = try? await appState.validToken() {
                             await sendVerificationNotification(
-                                to: ownerId,
+                                to: restaurant.ownerId,
                                 restaurantName: restaurant.name,
                                 approved: false,
                                 token: token
@@ -1123,9 +1123,9 @@ extension DeveloperDashboardView {
                     Task {
                         await vm.verifyRestaurant(restaurantId: restaurant.id, verified: true, token: try? await appState.validToken())
                         // Send approval notification
-                        if let ownerId = restaurant.ownerId, let token = try? await appState.validToken() {
+                        if let token = try? await appState.validToken() {
                             await sendVerificationNotification(
-                                to: ownerId,
+                                to: restaurant.ownerId,
                                 restaurantName: restaurant.name,
                                 approved: true,
                                 token: token
