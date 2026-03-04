@@ -61,16 +61,15 @@ final class SupervisorDashboardViewModel {
     // MARK: - Load Orders (Only for my restaurants)
     func loadOrders(token: String, supervisorId: String) async {
         do {
-            // Query orders directly by supervisorId field
+            // Query orders by supervisorId field (no orderBy to avoid composite index requirement)
             let docs = try await firestoreService.query(
                 collection: "orders",
                 filters: [QueryFilter(field: "supervisorId", op: "EQUAL", value: supervisorId)],
-                orderBy: "createdAt",
-                descending: true,
                 limit: 500,
                 idToken: token
             )
-            self.orders = docs.map { Order(from: $0) }
+            // Sort locally by createdAt descending
+            self.orders = docs.map { Order(from: $0) }.sorted { $0.createdAt > $1.createdAt }
         } catch {
             Logger.log("Supervisor orders load error: \(error)", level: .error)
             errorMessage = "تعذر تحميل الطلبات"
