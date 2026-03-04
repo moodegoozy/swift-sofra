@@ -1763,6 +1763,7 @@ extension DeveloperDashboardView {
 
 // MARK: - Role Editor Sheet
 extension DeveloperDashboardView {
+    private func roleEditorSheet(_ user: AppUser) -> some View {
         NavigationStack {
             VStack(spacing: SofraSpacing.lg) {
                 // User Info
