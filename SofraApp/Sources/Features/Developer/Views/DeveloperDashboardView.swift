@@ -115,9 +115,6 @@ struct DeveloperDashboardView: View {
             .sheet(item: $editingUserRole) { user in
                 roleEditorSheet(user)
             }
-            .sheet(item: $assigningSupervisorTo) { restaurant in
-                supervisorAssignmentSheet(restaurant)
-            }
         }
     }
     
@@ -377,6 +374,9 @@ extension DeveloperDashboardView {
             .padding(.top, SofraSpacing.md)
         }
         .ramadanBackground()
+        .sheet(item: $assigningSupervisorTo) { restaurant in
+            supervisorAssignmentSheet(restaurant)
+        }
     }
     
     private func restaurantStatCard(_ title: String, count: Int, color: Color) -> some View {
