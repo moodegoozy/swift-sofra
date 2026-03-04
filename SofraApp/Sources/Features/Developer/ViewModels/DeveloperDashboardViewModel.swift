@@ -16,8 +16,10 @@ final class DeveloperDashboardViewModel {
     var totalOrders = 0
     var activeOrders = 0
     var totalRevenue: Double = 0
-    var totalCommission: Double = 0
-    var netPlatformEarnings: Double = 0
+    var totalCommission: Double = 0       // إجمالي رسوم الخدمة (كلها)
+    var totalSupervisorFees: Double = 0   // إجمالي حصة المشرفين
+    var platformOnlyFees: Double = 0      // حصة المنصة فقط (بدون المشرفين)
+    var netPlatformEarnings: Double = 0   // صافي أرباح المنصة = platformOnlyFees + courierFees
     var totalRestaurants = 0
     var totalUsers = 0
     var todayOrders = 0
@@ -100,13 +102,17 @@ final class DeveloperDashboardViewModel {
         let delivered = orders.filter { $0.status == .delivered }
         totalRevenue = delivered.reduce(0) { $0 + $1.total }
         totalCommission = delivered.reduce(0) { $0 + $1.commissionAmount }
+        
+        // حساب حصة المشرفين وحصة المنصة فقط
+        totalSupervisorFees = delivered.reduce(0) { $0 + $1.supervisorFee }
+        platformOnlyFees = delivered.reduce(0) { $0 + $1.platformFee }
 
         // Courier platform fees (3.75 per delivered order with courier)
         let courierDeliveries = delivered.filter { $0.courierId != nil && !($0.courierId ?? "").isEmpty }
         courierPlatformFees = Double(courierDeliveries.count) * 3.75
 
-        // Total platform earnings = service fees + courier fees
-        netPlatformEarnings = totalCommission + courierPlatformFees
+        // Total platform earnings = platform fees only + courier fees (NOT including supervisor fees)
+        netPlatformEarnings = platformOnlyFees + courierPlatformFees
 
         totalRestaurants = restaurants.count
         totalUsers = users.count

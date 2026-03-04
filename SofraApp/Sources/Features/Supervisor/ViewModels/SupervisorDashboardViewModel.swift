@@ -244,8 +244,15 @@ final class SupervisorDashboardViewModel {
         restaurants.filter { $0.supervisorId == supervisorId }
     }
     
-    // MARK: - Orders for My Restaurants
+    // MARK: - Orders for My Restaurants (using supervisorId directly from order)
     func ordersForMyRestaurants(supervisorId: String) -> [Order] {
+        // الأفضل: استخدام supervisorId المحفوظ في الطلب مباشرة
+        // إذا لم يكن موجوداً (طلبات قديمة)، نرجع للطريقة القديمة
+        let directOrders = orders.filter { $0.supervisorId == supervisorId }
+        if !directOrders.isEmpty {
+            return directOrders
+        }
+        // Fallback للطلبات القديمة التي لا تحتوي على supervisorId
         let myRestIds = Set(myRestaurants(supervisorId: supervisorId).map { $0.id })
         return orders.filter { myRestIds.contains($0.restaurantId ?? "") }
     }

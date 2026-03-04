@@ -148,11 +148,22 @@ struct DeveloperDashboardView: View {
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                     
-                    HStack(spacing: SofraSpacing.xl) {
+                    HStack(spacing: SofraSpacing.lg) {
                         VStack(spacing: 2) {
-                            Text("\(vm.totalCommission, specifier: "%.0f")")
+                            Text("\(vm.platformOnlyFees, specifier: "%.0f")")
                                 .font(SofraTypography.headline)
-                            Text("رسوم الخدمة")
+                            Text("حصة المنصة")
+                                .font(.caption2)
+                        }
+                        
+                        Rectangle()
+                            .fill(.white.opacity(0.3))
+                            .frame(width: 1, height: 30)
+                        
+                        VStack(spacing: 2) {
+                            Text("\(vm.totalSupervisorFees, specifier: "%.0f")")
+                                .font(SofraTypography.headline)
+                            Text("حصة المشرفين")
                                 .font(.caption2)
                         }
                         
@@ -1153,6 +1164,34 @@ extension DeveloperDashboardView {
                     settingsRow(title: "إشعارات المطاعم", value: "مفعّل", icon: "storefront.fill", isEnabled: true)
                 }
                 
+                // Broadcast Notifications Button
+                NavigationLink {
+                    DeveloperBroadcastView()
+                } label: {
+                    HStack {
+                        Image(systemName: "chevron.left")
+                            .foregroundStyle(SofraColors.textMuted)
+                        
+                        Spacer()
+                        
+                        Text("بث إشعار جماعي")
+                            .font(SofraTypography.headline)
+                        
+                        ZStack {
+                            Circle()
+                                .fill(SofraColors.info.opacity(0.15))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "megaphone.fill")
+                                .foregroundStyle(SofraColors.info)
+                        }
+                    }
+                    .padding(SofraSpacing.cardPadding)
+                    .background(SofraColors.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+                    .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
                 // Packages Button
                 NavigationLink {
                     packagesManagementView
@@ -1241,37 +1280,91 @@ extension DeveloperDashboardView {
     private var packagesManagementView: some View {
         ScrollView {
             VStack(spacing: SofraSpacing.lg) {
+                // Header
+                SofraCard {
+                    VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                        HStack {
+                            Spacer()
+                            Text("إعدادات الباقات المميزة")
+                                .font(SofraTypography.headline)
+                            Image(systemName: "crown.fill")
+                                .foregroundStyle(SofraColors.gold500)
+                        }
+                        Text("تحكم بأسعار اشتراكات المطاعم")
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
                 // Premium Monthly
-                packagePriceCard(
+                editablePackageCard(
                     title: "الباقة الشهرية",
-                    price: "99",
+                    price: $editPremiumMonthly,
                     period: "شهر",
-                    color: SofraColors.gold400
+                    color: SofraColors.gold400,
+                    icon: "calendar"
                 )
                 
                 // Premium Yearly
-                packagePriceCard(
+                editablePackageCard(
                     title: "الباقة السنوية",
-                    price: "999",
+                    price: $editPremiumYearly,
                     period: "سنة",
                     color: SofraColors.gold500,
-                    discount: "وفّر 17%"
+                    icon: "calendar.badge.clock",
+                    discount: calculateYearlyDiscount()
                 )
+                
+                // Service Fee Card
+                SofraCard {
+                    VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                        HStack {
+                            Text("\(ServiceFee.perItem) ر.س / صنف")
+                                .font(SofraTypography.headline)
+                                .foregroundStyle(SofraColors.info)
+                            Spacer()
+                            Text("رسوم الخدمة")
+                                .font(SofraTypography.subheadline)
+                            Image(systemName: "percent")
+                                .foregroundStyle(SofraColors.textMuted)
+                        }
+                        Divider()
+                        HStack {
+                            Text("\(ServiceFee.supervisorShare) ر.س")
+                                .foregroundStyle(SofraColors.warning)
+                            Spacer()
+                            Text("حصة المشرف:")
+                                .font(SofraTypography.caption)
+                                .foregroundStyle(SofraColors.textMuted)
+                        }
+                        HStack {
+                            Text("\(ServiceFee.platformShareWithSupervisor) ر.س")
+                                .foregroundStyle(SofraColors.success)
+                            Spacer()
+                            Text("حصة المنصة:")
+                                .font(SofraTypography.caption)
+                                .foregroundStyle(SofraColors.textMuted)
+                        }
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
                 
                 // Save Button
                 SofraButton(title: "حفظ التغييرات", icon: "checkmark.circle.fill") {
-                    // Save prices
+                    Task { await savePackagePrices() }
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
             }
             .padding(.top, SofraSpacing.md)
+            .padding(.bottom, SofraSpacing.xxxl)
         }
         .ramadanBackground()
         .navigationTitle("إدارة الباقات")
         .navigationBarTitleDisplayMode(.inline)
     }
     
-    private func packagePriceCard(title: String, price: String, period: String, color: Color, discount: String? = nil) -> some View {
+    private func editablePackageCard(title: String, price: Binding<String>, period: String, color: Color, icon: String, discount: String? = nil) -> some View {
         VStack(alignment: .trailing, spacing: SofraSpacing.md) {
             HStack {
                 if let discount {
@@ -1289,18 +1382,29 @@ extension DeveloperDashboardView {
                 Text(title)
                     .font(SofraTypography.headline)
                 
-                Image(systemName: "crown.fill")
+                Image(systemName: icon)
                     .foregroundStyle(color)
             }
             
-            HStack {
+            HStack(spacing: SofraSpacing.sm) {
                 Text("/ \(period)")
                     .font(SofraTypography.body)
                     .foregroundStyle(SofraColors.textMuted)
                 
-                Text("\(price) ر.س")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                Text("ر.س")
+                    .font(SofraTypography.body)
+                    .foregroundStyle(SofraColors.textMuted)
+                
+                TextField("السعر", text: price)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(color)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 120)
+                    .padding(.horizontal, SofraSpacing.sm)
+                    .padding(.vertical, SofraSpacing.xs)
+                    .background(SofraColors.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
         .padding(SofraSpacing.cardPadding)
@@ -1308,6 +1412,41 @@ extension DeveloperDashboardView {
         .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
         .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+    
+    private func calculateYearlyDiscount() -> String? {
+        guard let monthlyPrice = Double(editPremiumMonthly),
+              let yearlyPrice = Double(editPremiumYearly),
+              monthlyPrice > 0 else { return nil }
+        let fullYearPrice = monthlyPrice * 12
+        let savings = fullYearPrice - yearlyPrice
+        if savings > 0 {
+            let percent = Int((savings / fullYearPrice) * 100)
+            return "وفّر \(percent)%"
+        }
+        return nil
+    }
+    
+    private func savePackagePrices() async {
+        guard let token = try? await appState.validToken() else { return }
+        
+        let firestoreService = FirestoreService()
+        do {
+            // Save to settings document
+            try await firestoreService.updateDocument(
+                collection: "settings",
+                documentId: "packages",
+                fields: [
+                    "premiumMonthly": ["doubleValue": Double(editPremiumMonthly) ?? 99],
+                    "premiumYearly": ["doubleValue": Double(editPremiumYearly) ?? 999],
+                    "updatedAt": ["timestampValue": ISO8601DateFormatter().string(from: Date())]
+                ],
+                idToken: token
+            )
+            Logger.log("Package prices saved: monthly=\(editPremiumMonthly), yearly=\(editPremiumYearly)", level: .info)
+        } catch {
+            Logger.log("Failed to save package prices: \(error)", level: .error)
+        }
     }
 }
 

@@ -156,19 +156,15 @@ struct MainTabView: View {
         .tint(SofraColors.gold400)
     }
 
-    // MARK: - Developer Tabs (5 tabs — full access, no restaurant)
+    // MARK: - Developer Tabs (4 tabs — admin only, no customer features)
     private var developerTabs: some View {
         TabView(selection: Bindable(appState).selectedMainTab) {
-            Tab("المطور", systemImage: "wrench.and.screwdriver.fill", value: 0) {
+            Tab("لوحة التحكم", systemImage: "wrench.and.screwdriver.fill", value: 0) {
                 DeveloperDashboardView()
             }
 
-            Tab("المطاعم", systemImage: "storefront.fill", value: 1) {
-                NavigationStack { RestaurantsListView() }
-            }
-
-            Tab("طلباتي", systemImage: "bag.fill", value: 3) {
-                NavigationStack { OrdersView() }
+            Tab("الطلبات", systemImage: "list.clipboard.fill", value: 1) {
+                NavigationStack { DeveloperOrdersView() }
             }
 
             Tab("الإشعارات", systemImage: "bell.fill", value: 4) {
