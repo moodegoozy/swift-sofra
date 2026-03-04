@@ -53,7 +53,9 @@ struct SupervisorDashboardView: View {
         .navigationTitle("لوحة المشرف")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            await vm.loadDashboard(token: try? await appState.validToken())
+            if let uid = appState.currentUser?.uid {
+                await vm.loadDashboard(token: try? await appState.validToken(), supervisorId: uid)
+            }
         }
         .sheet(isPresented: $showRegisterRestaurant) {
             registerRestaurantSheet
@@ -155,7 +157,9 @@ struct SupervisorDashboardView: View {
             .padding(.top, SofraSpacing.md)
         }
         .refreshable {
-            await vm.loadDashboard(token: try? await appState.validToken())
+            if let uid = appState.currentUser?.uid {
+                await vm.loadDashboard(token: try? await appState.validToken(), supervisorId: uid)
+            }
         }
     }
 
@@ -633,7 +637,9 @@ struct SupervisorDashboardView: View {
             .padding(.top, SofraSpacing.md)
         }
         .refreshable {
-            await vm.loadDashboard(token: try? await appState.validToken())
+            if let uid = appState.currentUser?.uid {
+                await vm.loadDashboard(token: try? await appState.validToken(), supervisorId: uid)
+            }
         }
     }
     
@@ -811,14 +817,8 @@ struct SupervisorDashboardView: View {
             .padding(.top, SofraSpacing.md)
         }
         .refreshable {
-            await vm.loadDashboard(token: try? await appState.validToken())
             if let uid = appState.currentUser?.uid {
-                vm.calculateMyRevenue(supervisorId: uid)
-            }
-        }
-        .task {
-            if let uid = appState.currentUser?.uid {
-                vm.calculateMyRevenue(supervisorId: uid)
+                await vm.loadDashboard(token: try? await appState.validToken(), supervisorId: uid)
             }
         }
     }

@@ -129,25 +129,16 @@ struct MainTabView: View {
         .tint(SofraColors.gold400)
     }
 
-    // MARK: - Supervisor Tabs (5 tabs)
+    // MARK: - Supervisor Tabs (3 tabs — supervision only, no customer features)
     private var supervisorTabs: some View {
         TabView(selection: Bindable(appState).selectedMainTab) {
             Tab("الإشراف", systemImage: "shield.fill", value: 0) {
                 NavigationStack { SupervisorDashboardView() }
             }
 
-            Tab("المطاعم", systemImage: "storefront.fill", value: 1) {
-                NavigationStack { RestaurantsListView() }
+            Tab("الإشعارات", systemImage: "bell.fill", value: 4) {
+                NavigationStack { NotificationsView() }
             }
-
-            Tab("طلباتي", systemImage: "bag.fill", value: 3) {
-                NavigationStack { OrdersView() }
-            }
-
-            Tab("السلة", systemImage: "cart.fill", value: 7) {
-                NavigationStack { CartView() }
-            }
-            .badge(cartVM.items.count)
 
             Tab("حسابي", systemImage: "person.fill", value: 9) {
                 NavigationStack { ProfileView() }

@@ -30,37 +30,46 @@ final class SupervisorDashboardViewModel {
     var myTotalItemsCount: Int = 0             // إجمالي المنتجات المباعة
 
     private let firestoreService = FirestoreService()
+    
+    // Current supervisor ID for filtering
+    private(set) var currentSupervisorId: String?
 
-    // MARK: - Load All Data
-    func loadDashboard(token: String?) async {
+    // MARK: - Load All Data (Filtered by Supervisor ID)
+    func loadDashboard(token: String?, supervisorId: String) async {
         guard let token else { return }
+        
+        self.currentSupervisorId = supervisorId
 
         isLoading = true
         errorMessage = nil
 
         do {
-            async let ordersTask: () = loadOrders(token: token)
-            async let restaurantsTask: () = loadRestaurants(token: token)
+            // Load restaurants first (needed for user filtering)
+            await loadRestaurants(token: token, supervisorId: supervisorId)
+            
+            // Then load orders and users in parallel
+            async let ordersTask: () = loadOrders(token: token, supervisorId: supervisorId)
             async let usersTask: () = loadUsers(token: token)
-
+            
             await ordersTask
-            await restaurantsTask
             await usersTask
 
-            calculateStats()
+            calculateStats(supervisorId: supervisorId)
         }
 
         isLoading = false
     }
 
-    // MARK: - Load Orders
-    func loadOrders(token: String) async {
+    // MARK: - Load Orders (Only for my restaurants)
+    func loadOrders(token: String, supervisorId: String) async {
         do {
+            // Query orders directly by supervisorId field
             let docs = try await firestoreService.query(
                 collection: "orders",
+                filters: [QueryFilter(field: "supervisorId", op: "EQUAL", value: supervisorId)],
                 orderBy: "createdAt",
                 descending: true,
-                limit: 200,
+                limit: 500,
                 idToken: token
             )
             self.orders = docs.map { Order(from: $0) }
@@ -70,11 +79,13 @@ final class SupervisorDashboardViewModel {
         }
     }
 
-    // MARK: - Load Restaurants
-    func loadRestaurants(token: String) async {
+    // MARK: - Load Restaurants (Only assigned to this supervisor)
+    func loadRestaurants(token: String, supervisorId: String) async {
         do {
-            let docs = try await firestoreService.listDocuments(
-                collection: "restaurants", idToken: token, pageSize: 200
+            let docs = try await firestoreService.query(
+                collection: "restaurants",
+                filters: [QueryFilter(field: "supervisorId", op: "EQUAL", value: supervisorId)],
+                idToken: token
             )
             self.restaurants = docs.map { Restaurant(from: $0) }
         } catch {
@@ -82,20 +93,32 @@ final class SupervisorDashboardViewModel {
         }
     }
 
-    // MARK: - Load Users
+    // MARK: - Load Users (Only owners of my restaurants)
     func loadUsers(token: String) async {
         do {
+            // Get owner IDs from my restaurants
+            let ownerIds = Set(restaurants.compactMap { $0.ownerId })
+            
+            if ownerIds.isEmpty {
+                self.users = []
+                return
+            }
+            
+            // Load all users and filter by owner IDs
             let docs = try await firestoreService.listDocuments(
                 collection: "users", idToken: token, pageSize: 200
             )
-            self.users = docs.map { AppUser(from: $0) }
+            let allUsers = docs.map { AppUser(from: $0) }
+            
+            // Filter to only show owners of my restaurants
+            self.users = allUsers.filter { ownerIds.contains($0.uid) }
         } catch {
             Logger.log("Supervisor users load error: \(error)", level: .error)
         }
     }
 
     // MARK: - Calculate Stats
-    private func calculateStats() {
+    private func calculateStats(supervisorId: String) {
         totalOrders = orders.count
         activeOrders = orders.filter { $0.status != .delivered && $0.status != .cancelled }.count
         totalRevenue = orders.filter { $0.status == .delivered }.reduce(0) { $0 + $1.total }
@@ -109,13 +132,14 @@ final class SupervisorDashboardViewModel {
             guard let created = order.createdAt else { return false }
             return created >= today
         }.count
+        
+        // Calculate supervisor-specific revenue automatically
+        calculateMyRevenue()
     }
     
-    // MARK: - Calculate Supervisor Revenue
-    func calculateMyRevenue(supervisorId: String) {
-        let myRestIds = Set(myRestaurants(supervisorId: supervisorId).map { $0.id })
-        let myOrders = orders.filter { myRestIds.contains($0.restaurantId ?? "") }
-        let deliveredOrders = myOrders.filter { $0.status == .delivered }
+    // MARK: - Calculate Supervisor Revenue (all orders are already filtered)
+    func calculateMyRevenue() {
+        let deliveredOrders = orders.filter { $0.status == .delivered }
         
         // حساب إجمالي حصة المشرف من الطلبات المكتملة
         mySupervisorFeeTotal = deliveredOrders.reduce(0.0) { $0 + $1.supervisorFee }
@@ -136,7 +160,7 @@ final class SupervisorDashboardViewModel {
             return created >= today
         }
         mySupervisorFeeToday = todayDelivered.reduce(0.0) { $0 + $1.supervisorFee }
-        myTodayOrdersCount = myOrders.filter { order in
+        myTodayOrdersCount = orders.filter { order in
             guard let created = order.createdAt else { return false }
             return created >= today
         }.count
@@ -161,7 +185,9 @@ final class SupervisorDashboardViewModel {
             if let idx = orders.firstIndex(where: { $0.id == orderId }) {
                 orders[idx].status = newStatus
             }
-            calculateStats()
+            if let supervisorId = currentSupervisorId {
+                calculateStats(supervisorId: supervisorId)
+            }
         } catch {
             Logger.log("Supervisor update order error: \(error)", level: .error)
         }
