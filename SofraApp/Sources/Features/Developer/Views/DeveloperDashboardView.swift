@@ -1135,7 +1135,8 @@ extension DeveloperDashboardView {
                 // Commission Settings
                 settingsGroup(title: "العمولة والرسوم", icon: "percent") {
                     settingsRow(title: "رسوم المنصة", value: "\(ServiceFee.perItem) ر.س / منتج", icon: "banknote.fill")
-                    settingsRow(title: "حصة المنصة", value: "\(ServiceFee.platformShare) ر.س", icon: "building.2.fill")
+                    settingsRow(title: "حصة المنصة (بدون مشرف)", value: "\(ServiceFee.platformShareNoSupervisor) ر.س", icon: "building.2.fill")
+                    settingsRow(title: "حصة المنصة (مع مشرف)", value: "\(ServiceFee.platformShareWithSupervisor) ر.س", icon: "building.2.fill")
                     settingsRow(title: "حصة المشرف", value: "\(ServiceFee.supervisorShare) ر.س", icon: "person.badge.shield.checkmark.fill")
                 }
                 
@@ -1341,7 +1342,7 @@ extension DeveloperDashboardView {
                     }
                     
                     HStack {
-                        Text("\(ServiceFee.platformShare) ر.س")
+                        Text("\(restaurant.supervisorId != nil ? ServiceFee.platformShareWithSupervisor : ServiceFee.platformShareNoSupervisor) ر.س")
                             .font(SofraTypography.headline)
                             .foregroundStyle(SofraColors.info)
                         Spacer()
