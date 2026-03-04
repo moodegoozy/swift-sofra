@@ -559,6 +559,7 @@ extension DeveloperDashboardView {
         let familyOrders = vm.orders.filter { $0.restaurantId == family.id }
         let earnings = familyOrders.filter { $0.status == .delivered }.reduce(0.0) { $0 + $1.netAmount }
         let menuCount = family.menuItemCount ?? 0
+        let supervisor = vm.users.first { $0.uid == family.supervisorId }
         
         return VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
             HStack {
@@ -587,6 +588,21 @@ extension DeveloperDashboardView {
                         .foregroundStyle(Color(hex: "#8B5CF6"))
                 }
             }
+            
+            // Supervisor info
+            HStack(spacing: SofraSpacing.xs) {
+                Image(systemName: "person.badge.shield.checkmark.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color(hex: "#06B6D4"))
+                Text("المشرفة: \(supervisor?.name ?? "غير معروف")")
+                    .font(SofraTypography.caption)
+                    .foregroundStyle(Color(hex: "#06B6D4"))
+                Spacer()
+            }
+            .padding(.vertical, SofraSpacing.xs)
+            .padding(.horizontal, SofraSpacing.sm)
+            .background(Color(hex: "#06B6D4").opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
             
             Divider()
             
