@@ -227,6 +227,38 @@ final class DeveloperDashboardViewModel {
         }
     }
 
+    // MARK: - Assign Supervisor to Restaurant
+    func assignSupervisor(restaurantId: String, supervisorId: String?, token: String?) async {
+        guard let token else { return }
+        do {
+            if let supervisorId = supervisorId {
+                try await firestoreService.updateDocument(
+                    collection: "restaurants", id: restaurantId,
+                    fields: ["supervisorId": supervisorId],
+                    idToken: token
+                )
+            } else {
+                // Remove supervisor - set to null
+                try await firestoreService.updateDocument(
+                    collection: "restaurants", id: restaurantId,
+                    fields: ["supervisorId": NSNull()],
+                    idToken: token
+                )
+            }
+            if let idx = restaurants.firstIndex(where: { $0.id == restaurantId }) {
+                restaurants[idx].supervisorId = supervisorId
+            }
+            Logger.log("Assigned supervisor \(supervisorId ?? "nil") to restaurant \(restaurantId)", level: .info)
+        } catch {
+            Logger.log("Dev assign supervisor error: \(error)", level: .error)
+        }
+    }
+
+    // MARK: - Get Supervisors
+    var supervisors: [AppUser] {
+        users.filter { $0.role == .supervisor }
+    }
+
     // MARK: - Helpers
     var deliveredOrders: [Order] { orders.filter { $0.status == .delivered } }
     var pendingOrders: [Order] { orders.filter { $0.status == .pending } }

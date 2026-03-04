@@ -14,6 +14,8 @@ struct DeveloperDashboardView: View {
     @State private var editingCommission: Restaurant?
     @State private var editingUserRole: AppUser?
     @State private var selectedRole: UserRole = .customer
+    @State private var assigningSupervisorTo: Restaurant?
+    @State private var selectedSupervisorId: String? = nil
     
     // Package management
     @State private var showPriceEditor = false
@@ -112,6 +114,9 @@ struct DeveloperDashboardView: View {
             }
             .sheet(item: $editingUserRole) { user in
                 roleEditorSheet(user)
+            }
+            .sheet(item: $assigningSupervisorTo) { restaurant in
+                supervisorAssignmentSheet(restaurant)
             }
         }
     }
@@ -443,6 +448,18 @@ extension DeveloperDashboardView {
                 
                 // Actions
                 HStack(spacing: SofraSpacing.sm) {
+                    // Assign Supervisor
+                    Button {
+                        assigningSupervisorTo = restaurant
+                    } label: {
+                        Image(systemName: "person.badge.shield.checkmark")
+                            .font(.system(size: 16))
+                            .foregroundStyle(Color(hex: "#06B6D4"))
+                            .padding(10)
+                            .background(Color(hex: "#06B6D4").opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    
                     Button {
                         editingCommission = restaurant
                     } label: {
@@ -467,6 +484,24 @@ extension DeveloperDashboardView {
                             .clipShape(Circle())
                     }
                 }
+            }
+            
+            // Supervisor Info (if assigned)
+            if let supervisorId = restaurant.supervisorId,
+               let supervisor = vm.users.first(where: { $0.uid == supervisorId }) {
+                HStack(spacing: SofraSpacing.xs) {
+                    Image(systemName: "person.badge.shield.checkmark.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color(hex: "#06B6D4"))
+                    Text("المشرف: \(supervisor.name ?? "غير معروف")")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(Color(hex: "#06B6D4"))
+                    Spacer()
+                }
+                .padding(.vertical, SofraSpacing.xs)
+                .padding(.horizontal, SofraSpacing.sm)
+                .background(Color(hex: "#06B6D4").opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             
             // Contact Info
@@ -1582,8 +1617,152 @@ extension DeveloperDashboardView {
 }
 
 // MARK: - Role Editor Sheet
+// MARK: - Supervisor Assignment Sheet
 extension DeveloperDashboardView {
-    private func roleEditorSheet(_ user: AppUser) -> some View {
+    private func supervisorAssignmentSheet(_ restaurant: Restaurant) -> some View {
+        NavigationStack {
+            VStack(spacing: SofraSpacing.lg) {
+                // Restaurant Info
+                SofraCard {
+                    HStack {
+                        StatusBadge(
+                            text: restaurant.supervisorId != nil ? "مسند" : "غير مسند",
+                            color: restaurant.supervisorId != nil ? SofraColors.success : SofraColors.warning
+                        )
+                        Spacer()
+                        VStack(alignment: .trailing) {
+                            Text(restaurant.name)
+                                .font(SofraTypography.headline)
+                            if let currentSupervisor = vm.users.first(where: { $0.uid == restaurant.supervisorId }) {
+                                Text("المشرف الحالي: \(currentSupervisor.name ?? "غير معروف")")
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(SofraColors.textMuted)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // Supervisor Selection
+                VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                    Text("اختر المشرف")
+                        .font(SofraTypography.headline)
+                        .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    
+                    ScrollView {
+                        VStack(spacing: SofraSpacing.xs) {
+                            // Option to remove supervisor
+                            Button {
+                                selectedSupervisorId = nil
+                            } label: {
+                                HStack {
+                                    if selectedSupervisorId == nil {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(SofraColors.success)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Text("بدون مشرف")
+                                        .font(SofraTypography.body)
+                                        .foregroundStyle(SofraColors.textPrimary)
+                                    
+                                    Image(systemName: "person.slash")
+                                        .foregroundStyle(SofraColors.textMuted)
+                                        .frame(width: 24)
+                                }
+                                .padding(SofraSpacing.md)
+                                .background(selectedSupervisorId == nil ? SofraColors.warning.opacity(0.1) : SofraColors.cardBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                            
+                            // Supervisor list
+                            ForEach(vm.supervisors, id: \.uid) { supervisor in
+                                Button {
+                                    selectedSupervisorId = supervisor.uid
+                                } label: {
+                                    HStack {
+                                        if selectedSupervisorId == supervisor.uid {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundStyle(SofraColors.success)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            Text(supervisor.name ?? "مشرف")
+                                                .font(SofraTypography.body)
+                                                .foregroundStyle(SofraColors.textPrimary)
+                                            
+                                            let assignedCount = vm.restaurants.filter { $0.supervisorId == supervisor.uid }.count
+                                            Text("\(assignedCount) مطعم مسند")
+                                                .font(SofraTypography.caption)
+                                                .foregroundStyle(SofraColors.textMuted)
+                                        }
+                                        
+                                        Image(systemName: "person.badge.shield.checkmark.fill")
+                                            .foregroundStyle(Color(hex: "#06B6D4"))
+                                            .frame(width: 24)
+                                    }
+                                    .padding(SofraSpacing.md)
+                                    .background(selectedSupervisorId == supervisor.uid ? Color(hex: "#06B6D4").opacity(0.1) : SofraColors.cardBackground)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                }
+                            }
+                        }
+                        .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    }
+                    
+                    if vm.supervisors.isEmpty {
+                        VStack(spacing: SofraSpacing.sm) {
+                            Image(systemName: "person.2.slash")
+                                .font(.system(size: 40))
+                                .foregroundStyle(SofraColors.textMuted)
+                            Text("لا يوجد مشرفين")
+                                .font(SofraTypography.body)
+                                .foregroundStyle(SofraColors.textMuted)
+                            Text("أضف مشرفين من قسم المستخدمين")
+                                .font(SofraTypography.caption)
+                                .foregroundStyle(SofraColors.textMuted)
+                        }
+                        .padding(.top, SofraSpacing.xxxl)
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(spacing: SofraSpacing.sm) {
+                    SofraButton(title: "حفظ", icon: "checkmark.circle.fill") {
+                        Task {
+                            await vm.assignSupervisor(
+                                restaurantId: restaurant.id,
+                                supervisorId: selectedSupervisorId,
+                                token: try? await appState.validToken()
+                            )
+                            assigningSupervisorTo = nil
+                        }
+                    }
+                    
+                    SofraButton(title: "إلغاء", style: .ghost) {
+                        assigningSupervisorTo = nil
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                .padding(.bottom, SofraSpacing.lg)
+            }
+            .padding(.top, SofraSpacing.md)
+            .navigationTitle("إسناد مشرف")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                selectedSupervisorId = restaurant.supervisorId
+            }
+        }
+        .presentationDetents([.large])
+    }
+}
+
+// MARK: - Role Editor Sheet
+extension DeveloperDashboardView {
         NavigationStack {
             VStack(spacing: SofraSpacing.lg) {
                 // User Info
