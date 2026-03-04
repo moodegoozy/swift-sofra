@@ -54,11 +54,12 @@ final class NotificationsViewModel {
             let docs = try await firestoreService.query(
                 collection: "notifications",
                 filters: [QueryFilter(field: "userId", op: "EQUAL", value: userId)],
+                orderBy: "createdAt",
+                descending: true,
                 limit: 50,
                 idToken: token
             )
             self.notifications = docs.map { AppNotification(from: $0) }
-                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
         } catch let error as APIError where error.isForbiddenOrNotFound {
             // Firestore rules don't allow querying notifications collection,
             // or collection doesn't exist yet — show empty state
