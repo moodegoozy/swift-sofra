@@ -309,8 +309,7 @@ struct DeveloperBroadcastView: View {
             
             let users = userDocs.map { AppUser(from: $0) }
             let targetUsers = users.filter { user in
-                guard let role = user.role else { return false }
-                return selectedRoles.contains(role)
+                selectedRoles.contains(user.role)
             }
             
             // Create notification for each user
@@ -326,7 +325,7 @@ struct DeveloperBroadcastView: View {
                         "title": title.trimmingCharacters(in: .whitespacesAndNewlines),
                         "body": body.trimmingCharacters(in: .whitespacesAndNewlines),
                         "type": notificationType.rawValue,
-                        "isRead": false,
+                        "read": false,
                         "isBroadcast": true,
                         "createdAt": now,
                         "senderId": appState.currentUser?.uid ?? "system",

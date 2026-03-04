@@ -43,19 +43,17 @@ final class SupervisorDashboardViewModel {
         isLoading = true
         errorMessage = nil
 
-        do {
-            // Load restaurants first (needed for user filtering)
-            await loadRestaurants(token: token, supervisorId: supervisorId)
-            
-            // Then load orders and users in parallel
-            async let ordersTask: () = loadOrders(token: token, supervisorId: supervisorId)
-            async let usersTask: () = loadUsers(token: token)
-            
-            await ordersTask
-            await usersTask
+        // Load restaurants first (needed for user filtering)
+        await loadRestaurants(token: token, supervisorId: supervisorId)
+        
+        // Then load orders and users in parallel
+        async let ordersTask: () = loadOrders(token: token, supervisorId: supervisorId)
+        async let usersTask: () = loadUsers(token: token)
+        
+        await ordersTask
+        await usersTask
 
-            calculateStats(supervisorId: supervisorId)
-        }
+        calculateStats(supervisorId: supervisorId)
 
         isLoading = false
     }
@@ -345,7 +343,7 @@ final class SupervisorDashboardViewModel {
         )
         
         // 4. Reload data using supervisor's token
-        await loadRestaurants(token: supervisorToken)
+        await loadRestaurants(token: supervisorToken, supervisorId: supervisorId)
         await loadUsers(token: supervisorToken)
         
         return (newUserId, newUserId)

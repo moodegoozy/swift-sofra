@@ -1096,7 +1096,15 @@ extension DeveloperDashboardView {
                 Button {
                     Task {
                         await vm.verifyRestaurant(restaurantId: restaurant.id, verified: false, token: try? await appState.validToken())
-                        // TODO: Send rejection notification
+                        // Send rejection notification
+                        if let ownerId = restaurant.ownerId, let token = try? await appState.validToken() {
+                            await sendVerificationNotification(
+                                to: ownerId,
+                                restaurantName: restaurant.name,
+                                approved: false,
+                                token: token
+                            )
+                        }
                     }
                 } label: {
                     HStack(spacing: SofraSpacing.xs) {
@@ -1114,7 +1122,15 @@ extension DeveloperDashboardView {
                 Button {
                     Task {
                         await vm.verifyRestaurant(restaurantId: restaurant.id, verified: true, token: try? await appState.validToken())
-                        // TODO: Send approval notification
+                        // Send approval notification
+                        if let ownerId = restaurant.ownerId, let token = try? await appState.validToken() {
+                            await sendVerificationNotification(
+                                to: ownerId,
+                                restaurantName: restaurant.name,
+                                approved: true,
+                                token: token
+                            )
+                        }
                     }
                 } label: {
                     HStack(spacing: SofraSpacing.xs) {
@@ -1446,6 +1462,37 @@ extension DeveloperDashboardView {
             Logger.log("Package prices saved: monthly=\(editPremiumMonthly), yearly=\(editPremiumYearly)", level: .info)
         } catch {
             Logger.log("Failed to save package prices: \(error)", level: .error)
+        }
+    }
+    
+    private func sendVerificationNotification(to userId: String, restaurantName: String, approved: Bool, token: String) async {
+        let firestoreService = FirestoreService()
+        let notificationId = UUID().uuidString
+        
+        let title = approved ? "تمت الموافقة على مطعمك! ✓" : "طلب التسجيل مرفوض"
+        let body = approved
+            ? "تهانينا! تمت الموافقة على مطعم \"\(restaurantName)\" ويمكنك الآن البدء في استقبال الطلبات."
+            : "عذراً، تم رفض طلب تسجيل مطعم \"\(restaurantName)\". يرجى التواصل مع الدعم للمزيد من المعلومات."
+        
+        do {
+            try await firestoreService.createDocument(
+                collection: "notifications",
+                id: notificationId,
+                fields: [
+                    "userId": userId,
+                    "title": title,
+                    "body": body,
+                    "type": approved ? "approval" : "rejection",
+                    "read": false,
+                    "createdAt": Date(),
+                    "senderId": appState.currentUser?.uid ?? "system",
+                    "senderName": "إدارة سفرة البيت"
+                ],
+                idToken: token
+            )
+            Logger.log("Verification notification sent to \(userId): \(approved ? "approved" : "rejected")", level: .info)
+        } catch {
+            Logger.log("Failed to send verification notification: \(error)", level: .error)
         }
     }
 }

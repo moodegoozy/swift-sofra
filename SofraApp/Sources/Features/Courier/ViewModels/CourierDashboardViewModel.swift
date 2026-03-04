@@ -222,7 +222,7 @@ final class CourierDashboardViewModel {
             let today = calendar.startOfDay(for: Date())
             todayEarnings = deliveredOrders
                 .filter { ($0.createdAt ?? .distantPast) >= today }
-                .reduce(0) { $0 + $1.deliveryFee - Self.platformFee }
+                .reduce(0) { $0 + ($1.deliveryFee - Self.platformFee) }
         } catch {
             Logger.log("Load my deliveries error: \(error)", level: .error)
         }

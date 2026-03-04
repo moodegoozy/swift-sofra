@@ -23,7 +23,7 @@ SofraApp/Sources/
 
 ## Firebase REST API (No SDK)
 
-All Firebase access uses REST endpoints in [Endpoints.swift](SofraApp/Sources/Networking/Endpoints.swift). Key patterns:
+All Firebase access uses REST endpoints in [Endpoints.swift](../SofraApp/Sources/Networking/Endpoints.swift). Key patterns:
 
 ```swift
 // Firestore query with filters
@@ -46,7 +46,7 @@ let user = AppUser(from: doc)  // See DTOs/UserDTO.swift
 
 ## Design System — Ramadan Theme
 
-Navy + Gold palette with adaptive colors. Use semantic colors from [SofraColors.swift](SofraApp/Sources/DesignSystem/SofraColors.swift):
+Navy + Gold palette with adaptive colors. Use semantic colors from [SofraColors.swift](../SofraApp/Sources/DesignSystem/SofraColors.swift):
 
 ```swift
 SofraColors.primary       // Gold-500

@@ -442,6 +442,9 @@ final class OwnerDashboardViewModel {
             } catch {
                 Logger.log("Add menu item error: \(error)", level: .error)
                 await MainActor.run {
+                    // Remove the optimistically added item on failure
+                    self?.menuItems.removeAll { $0.id == docId }
+                    self?.menuItemsCount = self?.menuItems.count ?? 0
                     self?.errorMessage = "تعذر حفظ الصنف في الخادم"
                 }
             }

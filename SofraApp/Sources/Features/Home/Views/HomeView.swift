@@ -109,15 +109,15 @@ struct HomeView: View {
                         appState.selectedMainTab = 3
                     }
                 case .supervisor, .admin:
-                    QuickActionCard(icon: "cart.fill", title: "السلة", color: SofraColors.lanternOrange) {
-                        appState.selectedMainTab = 7
+                    QuickActionCard(icon: "shield.fill", title: "لوحة الإشراف", color: SofraColors.lanternOrange) {
+                        appState.selectedMainTab = 0
                     }
-                    QuickActionCard(icon: "bag.fill", title: "طلباتي", color: SofraColors.emerald500) {
-                        appState.selectedMainTab = 3
+                    QuickActionCard(icon: "bell.fill", title: "الإشعارات", color: SofraColors.emerald500) {
+                        appState.selectedMainTab = 4
                     }
                 case .developer:
-                    QuickActionCard(icon: "bag.fill", title: "طلباتي", color: SofraColors.emerald500) {
-                        appState.selectedMainTab = 3
+                    QuickActionCard(icon: "list.clipboard.fill", title: "الطلبات", color: SofraColors.emerald500) {
+                        appState.selectedMainTab = 1
                     }
                 default: // customer
                     QuickActionCard(icon: "cart.fill", title: "السلة", color: SofraColors.lanternOrange) {
