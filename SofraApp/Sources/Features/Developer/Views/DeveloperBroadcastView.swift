@@ -316,21 +316,21 @@ struct DeveloperBroadcastView: View {
             // Create notification for each user
             for user in targetUsers {
                 let notificationId = UUID().uuidString
-                let now = ISO8601DateFormatter().string(from: Date())
+                let now = Date()
                 
                 try await firestoreService.createDocument(
                     collection: "notifications",
-                    documentId: notificationId,
+                    id: notificationId,
                     fields: [
-                        "userId": ["stringValue": user.uid],
-                        "title": ["stringValue": title.trimmingCharacters(in: .whitespacesAndNewlines)],
-                        "body": ["stringValue": body.trimmingCharacters(in: .whitespacesAndNewlines)],
-                        "type": ["stringValue": notificationType.rawValue],
-                        "isRead": ["booleanValue": false],
-                        "isBroadcast": ["booleanValue": true],
-                        "createdAt": ["timestampValue": now],
-                        "senderId": ["stringValue": appState.currentUser?.uid ?? "system"],
-                        "senderName": ["stringValue": "إدارة سفرة البيت"]
+                        "userId": user.uid,
+                        "title": title.trimmingCharacters(in: .whitespacesAndNewlines),
+                        "body": body.trimmingCharacters(in: .whitespacesAndNewlines),
+                        "type": notificationType.rawValue,
+                        "isRead": false,
+                        "isBroadcast": true,
+                        "createdAt": now,
+                        "senderId": appState.currentUser?.uid ?? "system",
+                        "senderName": "إدارة سفرة البيت"
                     ],
                     idToken: token
                 )

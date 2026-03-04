@@ -35,6 +35,8 @@ final class ChatViewModel {
         
         // Keep optimistic (pending) messages before loading from server
         let pendingMessages = messages.filter { pendingMessageIds.contains($0.id) }
+        
+        Logger.log("Chat poll: \(pendingMessageIds.count) pending, loading from server...", level: .debug)
 
         do {
             // Query without orderBy to avoid composite index requirement
@@ -46,9 +48,16 @@ final class ChatViewModel {
             )
             var serverMessages = docs.map { ChatMessage(from: $0, orderId: orderId) }
             
+            Logger.log("Chat poll: got \(serverMessages.count) from server", level: .debug)
+            
             // Remove confirmed messages from pending set
             let serverIds = Set(serverMessages.map { $0.id })
+            let confirmedCount = pendingMessageIds.intersection(serverIds).count
             pendingMessageIds = pendingMessageIds.subtracting(serverIds)
+            
+            if confirmedCount > 0 {
+                Logger.log("Chat: \(confirmedCount) messages confirmed on server", level: .debug)
+            }
             
             // Add remaining pending messages (not yet on server)
             for pendingMsg in pendingMessages where !serverIds.contains(pendingMsg.id) {
@@ -115,12 +124,10 @@ final class ChatViewModel {
                 fields: fields,
                 idToken: token
             )
-            // Message sent successfully - will be confirmed on next poll
-            // Remove from pending after a short delay to ensure Firestore has it
-            Task {
-                try? await Task.sleep(for: .seconds(1))
-                pendingMessageIds.remove(messageId)
-            }
+            // Message sent successfully
+            // NOT removing from pendingMessageIds here - let loadMessages confirm it
+            // The message will be removed from pending when it appears in server results
+            Logger.log("Chat message sent: \(messageId)", level: .info)
         } catch {
             Logger.log("Send message error: \(error)", level: .error)
             // Remove from pending

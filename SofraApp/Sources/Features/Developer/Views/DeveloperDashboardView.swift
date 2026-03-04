@@ -1435,11 +1435,11 @@ extension DeveloperDashboardView {
             // Save to settings document
             try await firestoreService.updateDocument(
                 collection: "settings",
-                documentId: "packages",
+                id: "packages",
                 fields: [
-                    "premiumMonthly": ["doubleValue": Double(editPremiumMonthly) ?? 99],
-                    "premiumYearly": ["doubleValue": Double(editPremiumYearly) ?? 999],
-                    "updatedAt": ["timestampValue": ISO8601DateFormatter().string(from: Date())]
+                    "premiumMonthly": Double(editPremiumMonthly) ?? 99,
+                    "premiumYearly": Double(editPremiumYearly) ?? 999,
+                    "updatedAt": Date()
                 ],
                 idToken: token
             )
