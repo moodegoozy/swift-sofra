@@ -69,7 +69,7 @@ final class SupervisorDashboardViewModel {
                 idToken: token
             )
             // Sort locally by createdAt descending
-            self.orders = docs.map { Order(from: $0) }.sorted { $0.createdAt > $1.createdAt }
+            self.orders = docs.map { Order(from: $0) }.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
         } catch {
             Logger.log("Supervisor orders load error: \(error)", level: .error)
             errorMessage = "تعذر تحميل الطلبات"
