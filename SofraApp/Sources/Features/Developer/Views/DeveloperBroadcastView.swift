@@ -6,7 +6,7 @@ import SwiftUI
 struct DeveloperBroadcastView: View {
     @Environment(AppState.self) var appState
     @State private var title: String = ""
-    @State private var body: String = ""
+    @State private var messageBody: String = ""
     @State private var selectedRoles: Set<UserRole> = []
     @State private var isSending = false
     @State private var showSuccess = false
@@ -78,7 +78,7 @@ struct DeveloperBroadcastView: View {
             Button("حسناً") {
                 // Reset form
                 title = ""
-                body = ""
+                messageBody = ""
                 selectedRoles = []
             }
         } message: {
@@ -168,7 +168,7 @@ struct DeveloperBroadcastView: View {
                     Text("الرسالة")
                         .font(SofraTypography.caption)
                         .foregroundStyle(SofraColors.textMuted)
-                    TextEditor(text: $body)
+                    TextEditor(text: $messageBody)
                         .frame(height: 100)
                         .scrollContentBackground(.hidden)
                         .background(SofraColors.surfaceElevated)
@@ -179,9 +179,9 @@ struct DeveloperBroadcastView: View {
                 // Character count
                 HStack {
                     Spacer()
-                    Text("\(body.count) / 500 حرف")
+                    Text("\(messageBody.count) / 500 حرف")
                         .font(SofraTypography.caption2)
-                        .foregroundStyle(body.count > 500 ? SofraColors.error : SofraColors.textMuted)
+                        .foregroundStyle(messageBody.count > 500 ? SofraColors.error : SofraColors.textMuted)
                 }
             }
         }
@@ -258,7 +258,7 @@ struct DeveloperBroadcastView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(selectedRoles.contains(role) ? SofraColors.primary : SofraColors.border, lineWidth: 1)
+                    .stroke(selectedRoles.contains(role) ? SofraColors.primary : SofraColors.textMuted.opacity(0.3), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -289,9 +289,9 @@ struct DeveloperBroadcastView: View {
     
     private var canSend: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !messageBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !selectedRoles.isEmpty &&
-        body.count <= 500
+        messageBody.count <= 500
     }
     
     // MARK: - Send Notification
@@ -323,7 +323,7 @@ struct DeveloperBroadcastView: View {
                     fields: [
                         "userId": user.uid,
                         "title": title.trimmingCharacters(in: .whitespacesAndNewlines),
-                        "body": body.trimmingCharacters(in: .whitespacesAndNewlines),
+                        "body": messageBody.trimmingCharacters(in: .whitespacesAndNewlines),
                         "type": notificationType.rawValue,
                         "read": false,
                         "isBroadcast": true,
