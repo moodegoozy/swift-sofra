@@ -190,8 +190,9 @@ struct SupervisorDashboardView: View {
             .padding(.top, SofraSpacing.md)
         }
         .refreshable {
-            if let token = try? await appState.validToken() {
-                await vm.loadOrders(token: token)
+            if let token = try? await appState.validToken(),
+               let uid = appState.currentUser?.uid {
+                await vm.loadOrders(token: token, supervisorId: uid)
             }
         }
     }
