@@ -109,12 +109,6 @@ struct DeveloperDashboardView: View {
             .sheet(isPresented: $showMessaging) {
                 DevMessagingView()
             }
-            .sheet(item: $editingCommission) { restaurant in
-                commissionEditorSheet(restaurant)
-            }
-            .sheet(item: $editingUserRole) { user in
-                roleEditorSheet(user)
-            }
         }
     }
     
@@ -376,6 +370,9 @@ extension DeveloperDashboardView {
         .ramadanBackground()
         .sheet(item: $assigningSupervisorTo) { restaurant in
             supervisorAssignmentSheet(restaurant)
+        }
+        .sheet(item: $editingCommission) { restaurant in
+            commissionEditorSheet(restaurant)
         }
     }
     
@@ -705,6 +702,9 @@ extension DeveloperDashboardView {
             .padding(.top, SofraSpacing.md)
         }
         .ramadanBackground()
+        .sheet(item: $editingUserRole) { user in
+            roleEditorSheet(user)
+        }
     }
     
     private func supervisorStatCard(_ title: String, count: Int, icon: String, color: Color) -> some View {
@@ -835,6 +835,9 @@ extension DeveloperDashboardView {
             .padding(.top, SofraSpacing.md)
         }
         .ramadanBackground()
+        .sheet(item: $editingUserRole) { user in
+            roleEditorSheet(user)
+        }
     }
     
     private func userStatCard(_ title: String, count: Int, icon: String, color: Color) -> some View {
