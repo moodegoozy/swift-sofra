@@ -20,6 +20,14 @@ final class SupervisorDashboardViewModel {
     var totalRestaurants = 0
     var totalUsers = 0
     var todayOrders = 0
+    
+    // Supervisor Revenue Stats
+    var mySupervisorFeeTotal: Double = 0       // إجمالي حصة المشرف
+    var mySupervisorFeeToday: Double = 0       // حصة المشرف اليوم
+    var mySupervisorFeeThisMonth: Double = 0   // حصة المشرف هذا الشهر
+    var myDeliveredOrdersCount: Int = 0        // عدد الطلبات المكتملة
+    var myTodayOrdersCount: Int = 0            // عدد طلبات اليوم
+    var myTotalItemsCount: Int = 0             // إجمالي المنتجات المباعة
 
     private let firestoreService = FirestoreService()
 
@@ -101,6 +109,44 @@ final class SupervisorDashboardViewModel {
             guard let created = order.createdAt else { return false }
             return created >= today
         }.count
+    }
+    
+    // MARK: - Calculate Supervisor Revenue
+    func calculateMyRevenue(supervisorId: String) {
+        let myRestIds = Set(myRestaurants(supervisorId: supervisorId).map { $0.id })
+        let myOrders = orders.filter { myRestIds.contains($0.restaurantId ?? "") }
+        let deliveredOrders = myOrders.filter { $0.status == .delivered }
+        
+        // حساب إجمالي حصة المشرف من الطلبات المكتملة
+        mySupervisorFeeTotal = deliveredOrders.reduce(0.0) { $0 + $1.supervisorFee }
+        myDeliveredOrdersCount = deliveredOrders.count
+        
+        // حساب إجمالي المنتجات المباعة
+        myTotalItemsCount = deliveredOrders.reduce(0) { total, order in
+            total + order.items.reduce(0) { $0 + $1.qty }
+        }
+        
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
+        
+        // طلبات اليوم
+        let todayDelivered = deliveredOrders.filter { order in
+            guard let created = order.createdAt else { return false }
+            return created >= today
+        }
+        mySupervisorFeeToday = todayDelivered.reduce(0.0) { $0 + $1.supervisorFee }
+        myTodayOrdersCount = myOrders.filter { order in
+            guard let created = order.createdAt else { return false }
+            return created >= today
+        }.count
+        
+        // طلبات هذا الشهر
+        let monthDelivered = deliveredOrders.filter { order in
+            guard let created = order.createdAt else { return false }
+            return created >= startOfMonth
+        }
+        mySupervisorFeeThisMonth = monthDelivered.reduce(0.0) { $0 + $1.supervisorFee }
     }
 
     // MARK: - Update Order Status

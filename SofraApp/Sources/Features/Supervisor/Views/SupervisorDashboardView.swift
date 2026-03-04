@@ -29,6 +29,7 @@ struct SupervisorDashboardView: View {
                 HStack(spacing: SofraSpacing.sm) {
                     tabButton("نظرة عامة", icon: "chart.bar.fill", tag: 0)
                     tabButton("مطاعمي", icon: "star.fill", tag: 4)
+                    tabButton("إيراداتي", icon: "banknote.fill", tag: 5)
                     tabButton("الطلبات", icon: "list.clipboard.fill", tag: 1)
                     tabButton("المطاعم", icon: "storefront.fill", tag: 2)
                     tabButton("المستخدمين", icon: "person.3.fill", tag: 3)
@@ -44,6 +45,7 @@ struct SupervisorDashboardView: View {
                 restaurantsTab.tag(2)
                 usersTab.tag(3)
                 myRestaurantsTab.tag(4)
+                myRevenueTab.tag(5)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
@@ -633,6 +635,300 @@ struct SupervisorDashboardView: View {
         .refreshable {
             await vm.loadDashboard(token: try? await appState.validToken())
         }
+    }
+    
+    // MARK: - My Revenue Tab (إيراداتي)
+    private var myRevenueTab: some View {
+        ScrollView {
+            VStack(spacing: SofraSpacing.lg) {
+                let supervisorId = appState.currentUser?.uid ?? ""
+                let myRestaurants = vm.myRestaurants(supervisorId: supervisorId)
+                let myOrders = vm.ordersForMyRestaurants(supervisorId: supervisorId)
+                let deliveredOrders = myOrders.filter { $0.status == .delivered }
+                
+                // حساب الإيرادات
+                let totalSupervisorFee = deliveredOrders.reduce(0.0) { $0 + $1.supervisorFee }
+                let totalItemsSold = deliveredOrders.reduce(0) { total, order in
+                    total + order.items.reduce(0) { $0 + $1.qty }
+                }
+                let totalOrdersRevenue = deliveredOrders.reduce(0.0) { $0 + $1.total }
+                
+                // فلترة حسب الفترة
+                let calendar = Calendar.current
+                let today = calendar.startOfDay(for: Date())
+                let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
+                
+                let todayOrders = deliveredOrders.filter { order in
+                    guard let created = order.createdAt else { return false }
+                    return created >= today
+                }
+                let todaySupervisorFee = todayOrders.reduce(0.0) { $0 + $1.supervisorFee }
+                
+                let monthOrders = deliveredOrders.filter { order in
+                    guard let created = order.createdAt else { return false }
+                    return created >= startOfMonth
+                }
+                let monthSupervisorFee = monthOrders.reduce(0.0) { $0 + $1.supervisorFee }
+                
+                if myRestaurants.isEmpty {
+                    EmptyStateView(
+                        icon: "banknote",
+                        title: "لا توجد إيرادات",
+                        message: "سجّل مطاعم أولاً لتتبع إيراداتك"
+                    )
+                    .padding(.top, SofraSpacing.xxxl)
+                } else {
+                    // Header Card - إجمالي الإيرادات
+                    VStack(spacing: SofraSpacing.md) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [SofraColors.gold500, SofraColors.gold600],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            
+                            VStack(spacing: SofraSpacing.md) {
+                                HStack {
+                                    Image(systemName: "crown.fill")
+                                        .font(.title2)
+                                    Spacer()
+                                    Text("حصة المشرف")
+                                        .font(SofraTypography.headline)
+                                }
+                                .foregroundStyle(.white.opacity(0.9))
+                                
+                                Text(String(format: "%.2f ر.س", totalSupervisorFee))
+                                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white)
+                                
+                                Text("إجمالي الأرباح من جميع المطاعم")
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(.white.opacity(0.8))
+                                
+                                Divider()
+                                    .background(.white.opacity(0.3))
+                                
+                                HStack(spacing: SofraSpacing.xl) {
+                                    VStack(spacing: 4) {
+                                        Text("\(ServiceFee.supervisorShare, specifier: "%.2f") ر.س")
+                                            .font(SofraTypography.headline)
+                                        Text("لكل منتج")
+                                            .font(SofraTypography.caption2)
+                                    }
+                                    
+                                    VStack(spacing: 4) {
+                                        Text("\(totalItemsSold)")
+                                            .font(SofraTypography.headline)
+                                        Text("منتج مباع")
+                                            .font(SofraTypography.caption2)
+                                    }
+                                    
+                                    VStack(spacing: 4) {
+                                        Text("\(deliveredOrders.count)")
+                                            .font(SofraTypography.headline)
+                                        Text("طلب مكتمل")
+                                            .font(SofraTypography.caption2)
+                                    }
+                                }
+                                .foregroundStyle(.white)
+                            }
+                            .padding(SofraSpacing.xl)
+                        }
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    
+                    // Period Stats
+                    LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
+                        revenueStatCard(
+                            title: "أرباح اليوم",
+                            amount: todaySupervisorFee,
+                            orderCount: todayOrders.count,
+                            icon: "sun.max.fill",
+                            color: SofraColors.warning
+                        )
+                        
+                        revenueStatCard(
+                            title: "أرباح الشهر",
+                            amount: monthSupervisorFee,
+                            orderCount: monthOrders.count,
+                            icon: "calendar",
+                            color: SofraColors.info
+                        )
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    
+                    // Revenue by Restaurant
+                    VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                        HStack {
+                            Spacer()
+                            Text("الإيرادات حسب المطعم")
+                                .font(SofraTypography.title3)
+                            Image(systemName: "chart.bar.xaxis")
+                                .foregroundStyle(SofraColors.primary)
+                        }
+                        .padding(.horizontal, SofraSpacing.screenHorizontal)
+                        
+                        ForEach(myRestaurants, id: \.id) { restaurant in
+                            let restaurantOrders = deliveredOrders.filter { $0.restaurantId == restaurant.id }
+                            let restaurantFee = restaurantOrders.reduce(0.0) { $0 + $1.supervisorFee }
+                            let restaurantItems = restaurantOrders.reduce(0) { total, order in
+                                total + order.items.reduce(0) { $0 + $1.qty }
+                            }
+                            
+                            restaurantRevenueRow(
+                                restaurant: restaurant,
+                                supervisorFee: restaurantFee,
+                                orderCount: restaurantOrders.count,
+                                itemCount: restaurantItems
+                            )
+                        }
+                    }
+                    
+                    // Recent Delivered Orders
+                    if !deliveredOrders.isEmpty {
+                        VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                            HStack {
+                                Spacer()
+                                Text("آخر الطلبات المكتملة")
+                                    .font(SofraTypography.title3)
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(SofraColors.success)
+                            }
+                            .padding(.horizontal, SofraSpacing.screenHorizontal)
+                            
+                            ForEach(deliveredOrders.prefix(5)) { order in
+                                revenueOrderRow(order)
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(minLength: SofraSpacing.xxxl)
+            }
+            .padding(.top, SofraSpacing.md)
+        }
+        .refreshable {
+            await vm.loadDashboard(token: try? await appState.validToken())
+            if let uid = appState.currentUser?.uid {
+                vm.calculateMyRevenue(supervisorId: uid)
+            }
+        }
+        .task {
+            if let uid = appState.currentUser?.uid {
+                vm.calculateMyRevenue(supervisorId: uid)
+            }
+        }
+    }
+    
+    // MARK: - Revenue Stat Card
+    private func revenueStatCard(title: String, amount: Double, orderCount: Int, icon: String, color: Color) -> some View {
+        VStack(spacing: SofraSpacing.sm) {
+            HStack {
+                Spacer()
+                Image(systemName: icon)
+                    .foregroundStyle(color)
+            }
+            
+            Text(String(format: "%.2f ر.س", amount))
+                .font(SofraTypography.title2)
+                .foregroundStyle(SofraColors.textPrimary)
+            
+            Text(title)
+                .font(SofraTypography.callout)
+                .foregroundStyle(SofraColors.textSecondary)
+            
+            Text("\(orderCount) طلب")
+                .font(SofraTypography.caption2)
+                .foregroundStyle(SofraColors.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
+    }
+    
+    // MARK: - Restaurant Revenue Row
+    private func restaurantRevenueRow(restaurant: Restaurant, supervisorFee: Double, orderCount: Int, itemCount: Int) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(String(format: "%.2f ر.س", supervisorFee))
+                    .font(SofraTypography.headline)
+                    .foregroundStyle(SofraColors.gold500)
+                
+                HStack(spacing: SofraSpacing.sm) {
+                    Label("\(orderCount) طلب", systemImage: "bag.fill")
+                    Label("\(itemCount) منتج", systemImage: "cube.fill")
+                }
+                .font(SofraTypography.caption2)
+                .foregroundStyle(SofraColors.textMuted)
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(restaurant.name)
+                    .font(SofraTypography.headline)
+                if let city = restaurant.city {
+                    Text(city)
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+            }
+            
+            ZStack {
+                Circle()
+                    .fill(SofraColors.gold500.opacity(0.1))
+                    .frame(width: 40, height: 40)
+                Image(systemName: "storefront.fill")
+                    .foregroundStyle(SofraColors.gold500)
+            }
+        }
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+    
+    // MARK: - Revenue Order Row
+    private func revenueOrderRow(_ order: Order) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(String(format: "+%.2f ر.س", order.supervisorFee))
+                    .font(SofraTypography.headline)
+                    .foregroundStyle(SofraColors.success)
+                
+                if let date = order.createdAt {
+                    Text(date.relativeArabic)
+                        .font(SofraTypography.caption2)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(order.restaurantName ?? "مطعم")
+                    .font(SofraTypography.callout)
+                
+                Text("#\(order.id.prefix(8))")
+                    .font(SofraTypography.caption2)
+                    .foregroundStyle(SofraColors.textMuted)
+            }
+            
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title2)
+                .foregroundStyle(SofraColors.success)
+        }
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
     }
     
     // MARK: - My Restaurant Row
