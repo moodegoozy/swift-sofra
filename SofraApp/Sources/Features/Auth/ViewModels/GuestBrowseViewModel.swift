@@ -10,9 +10,7 @@ final class GuestBrowseViewModel {
     var isLoading = false
     var errorMessage: String?
     
-    private var guestToken: String?
     private let firestoreService = FirestoreService()
-    private let client = APIClient.shared
     
     // MARK: - Load Restaurants as Guest
     func loadRestaurantsAsGuest() async {
@@ -20,13 +18,9 @@ final class GuestBrowseViewModel {
         errorMessage = nil
         
         do {
-            // Get guest token via anonymous auth
-            let token = try await getGuestToken()
-            
-            // Load restaurants
-            let docs = try await firestoreService.listDocuments(
+            // Load restaurants without authentication (public read)
+            let docs = try await firestoreService.listDocumentsPublic(
                 collection: "restaurants",
-                idToken: token,
                 pageSize: 100
             )
             
@@ -54,21 +48,17 @@ final class GuestBrowseViewModel {
     
     // MARK: - Load Menu Items for Guest
     func loadMenuItems(restaurantId: String) async throws -> (Restaurant?, [MenuItem]) {
-        let token = try await getGuestToken()
-        
-        // Load restaurant
-        let restaurantDoc = try await firestoreService.getDocument(
+        // Load restaurant (public read)
+        let restaurantDoc = try await firestoreService.getDocumentPublic(
             collection: "restaurants",
-            id: restaurantId,
-            idToken: token
+            id: restaurantId
         )
         let restaurant = Restaurant(from: restaurantDoc)
         
-        // Load menu items (query by ownerId which is the restaurant ID)
-        let menuDocs = try await firestoreService.query(
+        // Load menu items (public query by ownerId which is the restaurant ID)
+        let menuDocs = try await firestoreService.queryPublic(
             collection: "menuItems",
-            filters: [QueryFilter(field: "ownerId", op: "EQUAL", value: restaurantId)],
-            idToken: token
+            filters: [QueryFilter(field: "ownerId", op: "EQUAL", value: restaurantId)]
         )
         
         var items = menuDocs.map { MenuItem(from: $0) }
@@ -82,36 +72,5 @@ final class GuestBrowseViewModel {
         }
         
         return (restaurant, items)
-    }
-    
-    // MARK: - Anonymous Auth
-    private func getGuestToken() async throws -> String {
-        // Return cached token if available
-        if let token = guestToken { return token }
-        
-        // Sign in anonymously using Firebase REST API
-        let url = Endpoints.signInAnonymously
-        let body: [String: Any] = ["returnSecureToken": true]
-        let bodyData = try JSONSerialization.data(withJSONObject: body)
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = bodyData
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw APIError.unknown("فشل في الحصول على صلاحية التصفح")
-        }
-        
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard let idToken = json?["idToken"] as? String else {
-            throw APIError.unknown("استجابة غير صالحة")
-        }
-        
-        guestToken = idToken
-        return idToken
     }
 }

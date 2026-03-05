@@ -23,6 +23,50 @@ final class FirestoreService {
         let response: FirestoreListResponse = try await client.request(url: components.url!, token: idToken)
         return response.documents ?? []
     }
+    
+    // MARK: - List Documents (Public - no auth required)
+    func listDocumentsPublic(collection: String, pageSize: Int = 100) async throws -> [FirestoreDocumentResponse] {
+        var components = URLComponents(url: Endpoints.collection(collection), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "pageSize", value: String(pageSize))]
+        let response: FirestoreListResponse = try await client.requestPublic(url: components.url!)
+        return response.documents ?? []
+    }
+    
+    // MARK: - Get Document (Public - no auth required)
+    func getDocumentPublic(collection: String, id: String) async throws -> FirestoreDocumentResponse {
+        let url = Endpoints.document(collection, id: id)
+        return try await client.requestPublic(url: url)
+    }
+    
+    // MARK: - Query (Public - no auth required)
+    func queryPublic(
+        collection: String,
+        filters: [QueryFilter] = [],
+        limit: Int? = nil
+    ) async throws -> [FirestoreDocumentResponse] {
+        var structuredQuery: [String: Any] = [
+            "from": [["collectionId": collection]]
+        ]
+        
+        if !filters.isEmpty {
+            if filters.count == 1, let f = filters.first {
+                structuredQuery["where"] = f.toDict()
+            } else {
+                structuredQuery["where"] = [
+                    "compositeFilter": [
+                        "op": "AND",
+                        "filters": filters.map { $0.toDict() }
+                    ]
+                ]
+            }
+        }
+        
+        if let limit { structuredQuery["limit"] = limit }
+        
+        let body = try JSONSerialization.data(withJSONObject: ["structuredQuery": structuredQuery])
+        let results: [QueryResultWrapper] = try await client.requestPublicPost(url: Endpoints.runQuery, body: body)
+        return results.compactMap { $0.document }
+    }
 
     // MARK: - Create Document (with specific ID)
     func createDocument(collection: String, id: String, fields: [String: Any], idToken: String) async throws {

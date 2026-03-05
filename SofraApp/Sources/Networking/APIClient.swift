@@ -105,6 +105,89 @@ actor APIClient {
             throw APIError.serverError((response as? HTTPURLResponse)?.statusCode ?? 0)
         }
     }
+    
+    // MARK: - Public Request (no auth token required)
+    func requestPublic<T: Decodable>(url: URL) async throws -> T {
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        Logger.log("PUBLIC GET \(url.absoluteString)", level: .debug)
+        
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: req)
+        } catch {
+            throw APIError.networkError(error)
+        }
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.unknown("Invalid response type")
+        }
+        
+        switch httpResponse.statusCode {
+        case 200...299:
+            break
+        case 403:
+            throw APIError.forbidden
+        case 404:
+            throw APIError.notFound
+        default:
+            if let errorBody = try? JSONDecoder().decode(FirebaseErrorResponse.self, from: data) {
+                throw APIError.firebaseError(errorBody.error.message)
+            }
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+        
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            Logger.log("Decoding error: \(error)", level: .error)
+            throw APIError.decodingError(error)
+        }
+    }
+    
+    // MARK: - Public POST Request (no auth token required)
+    func requestPublicPost<T: Decodable>(url: URL, body: Data) async throws -> T {
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        
+        Logger.log("PUBLIC POST \(url.absoluteString)", level: .debug)
+        
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: req)
+        } catch {
+            throw APIError.networkError(error)
+        }
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.unknown("Invalid response type")
+        }
+        
+        switch httpResponse.statusCode {
+        case 200...299:
+            break
+        case 403:
+            throw APIError.forbidden
+        case 404:
+            throw APIError.notFound
+        default:
+            if let errorBody = try? JSONDecoder().decode(FirebaseErrorResponse.self, from: data) {
+                throw APIError.firebaseError(errorBody.error.message)
+            }
+            throw APIError.serverError(httpResponse.statusCode)
+        }
+        
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            Logger.log("Decoding error: \(error)", level: .error)
+            throw APIError.decodingError(error)
+        }
+    }
 }
 
 // MARK: - Firebase Error Shape

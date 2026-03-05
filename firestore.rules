@@ -43,8 +43,8 @@ service cloud.firestore {
 
     // ============ Restaurants ============
     match /restaurants/{restaurantId} {
-      // Anyone authenticated can read restaurants
-      allow read: if isAuthenticated();
+      // Anyone can read restaurants (for guest browsing)
+      allow read: if true;
       // Restaurant owner can create/update their own restaurant (doc id = ownerId)
       allow create: if isOwner(restaurantId);
       allow update: if isOwner(restaurantId) || isAdmin();
@@ -52,14 +52,15 @@ service cloud.firestore {
 
       // Restaurant subcollections (menu items, etc.)
       match /{subcollection}/{docId} {
-        allow read: if isAuthenticated();
+        allow read: if true;
         allow write: if isOwner(restaurantId) || isAdmin();
       }
     }
 
     // ============ Menu Items ============
     match /menuItems/{itemId} {
-      allow read: if isAuthenticated();
+      // Anyone can read menu items (for guest browsing)
+      allow read: if true;
       // Owner of the restaurant can manage menu items
       allow create, update: if isAuthenticated() &&
         (resource == null || get(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.ownerId == request.auth.uid || isAdmin());
