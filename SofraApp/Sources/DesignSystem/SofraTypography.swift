@@ -14,6 +14,7 @@ enum SofraTypography {
     // MARK: - Body
     static let headline    = Font.system(.headline, design: .rounded).weight(.semibold)
     static let body        = Font.system(.body, design: .rounded)
+    static let bodyBold    = Font.system(.body, design: .rounded).weight(.semibold)
     static let callout     = Font.system(.callout, design: .rounded)
     static let subheadline = Font.system(.subheadline, design: .rounded)
 
