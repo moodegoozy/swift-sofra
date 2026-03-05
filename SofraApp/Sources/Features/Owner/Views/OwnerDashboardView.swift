@@ -2589,7 +2589,7 @@ struct OwnerDashboardView: View {
                         .foregroundStyle(SofraColors.textSecondary)
                     
                     SofraTextField(
-                        title: "",
+                        label: "نسبة الخصم",
                         text: $bulkDiscountText,
                         placeholder: "نسبة الخصم (1-99)",
                         keyboardType: .numberPad
