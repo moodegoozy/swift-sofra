@@ -141,12 +141,22 @@ final class CourierDashboardViewModel {
                 "vehicleType": vehicleType,
                 "restaurantId": restaurant.id,
                 "restaurantName": restaurant.name,
+                "ownerId": restaurant.ownerId,
                 "status": "pending",
-                "createdAt": ISO8601DateFormatter().string(from: Date())
+                "createdAt": Date()
             ]
             try await firestoreService.createDocument(
                 collection: "courierApplications", id: docId,
                 fields: fields, idToken: token
+            )
+            
+            // Send notification to restaurant owner
+            await sendApplicationNotification(
+                to: restaurant.ownerId,
+                courierName: courierName,
+                restaurantName: restaurant.name,
+                vehicleType: vehicleType,
+                token: token
             )
 
             myApplication = CourierApplication(
@@ -334,7 +344,7 @@ final class CourierDashboardViewModel {
                     "type": "order_delivered",
                     "read": false,
                     "orderId": orderId,
-                    "createdAt": ISO8601DateFormatter().string(from: Date())
+                    "createdAt": Date()
                 ]
                 try? await firestoreService.createDocument(
                     collection: "notifications", id: notifId2,
@@ -343,6 +353,30 @@ final class CourierDashboardViewModel {
             }
         } catch {
             Logger.log("Mark delivered error: \(error)", level: .error)
+        }
+    }
+    
+    // MARK: - Send Application Notification
+    private func sendApplicationNotification(to ownerId: String, courierName: String, restaurantName: String, vehicleType: String, token: String) async {
+        let notificationId = UUID().uuidString
+        do {
+            try await firestoreService.createDocument(
+                collection: "notifications",
+                id: notificationId,
+                fields: [
+                    "userId": ownerId,
+                    "title": "طلب توظيف جديد!",
+                    "body": "\(courierName) يريد العمل كمندوب في \(restaurantName). نوع المركبة: \(vehicleType)",
+                    "type": "courier_application",
+                    "read": false,
+                    "createdAt": Date(),
+                    "senderId": courierId,
+                    "senderName": courierName
+                ],
+                idToken: token
+            )
+        } catch {
+            Logger.log("Failed to send application notification: \(error)", level: .error)
         }
     }
 }

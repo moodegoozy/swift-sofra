@@ -187,13 +187,41 @@ struct CourierApplyView: View {
             "vehicleType": vehicleType,
             "restaurantId": restaurant.id,
             "restaurantName": restaurant.name,
+            "ownerId": restaurant.ownerId,
             "status": "pending",
-            "createdAt": ISO8601DateFormatter().string(from: Date())
+            "createdAt": Date()
         ]
         try await firestoreService.createDocument(
             collection: "courierApplications", id: docId,
             fields: fields, idToken: token
         )
+        
+        // Send notification to restaurant owner
+        await sendApplicationNotification(to: restaurant.ownerId, token: token)
+        
         submitted = true
+    }
+    
+    private func sendApplicationNotification(to ownerId: String, token: String) async {
+        let notificationId = UUID().uuidString
+        do {
+            try await firestoreService.createDocument(
+                collection: "notifications",
+                id: notificationId,
+                fields: [
+                    "userId": ownerId,
+                    "title": "طلب توظيف جديد!",
+                    "body": "\(courierName) يريد العمل كمندوب في \(restaurant.name). نوع المركبة: \(vehicleType)",
+                    "type": "courier_application",
+                    "read": false,
+                    "createdAt": Date(),
+                    "senderId": appState.currentUser?.uid ?? "system",
+                    "senderName": courierName
+                ],
+                idToken: token
+            )
+        } catch {
+            Logger.log("Failed to send application notification: \(error)", level: .error)
+        }
     }
 }

@@ -360,6 +360,9 @@ extension DeveloperDashboardView {
     private var restaurantsDetailView: some View {
         ScrollView {
             VStack(spacing: SofraSpacing.md) {
+                // Financial Summary
+                financialSummarySection
+                
                 // Stats
                 HStack(spacing: SofraSpacing.md) {
                     restaurantStatCard("نشط", count: vm.verifiedRestaurants.filter { $0.isOpen }.count, color: SofraColors.success)
@@ -389,6 +392,141 @@ extension DeveloperDashboardView {
         }
     }
     
+    private var financialSummarySection: some View {
+        VStack(spacing: SofraSpacing.md) {
+            // Header
+            HStack {
+                Image(systemName: "chart.bar.doc.horizontal.fill")
+                    .foregroundStyle(SofraColors.gold400)
+                Text("الملخص المالي")
+                    .font(SofraTypography.headline)
+                Spacer()
+            }
+            .padding(.horizontal, SofraSpacing.screenHorizontal)
+            
+            // Financial Stats Grid
+            LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.sm) {
+                financialStatCard(
+                    "إجمالي المبيعات",
+                    value: "\(Int(vm.totalRevenue)) ر.س",
+                    icon: "banknote.fill",
+                    color: SofraColors.success
+                )
+                
+                financialStatCard(
+                    "إجمالي رسوم الخدمة",
+                    value: "\(String(format: "%.2f", vm.totalCommission)) ر.س",
+                    icon: "percent",
+                    color: SofraColors.info
+                )
+                
+                financialStatCard(
+                    "حصة المنصة",
+                    value: "\(String(format: "%.2f", vm.netPlatformEarnings)) ر.س",
+                    icon: "building.2.fill",
+                    color: SofraColors.primary
+                )
+                
+                financialStatCard(
+                    "حصة المشرفات",
+                    value: "\(String(format: "%.2f", vm.totalSupervisorFees)) ر.س",
+                    icon: "person.badge.shield.checkmark.fill",
+                    color: Color(hex: "#06B6D4")
+                )
+                
+                financialStatCard(
+                    "رسوم المناديب",
+                    value: "\(String(format: "%.2f", vm.courierPlatformFees)) ر.س",
+                    icon: "car.fill",
+                    color: SofraColors.warning
+                )
+                
+                financialStatCard(
+                    "طلبات مكتملة",
+                    value: "\(vm.deliveredOrders.count)",
+                    icon: "checkmark.circle.fill",
+                    color: SofraColors.success
+                )
+            }
+            .padding(.horizontal, SofraSpacing.screenHorizontal)
+            
+            // Per-Restaurant Commission Summary
+            VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                HStack {
+                    Spacer()
+                    Text("نسب العمولة للمطاعم")
+                        .font(SofraTypography.calloutSemibold)
+                    Image(systemName: "list.bullet.rectangle.fill")
+                        .foregroundStyle(SofraColors.info)
+                }
+                
+                // Top restaurants by commission
+                ForEach(topRestaurantsByCommission.prefix(5), id: \.restaurant.id) { item in
+                    HStack {
+                        Text("\(String(format: "%.2f", item.commission)) ر.س")
+                            .font(SofraTypography.calloutSemibold)
+                            .foregroundStyle(SofraColors.success)
+                        
+                        Text("(\(item.orderCount) طلب)")
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                        
+                        Spacer()
+                        
+                        Text(item.restaurant.name)
+                            .font(SofraTypography.body)
+                    }
+                    .padding(.vertical, SofraSpacing.xs)
+                    
+                    if item.restaurant.id != topRestaurantsByCommission.prefix(5).last?.restaurant.id {
+                        Divider()
+                    }
+                }
+            }
+            .padding(SofraSpacing.md)
+            .background(SofraColors.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, SofraSpacing.screenHorizontal)
+        }
+    }
+    
+    private var topRestaurantsByCommission: [(restaurant: Restaurant, commission: Double, orderCount: Int)] {
+        vm.restaurants.map { restaurant in
+            let orders = vm.orders.filter { $0.restaurantId == restaurant.id && $0.status == .delivered }
+            let commission = orders.reduce(0.0) { $0 + $1.commissionAmount }
+            return (restaurant: restaurant, commission: commission, orderCount: orders.count)
+        }
+        .sorted { $0.commission > $1.commission }
+    }
+    
+    private func financialStatCard(_ title: String, value: String, icon: String, color: Color) -> some View {
+        VStack(spacing: SofraSpacing.xs) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 36, height: 36)
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(color)
+            }
+            
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(color)
+            
+            Text(title)
+                .font(SofraTypography.caption2)
+                .foregroundStyle(SofraColors.textMuted)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, SofraSpacing.sm)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
+    }
+    
     private func restaurantStatCard(_ title: String, count: Int, color: Color) -> some View {
         VStack(spacing: SofraSpacing.xs) {
             Text("\(count)")
@@ -406,7 +544,10 @@ extension DeveloperDashboardView {
     
     private func restaurantDetailCard(_ restaurant: Restaurant) -> some View {
         let restaurantOrders = vm.orders.filter { $0.restaurantId == restaurant.id }
-        let totalSales = restaurantOrders.filter { $0.status == .delivered }.reduce(0.0) { $0 + $1.total }
+        let deliveredOrders = restaurantOrders.filter { $0.status == .delivered }
+        let totalSales = deliveredOrders.reduce(0.0) { $0 + $1.total }
+        let totalCommission = deliveredOrders.reduce(0.0) { $0 + $1.commissionAmount }
+        let platformFee = deliveredOrders.reduce(0.0) { $0 + $1.platformFee }
         
         return VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
             // Header
@@ -434,8 +575,8 @@ extension DeveloperDashboardView {
             
             Divider()
             
-            // Stats
-            HStack(spacing: SofraSpacing.lg) {
+            // Financial Stats
+            HStack(spacing: SofraSpacing.md) {
                 VStack(spacing: 2) {
                     Text("\(restaurantOrders.count)")
                         .font(SofraTypography.headline)
@@ -454,46 +595,75 @@ extension DeveloperDashboardView {
                         .foregroundStyle(SofraColors.textMuted)
                 }
                 
+                VStack(spacing: 2) {
+                    Text(String(format: "%.1f", totalCommission))
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(SofraColors.primary)
+                    Text("رسوم الخدمة")
+                        .font(SofraTypography.caption2)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+                
+                VStack(spacing: 2) {
+                    Text(String(format: "%.1f", platformFee))
+                        .font(SofraTypography.headline)
+                        .foregroundStyle(Color(hex: "#8B5CF6"))
+                    Text("حصة المنصة")
+                        .font(SofraTypography.caption2)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+                
+                Spacer()
+            }
+            
+            // Actions Row
+            HStack(spacing: SofraSpacing.sm) {
+                // Assign Supervisor
+                Button {
+                    assigningSupervisorTo = restaurant
+                } label: {
+                    Image(systemName: "person.badge.shield.checkmark")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color(hex: "#06B6D4"))
+                        .padding(10)
+                        .background(Color(hex: "#06B6D4").opacity(0.1))
+                        .clipShape(Circle())
+                }
+                
+                Button {
+                    editingCommission = restaurant
+                } label: {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 16))
+                        .foregroundStyle(SofraColors.info)
+                        .padding(10)
+                        .background(SofraColors.info.opacity(0.1))
+                        .clipShape(Circle())
+                }
+                
+                Button {
+                    Task {
+                        await vm.verifyRestaurant(restaurantId: restaurant.id, verified: !restaurant.isVerified, token: try? await appState.validToken())
+                    }
+                } label: {
+                    Image(systemName: restaurant.isVerified ? "xmark.shield" : "checkmark.shield")
+                        .font(.system(size: 16))
+                        .foregroundStyle(restaurant.isVerified ? SofraColors.error : SofraColors.success)
+                        .padding(10)
+                        .background((restaurant.isVerified ? SofraColors.error : SofraColors.success).opacity(0.1))
+                        .clipShape(Circle())
+                }
+                
                 Spacer()
                 
-                // Actions
-                HStack(spacing: SofraSpacing.sm) {
-                    // Assign Supervisor
-                    Button {
-                        assigningSupervisorTo = restaurant
-                    } label: {
-                        Image(systemName: "person.badge.shield.checkmark")
-                            .font(.system(size: 16))
-                            .foregroundStyle(Color(hex: "#06B6D4"))
-                            .padding(10)
-                            .background(Color(hex: "#06B6D4").opacity(0.1))
-                            .clipShape(Circle())
-                    }
-                    
-                    Button {
-                        editingCommission = restaurant
-                    } label: {
-                        Image(systemName: "slider.horizontal.3")
-                            .font(.system(size: 16))
-                            .foregroundStyle(SofraColors.info)
-                            .padding(10)
-                            .background(SofraColors.info.opacity(0.1))
-                            .clipShape(Circle())
-                    }
-                    
-                    Button {
-                        Task {
-                            await vm.verifyRestaurant(restaurantId: restaurant.id, verified: !restaurant.isVerified, token: try? await appState.validToken())
-                        }
-                    } label: {
-                        Image(systemName: restaurant.isVerified ? "xmark.shield" : "checkmark.shield")
-                            .font(.system(size: 16))
-                            .foregroundStyle(restaurant.isVerified ? SofraColors.error : SofraColors.success)
-                            .padding(10)
-                            .background((restaurant.isVerified ? SofraColors.error : SofraColors.success).opacity(0.1))
-                            .clipShape(Circle())
-                    }
-                }
+                // Commission Rate Badge
+                Text("العمولة: \(Int(restaurant.commissionRate))%")
+                    .font(SofraTypography.caption)
+                    .foregroundStyle(SofraColors.gold400)
+                    .padding(.horizontal, SofraSpacing.sm)
+                    .padding(.vertical, SofraSpacing.xs)
+                    .background(SofraColors.gold400.opacity(0.15))
+                    .clipShape(Capsule())
             }
             
             // Supervisor Info (if assigned)
@@ -1116,15 +1286,28 @@ extension DeveloperDashboardView {
     private var reportsDetailView: some View {
         ScrollView {
             VStack(spacing: SofraSpacing.lg) {
-                // Revenue Report
+                // Platform Revenue Report
                 reportCard(
-                    title: "تقرير الأرباح",
-                    icon: "chart.line.uptrend.xyaxis",
-                    color: SofraColors.success,
+                    title: "إيرادات المنصة",
+                    icon: "building.2.fill",
+                    color: SofraColors.primary,
                     stats: [
-                        ("إجمالي الأرباح", "\(Int(vm.netPlatformEarnings)) ر.س"),
-                        ("رسوم الخدمة", "\(Int(vm.totalCommission)) ر.س"),
-                        ("رسوم المندوبين", "\(Int(vm.courierPlatformFees)) ر.س")
+                        ("صافي أرباح المنصة", "\(String(format: "%.2f", vm.netPlatformEarnings)) ر.س"),
+                        ("من رسوم الخدمة", "\(String(format: "%.2f", vm.platformOnlyFees)) ر.س"),
+                        ("من رسوم التوصيل", "\(String(format: "%.2f", vm.courierPlatformFees)) ر.س")
+                    ]
+                )
+                
+                // Service Fees Breakdown
+                reportCard(
+                    title: "تفاصيل رسوم الخدمة",
+                    icon: "percent",
+                    color: SofraColors.info,
+                    stats: [
+                        ("إجمالي الرسوم المحصلة", "\(String(format: "%.2f", vm.totalCommission)) ر.س"),
+                        ("حصة المنصة (\(ServiceFee.platformShareWithSupervisor)/\(ServiceFee.platformShareNoSupervisor) ر.س)", "\(String(format: "%.2f", vm.platformOnlyFees)) ر.س"),
+                        ("حصة المشرفات (\(ServiceFee.supervisorShare) ر.س)", "\(String(format: "%.2f", vm.totalSupervisorFees)) ر.س"),
+                        ("رسم الخدمة للمنتج الواحد", "\(ServiceFee.perItem) ر.س")
                     ]
                 )
                 
@@ -1132,11 +1315,11 @@ extension DeveloperDashboardView {
                 reportCard(
                     title: "تقرير المبيعات",
                     icon: "bag.fill",
-                    color: SofraColors.primary,
+                    color: SofraColors.success,
                     stats: [
                         ("إجمالي المبيعات", "\(Int(vm.totalRevenue)) ر.س"),
                         ("مبيعات اليوم", "\(Int(vm.todayRevenue)) ر.س"),
-                        ("عدد الطلبات", "\(vm.totalOrders)")
+                        ("متوسط قيمة الطلب", "\(vm.deliveredOrders.isEmpty ? 0 : Int(vm.totalRevenue / Double(vm.deliveredOrders.count))) ر.س")
                     ]
                 )
                 
@@ -1144,11 +1327,38 @@ extension DeveloperDashboardView {
                 reportCard(
                     title: "تقرير الطلبات",
                     icon: "list.clipboard.fill",
-                    color: SofraColors.info,
+                    color: SofraColors.warning,
                     stats: [
+                        ("إجمالي الطلبات", "\(vm.totalOrders)"),
                         ("طلبات اليوم", "\(vm.todayOrders)"),
-                        ("مكتملة", "\(vm.orders.filter { $0.status == .delivered }.count)"),
-                        ("ملغية", "\(vm.orders.filter { $0.status == .cancelled }.count)")
+                        ("مكتملة", "\(vm.deliveredOrders.count)"),
+                        ("نشطة", "\(vm.activeOrders)"),
+                        ("ملغية", "\(vm.cancelledOrders.count)")
+                    ]
+                )
+                
+                // Courier Report
+                reportCard(
+                    title: "تقرير المناديب",
+                    icon: "car.fill",
+                    color: Color(hex: "#8B5CF6"),
+                    stats: [
+                        ("عدد المناديب", "\(vm.courierCount)"),
+                        ("طلبات تم توصيلها", "\(vm.orders.filter { $0.courierId != nil && $0.status == .delivered }.count)"),
+                        ("إجمالي رسوم التوصيل", "\(String(format: "%.2f", vm.courierPlatformFees)) ر.س"),
+                        ("الرسم لكل توصيلة", "3.75 ر.س")
+                    ]
+                )
+                
+                // Supervisor Report
+                reportCard(
+                    title: "تقرير المشرفات",
+                    icon: "person.badge.shield.checkmark.fill",
+                    color: Color(hex: "#06B6D4"),
+                    stats: [
+                        ("عدد المشرفات", "\(vm.supervisorCount)"),
+                        ("إجمالي حصصهن", "\(String(format: "%.2f", vm.totalSupervisorFees)) ر.س"),
+                        ("أسر منتجة تحت الإشراف", "\(vm.restaurants.filter { $0.supervisorId != nil }.count)")
                     ]
                 )
                 
@@ -1166,6 +1376,7 @@ extension DeveloperDashboardView {
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
             }
             .padding(.top, SofraSpacing.md)
+            .padding(.bottom, SofraSpacing.lg)
         }
         .ramadanBackground()
     }

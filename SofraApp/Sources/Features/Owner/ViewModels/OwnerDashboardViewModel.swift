@@ -547,15 +547,26 @@ final class OwnerDashboardViewModel {
     func loadHiringApplications(ownerId: String, token: String?) async {
         guard let token else { return }
         do {
-            let docs = try await firestoreService.query(
+            // Try to query by ownerId first (new field)
+            var docs = try await firestoreService.query(
                 collection: "courierApplications",
-                filters: [QueryFilter(field: "restaurantId", op: "EQUAL", value: ownerId)],
-                orderBy: "createdAt",
-                descending: true,
+                filters: [QueryFilter(field: "ownerId", op: "EQUAL", value: ownerId)],
                 limit: 50,
                 idToken: token
             )
+            
+            // If no results, fallback to restaurantId query (for backward compatibility)
+            if docs.isEmpty {
+                docs = try await firestoreService.query(
+                    collection: "courierApplications",
+                    filters: [QueryFilter(field: "restaurantId", op: "EQUAL", value: ownerId)],
+                    limit: 50,
+                    idToken: token
+                )
+            }
+            
             self.hiringApplications = docs.map { CourierApplication(from: $0) }
+                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
         } catch {
             Logger.log("Load hiring applications error: \(error)", level: .error)
         }
