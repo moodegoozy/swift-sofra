@@ -90,7 +90,7 @@ struct GuestMenuView: View {
     
     // MARK: - Grouped Items
     private var groupedItems: [(category: String, items: [MenuItem])] {
-        let grouped = Dictionary(grouping: menuItems, by: { $0.category })
+        let grouped = Dictionary(grouping: menuItems, by: { $0.category ?? "أخرى" })
         return grouped.map { (category: $0.key, items: $0.value) }
             .sorted { $0.category < $1.category }
     }

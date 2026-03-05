@@ -75,7 +75,9 @@ final class GuestBrowseViewModel {
         
         // Sort by category then name
         items.sort { a, b in
-            if a.category != b.category { return a.category < b.category }
+            let catA = a.category ?? ""
+            let catB = b.category ?? ""
+            if catA != catB { return catA < catB }
             return a.name < b.name
         }
         
