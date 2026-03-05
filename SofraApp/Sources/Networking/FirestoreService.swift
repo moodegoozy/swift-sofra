@@ -64,7 +64,7 @@ final class FirestoreService {
         if let limit { structuredQuery["limit"] = limit }
         
         let body = try JSONSerialization.data(withJSONObject: ["structuredQuery": structuredQuery])
-        let results: [QueryResultWrapper] = try await client.requestPublicPost(url: Endpoints.runQuery, body: body)
+        let results: [FirestoreQueryResult] = try await client.requestPublicPost(url: Endpoints.runQuery, body: body)
         return results.compactMap { $0.document }
     }
 
