@@ -44,6 +44,10 @@ enum Endpoints {
     static var sendPhoneVerification: URL {
         URL(string: "https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=\(apiKey)")!
     }
+    
+    static var signInAnonymously: URL {
+        URL(string: "\(authBase)/accounts:signUp?key=\(apiKey)")!
+    }
 
     // MARK: - Firestore REST API
     private static let firestoreBase = "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents"

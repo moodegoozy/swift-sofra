@@ -7,6 +7,7 @@ struct LoginView: View {
     @Environment(AppState.self) var appState
     @State private var vm = AuthViewModel()
     @State private var showRegister = false
+    @State private var showGuestBrowse = false
     @State private var loginMethod: LoginMethod = .email
 
     enum LoginMethod: String, CaseIterable {
@@ -73,6 +74,48 @@ struct LoginView: View {
                     showRegister = true
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // MARK: - Browse as Guest
+                VStack(spacing: SofraSpacing.sm) {
+                    HStack {
+                        Rectangle()
+                            .fill(SofraColors.gold500.opacity(0.3))
+                            .frame(height: 1)
+                        Text("أو")
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                        Rectangle()
+                            .fill(SofraColors.gold500.opacity(0.3))
+                            .frame(height: 1)
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    
+                    Button {
+                        showGuestBrowse = true
+                    } label: {
+                        HStack(spacing: SofraSpacing.sm) {
+                            Image(systemName: "eye.fill")
+                                .font(.body.weight(.semibold))
+                            Text("تصفح المطاعم كزائر")
+                                .font(SofraTypography.headline)
+                        }
+                        .foregroundStyle(SofraColors.gold400)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: SofraSpacing.buttonHeight)
+                        .background(
+                            RoundedRectangle(cornerRadius: SofraSpacing.buttonRadius)
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [SofraColors.gold300, SofraColors.gold500],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    ),
+                                    lineWidth: 1.5
+                                )
+                        )
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
+                }
 
                 Spacer(minLength: SofraSpacing.xxxl)
             }
@@ -80,6 +123,9 @@ struct LoginView: View {
         .ramadanBackground()
         .navigationDestination(isPresented: $showRegister) {
             RegisterChoiceView()
+        }
+        .fullScreenCover(isPresented: $showGuestBrowse) {
+            GuestBrowseView()
         }
         .alert("خطأ", isPresented: $vm.showError) {
             Button("حسناً", role: .cancel) {}
