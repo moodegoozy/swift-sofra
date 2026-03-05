@@ -454,7 +454,7 @@ extension DeveloperDashboardView {
             VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
                 HStack {
                     Spacer()
-                    Text("نسب العمولة للمطاعم")
+                    Text("رسوم الخدمة للمطاعم")
                         .font(SofraTypography.calloutSemibold)
                     Image(systemName: "list.bullet.rectangle.fill")
                         .foregroundStyle(SofraColors.info)
@@ -653,17 +653,6 @@ extension DeveloperDashboardView {
                         .background((restaurant.isVerified ? SofraColors.error : SofraColors.success).opacity(0.1))
                         .clipShape(Circle())
                 }
-                
-                Spacer()
-                
-                // Commission Rate Badge
-                Text("العمولة: \(Int(restaurant.commissionRate))%")
-                    .font(SofraTypography.caption)
-                    .foregroundStyle(SofraColors.gold400)
-                    .padding(.horizontal, SofraSpacing.sm)
-                    .padding(.vertical, SofraSpacing.xs)
-                    .background(SofraColors.gold400.opacity(0.15))
-                    .clipShape(Capsule())
             }
             
             // Supervisor Info (if assigned)
