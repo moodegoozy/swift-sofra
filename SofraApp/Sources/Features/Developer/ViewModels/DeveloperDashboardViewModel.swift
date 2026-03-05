@@ -293,4 +293,98 @@ final class DeveloperDashboardViewModel {
     var cancelledOrders: [Order] { orders.filter { $0.status == .cancelled } }
     var verifiedRestaurants: [Restaurant] { restaurants.filter { $0.isVerified } }
     var unverifiedRestaurants: [Restaurant] { restaurants.filter { !$0.isVerified } }
+    
+    // MARK: - License Management
+    
+    /// Restaurants with active licenses (verified with expiry date)
+    var activeLicenseRestaurants: [Restaurant] {
+        restaurants.filter { $0.isVerified && $0.licenseExpiryDate != nil && !$0.isLicenseExpired }
+    }
+    
+    /// Restaurants with expired licenses
+    var expiredLicenseRestaurants: [Restaurant] {
+        restaurants.filter { $0.isVerified && $0.isLicenseExpired }
+    }
+    
+    /// Restaurants with licenses expiring within 30 days
+    var expiringLicenseRestaurants: [Restaurant] {
+        restaurants.filter { $0.isVerified && $0.isLicenseExpiringSoon }
+    }
+    
+    /// Update restaurant license expiry date
+    func updateLicenseExpiry(restaurantId: String, expiryDate: Date, token: String?) async {
+        guard let token else { return }
+        do {
+            try await firestoreService.updateDocument(
+                collection: "restaurants", id: restaurantId,
+                fields: ["licenseExpiryDate": expiryDate],
+                idToken: token
+            )
+            if let idx = restaurants.firstIndex(where: { $0.id == restaurantId }) {
+                restaurants[idx].licenseExpiryDate = expiryDate
+            }
+            Logger.log("Updated license expiry for \(restaurantId) to \(expiryDate)", level: .info)
+        } catch {
+            Logger.log("Failed to update license expiry: \(error)", level: .error)
+        }
+    }
+    
+    /// Check and send notifications for expiring licenses
+    func checkExpiringLicenses(token: String?) async {
+        guard let token else { return }
+        
+        let expiring = expiringLicenseRestaurants
+        Logger.log("Found \(expiring.count) restaurants with expiring licenses", level: .info)
+        
+        for restaurant in expiring {
+            guard let days = restaurant.daysUntilLicenseExpiry else { continue }
+            
+            // Send notification at 30, 14, 7, 3, 1 days before expiry
+            let notificationDays = [30, 14, 7, 3, 1]
+            if notificationDays.contains(days) {
+                await sendLicenseExpiryNotification(
+                    to: restaurant.ownerId,
+                    restaurantName: restaurant.name,
+                    daysRemaining: days,
+                    token: token
+                )
+            }
+        }
+    }
+    
+    /// Send license expiry notification
+    private func sendLicenseExpiryNotification(to userId: String, restaurantName: String, daysRemaining: Int, token: String) async {
+        let notificationId = UUID().uuidString
+        
+        let title = "⚠️ تنبيه: اقتراب انتهاء الترخيص"
+        let body: String
+        if daysRemaining == 1 {
+            body = "ينتهي ترخيص \"\(restaurantName)\" غداً. يرجى تجديد الترخيص لتجنب إيقاف الحساب."
+        } else if daysRemaining <= 7 {
+            body = "ينتهي ترخيص \"\(restaurantName)\" خلال \(daysRemaining) أيام. يرجى تجديد الترخيص في أقرب وقت."
+        } else {
+            body = "ينتهي ترخيص \"\(restaurantName)\" خلال \(daysRemaining) يوماً. يرجى التخطيط لتجديد الترخيص."
+        }
+        
+        do {
+            try await firestoreService.createDocument(
+                collection: "notifications",
+                id: notificationId,
+                fields: [
+                    "userId": userId,
+                    "title": title,
+                    "body": body,
+                    "type": "license_expiry",
+                    "read": false,
+                    "createdAt": Date(),
+                    "senderId": "system",
+                    "senderName": "إدارة سفرة البيت"
+                ],
+                idToken: token
+            )
+            Logger.log("Sent license expiry notification to \(userId): \(daysRemaining) days remaining", level: .info)
+        } catch {
+            Logger.log("Failed to send license expiry notification: \(error)", level: .error)
+        }
+    }
 }

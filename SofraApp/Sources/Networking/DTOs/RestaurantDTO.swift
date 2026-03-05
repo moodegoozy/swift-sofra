@@ -33,6 +33,10 @@ struct Restaurant: Identifiable {
     var longitude: Double?
     // Menu item count for completeness check
     var menuItemCount: Int?
+    // License expiry date
+    var licenseExpiryDate: Date?
+    // License document URL
+    var licenseUrl: String?
 
     enum PackageType: String {
         case free, premium
@@ -77,6 +81,10 @@ struct Restaurant: Identifiable {
             self.latitude = locMap["lat"]?.doubleVal
             self.longitude = locMap["lng"]?.doubleVal
         }
+        
+        // License fields
+        self.licenseExpiryDate = f["licenseExpiryDate"]?.dateVal
+        self.licenseUrl = f["licenseUrl"]?.stringVal
     }
 
     /// Tier icon for display
@@ -119,5 +127,40 @@ struct Restaurant: Identifiable {
             return "\(Int(km * 1000)) م"
         }
         return String(format: "%.1f كم", km)
+    }
+    
+    // MARK: - License Helpers
+    
+    /// Days until license expires (negative if expired)
+    var daysUntilLicenseExpiry: Int? {
+        guard let expiryDate = licenseExpiryDate else { return nil }
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: expiryDate).day
+        return days
+    }
+    
+    /// Whether license is expired
+    var isLicenseExpired: Bool {
+        guard let days = daysUntilLicenseExpiry else { return false }
+        return days < 0
+    }
+    
+    /// Whether license is expiring soon (within 30 days)
+    var isLicenseExpiringSoon: Bool {
+        guard let days = daysUntilLicenseExpiry else { return false }
+        return days >= 0 && days <= 30
+    }
+    
+    /// License status text
+    var licenseStatusText: String {
+        guard let days = daysUntilLicenseExpiry else { return "غير محدد" }
+        if days < 0 {
+            return "منتهي منذ \(abs(days)) يوم"
+        } else if days == 0 {
+            return "ينتهي اليوم"
+        } else if days <= 30 {
+            return "ينتهي خلال \(days) يوم"
+        } else {
+            return "صالح - ينتهي خلال \(days) يوم"
+        }
     }
 }

@@ -26,6 +26,10 @@ struct DeveloperDashboardView: View {
     @State private var isCreatingSupervisor = false
     @State private var createSupervisorError: String?
     
+    // License management
+    @State private var editingLicenseExpiry: Restaurant?
+    @State private var newLicenseExpiryDate = Date().addingTimeInterval(365 * 24 * 60 * 60) // 1 year default
+    
     // Package management
     @State private var showPriceEditor = false
     @State private var editPremiumMonthly: String = "99"
@@ -1225,45 +1229,236 @@ extension DeveloperDashboardView {
     private var licensesDetailView: some View {
         ScrollView {
             VStack(spacing: SofraSpacing.md) {
-                // Info
-                HStack(spacing: SofraSpacing.md) {
-                    Image(systemName: "doc.badge.clock")
-                        .font(.title2)
-                        .foregroundStyle(SofraColors.warning)
-                    
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("التراخيص والمستندات")
-                            .font(SofraTypography.headline)
-                        Text("مراجعة المستندات المرفوعة من المطاعم والأسر المنتجة")
-                            .font(SofraTypography.caption)
-                            .foregroundStyle(SofraColors.textMuted)
-                    }
-                    
-                    Spacer()
+                // Stats cards
+                LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: SofraSpacing.md) {
+                    licenseStatCard("مفعّلة", count: vm.activeLicenseRestaurants.count, icon: "checkmark.seal.fill", color: SofraColors.success)
+                    licenseStatCard("تنتهي قريباً", count: vm.expiringLicenseRestaurants.count, icon: "exclamationmark.triangle.fill", color: SofraColors.warning)
+                    licenseStatCard("منتهية", count: vm.expiredLicenseRestaurants.count, icon: "xmark.seal.fill", color: SofraColors.error)
+                    licenseStatCard("معلقة", count: vm.unverifiedRestaurants.count, icon: "clock.fill", color: SofraColors.info)
                 }
-                .padding(SofraSpacing.md)
-                .background(SofraColors.warning.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
                 
-                // Pending verifications
-                let unverified = vm.unverifiedRestaurants
-                
-                if unverified.isEmpty {
-                    EmptyStateView(icon: "checkmark.seal", title: "لا توجد طلبات معلقة", message: "جميع المستندات تمت مراجعتها")
-                        .padding(.top, SofraSpacing.xxxl)
-                } else {
-                    ForEach(unverified, id: \.id) { restaurant in
-                        licenseCard(restaurant)
+                // Check expiring licenses button
+                Button {
+                    Task {
+                        await vm.checkExpiringLicenses(token: try? await appState.validToken())
                     }
+                } label: {
+                    HStack {
+                        Text("إرسال تنبيهات الانتهاء")
+                            .font(SofraTypography.calloutSemibold)
+                        Image(systemName: "bell.badge.fill")
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SofraSpacing.sm)
+                    .background(SofraColors.warning)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                // Section: Expiring Soon
+                if !vm.expiringLicenseRestaurants.isEmpty {
+                    licenseSectionHeader("تراخيص تنتهي قريباً", icon: "exclamationmark.triangle.fill", color: SofraColors.warning)
+                    
+                    ForEach(vm.expiringLicenseRestaurants.sorted { ($0.daysUntilLicenseExpiry ?? 999) < ($1.daysUntilLicenseExpiry ?? 999) }, id: \.id) { restaurant in
+                        activeLicenseCard(restaurant)
+                    }
+                }
+                
+                // Section: Active Licenses
+                if !vm.activeLicenseRestaurants.isEmpty {
+                    licenseSectionHeader("التراخيص المفعّلة", icon: "checkmark.seal.fill", color: SofraColors.success)
+                    
+                    ForEach(vm.activeLicenseRestaurants.filter { !$0.isLicenseExpiringSoon }, id: \.id) { restaurant in
+                        activeLicenseCard(restaurant)
+                    }
+                }
+                
+                // Section: Expired
+                if !vm.expiredLicenseRestaurants.isEmpty {
+                    licenseSectionHeader("تراخيص منتهية", icon: "xmark.seal.fill", color: SofraColors.error)
+                    
+                    ForEach(vm.expiredLicenseRestaurants, id: \.id) { restaurant in
+                        expiredLicenseCard(restaurant)
+                    }
+                }
+                
+                // Section: Pending Verification
+                if !vm.unverifiedRestaurants.isEmpty {
+                    licenseSectionHeader("طلبات معلقة", icon: "clock.fill", color: SofraColors.info)
+                    
+                    ForEach(vm.unverifiedRestaurants, id: \.id) { restaurant in
+                        pendingLicenseCard(restaurant)
+                    }
+                }
+                
+                // Empty state if no licenses
+                if vm.restaurants.isEmpty {
+                    EmptyStateView(icon: "doc.text", title: "لا توجد تراخيص", message: "لم يتم تسجيل أي مطاعم بعد")
+                        .padding(.top, SofraSpacing.xxxl)
                 }
             }
             .padding(.top, SofraSpacing.md)
+            .padding(.bottom, SofraSpacing.lg)
         }
         .ramadanBackground()
+        .sheet(item: $editingLicenseExpiry) { restaurant in
+            licenseExpiryEditorSheet(restaurant)
+        }
     }
     
-    private func licenseCard(_ restaurant: Restaurant) -> some View {
+    private func licenseStatCard(_ title: String, count: Int, icon: String, color: Color) -> some View {
+        VStack(spacing: SofraSpacing.xs) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(color)
+            }
+            
+            Text("\(count)")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(color)
+            
+            Text(title)
+                .font(SofraTypography.caption)
+                .foregroundStyle(SofraColors.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, SofraSpacing.md)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+    }
+    
+    private func licenseSectionHeader(_ title: String, icon: String, color: Color) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+            Text(title)
+                .font(SofraTypography.headline)
+            Spacer()
+        }
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
+        .padding(.top, SofraSpacing.md)
+    }
+    
+    private func activeLicenseCard(_ restaurant: Restaurant) -> some View {
+        VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+            HStack {
+                // License status badge
+                StatusBadge(
+                    text: restaurant.licenseStatusText,
+                    color: restaurant.isLicenseExpiringSoon ? SofraColors.warning : SofraColors.success
+                )
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(restaurant.name)
+                        .font(SofraTypography.headline)
+                    if let email = restaurant.email {
+                        Text(email)
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                    }
+                }
+            }
+            
+            Divider()
+            
+            HStack {
+                // Edit expiry button
+                Button {
+                    editingLicenseExpiry = restaurant
+                } label: {
+                    HStack(spacing: SofraSpacing.xs) {
+                        Image(systemName: "calendar.badge.clock")
+                        Text("تعديل التاريخ")
+                    }
+                    .font(SofraTypography.caption)
+                    .foregroundStyle(SofraColors.info)
+                    .padding(.horizontal, SofraSpacing.sm)
+                    .padding(.vertical, SofraSpacing.xs)
+                    .background(SofraColors.info.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                
+                Spacer()
+                
+                if let expiryDate = restaurant.licenseExpiryDate {
+                    Text("ينتهي: \(expiryDate.formatted(date: .abbreviated, time: .omitted))")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textMuted)
+                }
+            }
+        }
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+    
+    private func expiredLicenseCard(_ restaurant: Restaurant) -> some View {
+        VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+            HStack {
+                StatusBadge(text: "منتهي", color: SofraColors.error)
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(restaurant.name)
+                        .font(SofraTypography.headline)
+                    if let email = restaurant.email {
+                        Text(email)
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                    }
+                }
+            }
+            
+            Divider()
+            
+            HStack {
+                // Renew button
+                Button {
+                    editingLicenseExpiry = restaurant
+                } label: {
+                    HStack(spacing: SofraSpacing.xs) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("تجديد")
+                    }
+                    .font(SofraTypography.caption)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, SofraSpacing.md)
+                    .padding(.vertical, SofraSpacing.xs)
+                    .background(SofraColors.success)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                
+                Spacer()
+                
+                Text(restaurant.licenseStatusText)
+                    .font(SofraTypography.caption)
+                    .foregroundStyle(SofraColors.error)
+            }
+        }
+        .padding(SofraSpacing.cardPadding)
+        .background(SofraColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
+                .stroke(SofraColors.error.opacity(0.3), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+        .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+    
+    private func pendingLicenseCard(_ restaurant: Restaurant) -> some View {
         VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
             HStack {
                 StatusBadge(text: "بانتظار المراجعة", color: SofraColors.warning)
@@ -1314,6 +1509,8 @@ extension DeveloperDashboardView {
                 Button {
                     Task {
                         await vm.verifyRestaurant(restaurantId: restaurant.id, verified: true, token: try? await appState.validToken())
+                        // Set license expiry to 1 year from now
+                        await vm.updateLicenseExpiry(restaurantId: restaurant.id, expiryDate: Date().addingTimeInterval(365 * 24 * 60 * 60), token: try? await appState.validToken())
                         // Send approval notification
                         if let token = try? await appState.validToken() {
                             await sendVerificationNotification(
@@ -1343,6 +1540,109 @@ extension DeveloperDashboardView {
         .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
         .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+    
+    private func licenseExpiryEditorSheet(_ restaurant: Restaurant) -> some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("بيانات المطعم").font(SofraTypography.headline)) {
+                    HStack {
+                        Text(restaurant.name)
+                            .font(SofraTypography.bodyBold)
+                        Spacer()
+                        Text("الاسم")
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                    }
+                    
+                    if let email = restaurant.email {
+                        HStack {
+                            Text(email)
+                                .font(SofraTypography.body)
+                            Spacer()
+                            Text("البريد")
+                                .font(SofraTypography.caption)
+                                .foregroundStyle(SofraColors.textMuted)
+                        }
+                    }
+                    
+                    if let currentExpiry = restaurant.licenseExpiryDate {
+                        HStack {
+                            Text(currentExpiry.formatted(date: .long, time: .omitted))
+                                .font(SofraTypography.body)
+                                .foregroundStyle(restaurant.isLicenseExpired ? SofraColors.error : SofraColors.success)
+                            Spacer()
+                            Text("التاريخ الحالي")
+                                .font(SofraTypography.caption)
+                                .foregroundStyle(SofraColors.textMuted)
+                        }
+                    }
+                }
+                
+                Section(header: Text("تاريخ انتهاء الترخيص الجديد").font(SofraTypography.headline)) {
+                    DatePicker("تاريخ الانتهاء", selection: $newLicenseExpiryDate, in: Date()..., displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .environment(\.locale, Locale(identifier: "ar"))
+                }
+                
+                Section {
+                    // Quick options
+                    HStack(spacing: SofraSpacing.sm) {
+                        quickExpiryButton("سنة", months: 12)
+                        quickExpiryButton("6 أشهر", months: 6)
+                        quickExpiryButton("3 أشهر", months: 3)
+                    }
+                }
+                
+                Section {
+                    Button {
+                        Task {
+                            await vm.updateLicenseExpiry(restaurantId: restaurant.id, expiryDate: newLicenseExpiryDate, token: try? await appState.validToken())
+                            editingLicenseExpiry = nil
+                        }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("حفظ التاريخ")
+                                .font(SofraTypography.bodyBold)
+                            Spacer()
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.vertical, SofraSpacing.sm)
+                        .background(SofraColors.success)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .listRowBackground(Color.clear)
+                }
+            }
+            .navigationTitle("تعديل تاريخ الترخيص")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("إلغاء") {
+                        editingLicenseExpiry = nil
+                    }
+                }
+            }
+            .onAppear {
+                // Set default to current expiry or 1 year from now
+                newLicenseExpiryDate = restaurant.licenseExpiryDate ?? Date().addingTimeInterval(365 * 24 * 60 * 60)
+            }
+        }
+    }
+    
+    private func quickExpiryButton(_ title: String, months: Int) -> some View {
+        Button {
+            newLicenseExpiryDate = Calendar.current.date(byAdding: .month, value: months, to: Date()) ?? Date()
+        } label: {
+            Text(title)
+                .font(SofraTypography.caption)
+                .foregroundStyle(SofraColors.info)
+                .padding(.horizontal, SofraSpacing.sm)
+                .padding(.vertical, SofraSpacing.xs)
+                .background(SofraColors.info.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
     }
 }
 
