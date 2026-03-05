@@ -101,12 +101,12 @@ final class GuestBrowseViewModel {
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
-            throw APIError.serverError(message: "فشل في الحصول على صلاحية التصفح")
+            throw APIError.unknown("فشل في الحصول على صلاحية التصفح")
         }
         
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let idToken = json?["idToken"] as? String else {
-            throw APIError.serverError(message: "استجابة غير صالحة")
+            throw APIError.unknown("استجابة غير صالحة")
         }
         
         guestToken = idToken
