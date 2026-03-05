@@ -11,6 +11,8 @@ struct RegisterView: View {
     @State private var selectedLat: Double = 0
     @State private var selectedLng: Double = 0
     @State private var selectedAddress = ""
+    @State private var agreedToTerms = false
+    @State private var showTermsSheet = false
 
     var body: some View {
         ScrollView {
@@ -94,6 +96,39 @@ struct RegisterView: View {
                         isSecure: true
                     )
                     .textContentType(.newPassword)
+                    
+                    // Terms agreement checkbox
+                    HStack(alignment: .top, spacing: SofraSpacing.sm) {
+                        Button {
+                            agreedToTerms.toggle()
+                        } label: {
+                            Image(systemName: agreedToTerms ? "checkmark.square.fill" : "square")
+                                .font(.title2)
+                                .foregroundStyle(agreedToTerms ? SofraColors.gold400 : SofraColors.textMuted)
+                        }
+                        
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("أوافق على ")
+                                .font(SofraTypography.callout)
+                                .foregroundStyle(SofraColors.textSecondary)
+                            + Text("الشروط والأحكام")
+                                .font(SofraTypography.callout)
+                                .foregroundStyle(SofraColors.gold400)
+                                .underline()
+                            + Text(" و ")
+                                .font(SofraTypography.callout)
+                                .foregroundStyle(SofraColors.textSecondary)
+                            + Text("سياسة الخصوصية")
+                                .font(SofraTypography.callout)
+                                .foregroundStyle(SofraColors.gold400)
+                                .underline()
+                        }
+                        .multilineTextAlignment(.trailing)
+                        .onTapGesture {
+                            showTermsSheet = true
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
 
@@ -101,7 +136,8 @@ struct RegisterView: View {
                 SofraButton(
                     title: "إنشاء الحساب",
                     icon: "person.badge.plus",
-                    isLoading: vm.isLoading
+                    isLoading: vm.isLoading,
+                    isDisabled: !agreedToTerms
                 ) {
                     vm.selectedRole = selectedRole
                     vm.registerLat = selectedLat
@@ -110,6 +146,12 @@ struct RegisterView: View {
                     Task { await vm.register(appState: appState) }
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                if !agreedToTerms {
+                    Text("يجب الموافقة على الشروط والأحكام للمتابعة")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.warning)
+                }
 
                 Spacer(minLength: SofraSpacing.xxxl)
             }
@@ -131,6 +173,9 @@ struct RegisterView: View {
                 selectedLng = lng
                 selectedAddress = addr
             }
+        }
+        .sheet(isPresented: $showTermsSheet) {
+            TermsPrivacySheetView()
         }
     }
 
