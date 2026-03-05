@@ -460,6 +460,7 @@ final class OwnerDashboardViewModel {
         description: String,
         price: Double,
         category: String,
+        discountPercent: Double? = nil,
         imageData: Data?,
         ownerId: String,
         token: String?
@@ -472,6 +473,7 @@ final class OwnerDashboardViewModel {
             menuItems[idx].description = description.isEmpty ? nil : description
             menuItems[idx].price = price
             menuItems[idx].category = category.isEmpty ? nil : category
+            menuItems[idx].discountPercent = discountPercent
         }
 
         // 2) Build fields to update
@@ -481,6 +483,13 @@ final class OwnerDashboardViewModel {
         ]
         if !description.isEmpty { fields["desc"] = description }
         if !category.isEmpty { fields["category"] = category }
+        
+        // Handle discount - set to value or remove
+        if let discount = discountPercent, discount > 0 {
+            fields["discountPercent"] = discount
+        } else {
+            fields["discountPercent"] = 0
+        }
 
         // 3) Background: update Firestore + optional image upload
         do {
@@ -541,6 +550,32 @@ final class OwnerDashboardViewModel {
             Logger.log("Delete menu item error: \(error)", level: .error)
             errorMessage = "تعذر حذف الصنف"
         }
+    }
+    
+    // MARK: - Apply Discount to All Items
+    func applyDiscountToAll(discountPercent: Double, token: String?) async {
+        guard let token else { return }
+        
+        for (index, item) in menuItems.enumerated() {
+            do {
+                try await firestoreService.updateDocument(
+                    collection: "menuItems", id: item.id,
+                    fields: ["discountPercent": discountPercent],
+                    idToken: token
+                )
+                menuItems[index].discountPercent = discountPercent > 0 ? discountPercent : nil
+            } catch {
+                Logger.log("Apply discount to item \(item.id) error: \(error)", level: .error)
+            }
+        }
+        
+        Logger.log("Applied \(discountPercent)% discount to all \(menuItems.count) items", level: .info)
+    }
+    
+    // MARK: - Remove All Discounts
+    func removeAllDiscounts(token: String?) async {
+        await applyDiscountToAll(discountPercent: 0, token: token)
+        Logger.log("Removed all discounts", level: .info)
     }
 
     // MARK: - Hiring Applications

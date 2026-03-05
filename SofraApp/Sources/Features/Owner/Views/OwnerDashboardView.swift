@@ -13,6 +13,10 @@ struct OwnerDashboardView: View {
     @State private var showAddMenuItem = false
     @State private var editingItem: MenuItem?
     @State private var deletingItem: MenuItem?
+    // Bulk discount
+    @State private var showBulkDiscount = false
+    @State private var bulkDiscountText = ""
+    @State private var isApplyingBulkDiscount = false
     // Photo upload
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var restaurantImage: UIImage?
@@ -117,6 +121,9 @@ struct OwnerDashboardView: View {
                         .navigationBarTitleDisplayMode(.inline)
                 }
             }
+        }
+        .sheet(isPresented: $showBulkDiscount) {
+            bulkDiscountSheet
         }
         .alert("حذف الصنف", isPresented: .init(
             get: { deletingItem != nil },
@@ -851,6 +858,20 @@ struct OwnerDashboardView: View {
                     .foregroundStyle(.white)
                     .clipShape(Capsule())
                 }
+                
+                // Bulk discount button
+                Button {
+                    showBulkDiscount = true
+                } label: {
+                    HStack(spacing: SofraSpacing.xs) {
+                        Image(systemName: "percent")
+                            .font(.system(size: 12, weight: .bold))
+                    }
+                    .padding(10)
+                    .background(SofraColors.warning)
+                    .foregroundStyle(.white)
+                    .clipShape(Circle())
+                }
 
                 Spacer()
 
@@ -858,9 +879,16 @@ struct OwnerDashboardView: View {
                     Text("إدارة المنتجات")
                         .font(SofraTypography.title3)
                         .foregroundStyle(SofraColors.textPrimary)
-                    Text("\(vm.menuItemsCount) منتج")
-                        .font(SofraTypography.caption)
-                        .foregroundStyle(SofraColors.textSecondary)
+                    HStack(spacing: SofraSpacing.xs) {
+                        if vm.menuItems.contains(where: { $0.hasDiscount }) {
+                            Text("(\(vm.menuItems.filter { $0.hasDiscount }.count) بخصم)")
+                                .font(SofraTypography.caption)
+                                .foregroundStyle(SofraColors.warning)
+                        }
+                        Text("\(vm.menuItemsCount) منتج")
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textSecondary)
+                    }
                 }
             }
             .padding(.horizontal, SofraSpacing.screenHorizontal)
@@ -933,11 +961,35 @@ struct OwnerDashboardView: View {
                                 .background(SofraColors.sky100)
                                 .clipShape(Capsule())
                         }
+                        
+                        // Discount badge
+                        if item.hasDiscount, let discount = item.discountPercent {
+                            Text("خصم \(Int(discount))%")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(SofraColors.warning)
+                                .clipShape(Capsule())
+                        }
+                        
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(item.price, specifier: "%.0f") ر.س")
-                                .font(SofraTypography.priceSmall)
-                                .foregroundStyle(SofraColors.primaryDark)
+                            if item.hasDiscount {
+                                // Show original price struck through
+                                Text("\(item.price, specifier: "%.0f") ر.س")
+                                    .font(.caption2)
+                                    .foregroundStyle(SofraColors.textMuted)
+                                    .strikethrough()
+                                // Show discounted price
+                                Text("\(item.finalPrice, specifier: "%.0f") ر.س")
+                                    .font(SofraTypography.priceSmall)
+                                    .foregroundStyle(SofraColors.success)
+                            } else {
+                                Text("\(item.price, specifier: "%.0f") ر.س")
+                                    .font(SofraTypography.priceSmall)
+                                    .foregroundStyle(SofraColors.primaryDark)
+                            }
                             Text("+ رسوم الخدمة \(ServiceFee.perItem, specifier: "%.2f") ر.س")
                                 .font(.caption2)
                                 .foregroundStyle(SofraColors.textMuted)
@@ -2485,6 +2537,128 @@ struct OwnerDashboardView: View {
                 .strokeBorder(SofraColors.warning.opacity(0.3), lineWidth: 1)
         )
         .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+
+    private var bulkDiscountSheet: some View {
+        NavigationStack {
+            VStack(spacing: SofraSpacing.large) {
+                // Header
+                Image(systemName: "percent")
+                    .font(.system(size: 48))
+                    .foregroundStyle(SofraColors.primary)
+                    .padding(.top, SofraSpacing.large)
+                
+                Text("خصم على جميع المنتجات")
+                    .font(SofraTypography.title2)
+                    .foregroundStyle(SofraColors.textPrimary)
+                
+                Text("اختر نسبة الخصم التي تريد تطبيقها على جميع منتجات القائمة")
+                    .font(SofraTypography.body)
+                    .foregroundStyle(SofraColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                
+                // Quick discount buttons
+                HStack(spacing: SofraSpacing.small) {
+                    ForEach([10, 20, 30, 50], id: \.self) { percent in
+                        Button {
+                            bulkDiscountText = "\(percent)"
+                        } label: {
+                            Text("\(percent)%")
+                                .font(SofraTypography.bodyBold)
+                                .foregroundStyle(bulkDiscountText == "\(percent)" ? .white : SofraColors.primary)
+                                .frame(width: 60, height: 44)
+                                .background(
+                                    RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
+                                        .fill(bulkDiscountText == "\(percent)" ? SofraColors.primary : SofraColors.cardBackground)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous)
+                                        .strokeBorder(SofraColors.primary, lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.top, SofraSpacing.medium)
+                
+                // Custom percentage
+                VStack(alignment: .leading, spacing: SofraSpacing.small) {
+                    Text("أو أدخل نسبة مخصصة")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textSecondary)
+                    
+                    SofraTextField(
+                        title: "",
+                        text: $bulkDiscountText,
+                        placeholder: "نسبة الخصم (1-99)",
+                        keyboardType: .numberPad
+                    )
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
+                Spacer()
+                
+                // Action buttons
+                VStack(spacing: SofraSpacing.medium) {
+                    // Apply discount button
+                    SofraButton(title: "تطبيق الخصم على الكل", style: .primary) {
+                        Task {
+                            guard let discount = Double(bulkDiscountText),
+                                  discount > 0 && discount < 100,
+                                  let token = appState.idToken else { return }
+                            isApplyingBulkDiscount = true
+                            await vm.applyDiscountToAll(discountPercent: discount, token: token)
+                            isApplyingBulkDiscount = false
+                            showBulkDiscount = false
+                            bulkDiscountText = ""
+                        }
+                    }
+                    .disabled(Double(bulkDiscountText) == nil || Double(bulkDiscountText)! <= 0 || Double(bulkDiscountText)! >= 100 || isApplyingBulkDiscount)
+                    
+                    // Remove all discounts button
+                    Button {
+                        Task {
+                            guard let token = appState.idToken else { return }
+                            isApplyingBulkDiscount = true
+                            await vm.removeAllDiscounts(token: token)
+                            isApplyingBulkDiscount = false
+                            showBulkDiscount = false
+                            bulkDiscountText = ""
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "xmark.circle")
+                            Text("إزالة جميع الخصومات")
+                        }
+                        .font(SofraTypography.bodyBold)
+                        .foregroundStyle(SofraColors.error)
+                    }
+                    .disabled(isApplyingBulkDiscount)
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                .padding(.bottom, SofraSpacing.large)
+            }
+            .navigationTitle("الخصم الجماعي")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("إغلاق") {
+                        showBulkDiscount = false
+                        bulkDiscountText = ""
+                    }
+                }
+            }
+            .overlay {
+                if isApplyingBulkDiscount {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                    ProgressView("جاري تطبيق الخصم...")
+                        .padding()
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: SofraSpacing.cardRadius))
+                }
+            }
+        }
     }
 
     private var ownerCompletenessWarnings: [String]? {

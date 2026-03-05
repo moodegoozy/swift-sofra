@@ -14,6 +14,8 @@ struct EditMenuItemView: View {
     @State private var description: String
     @State private var priceText: String
     @State private var category: String
+    @State private var discountText: String
+    @State private var hasDiscount: Bool
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var previewImage: UIImage?
     @State private var isSaving = false
@@ -27,6 +29,8 @@ struct EditMenuItemView: View {
         _description = State(initialValue: item.description ?? "")
         _priceText = State(initialValue: item.price == 0 ? "" : String(format: "%.0f", item.price))
         _category = State(initialValue: item.category ?? "عام")
+        _discountText = State(initialValue: item.discountPercent == nil ? "" : String(format: "%.0f", item.discountPercent ?? 0))
+        _hasDiscount = State(initialValue: (item.discountPercent ?? 0) > 0)
     }
 
     var body: some View {
@@ -96,6 +100,74 @@ struct EditMenuItemView: View {
                         keyboardType: .decimalPad
                     )
 
+                    // Discount Section
+                    VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                        HStack {
+                            Toggle("", isOn: $hasDiscount)
+                                .tint(SofraColors.success)
+                                .labelsHidden()
+                            
+                            Spacer()
+                            
+                            HStack(spacing: SofraSpacing.xs) {
+                                Image(systemName: "percent")
+                                    .foregroundStyle(SofraColors.warning)
+                                Text("خصم على هذا المنتج")
+                                    .font(SofraTypography.calloutSemibold)
+                            }
+                        }
+                        
+                        if hasDiscount {
+                            HStack(spacing: SofraSpacing.md) {
+                                // Quick discount buttons
+                                ForEach([10, 20, 30, 50], id: \.self) { percent in
+                                    Button {
+                                        discountText = "\(percent)"
+                                    } label: {
+                                        Text("\(percent)%")
+                                            .font(SofraTypography.caption)
+                                            .padding(.horizontal, SofraSpacing.sm)
+                                            .padding(.vertical, SofraSpacing.xs)
+                                            .background(discountText == "\(percent)" ? SofraColors.warning : SofraColors.sky100)
+                                            .foregroundStyle(discountText == "\(percent)" ? .white : SofraColors.textSecondary)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                                
+                                Spacer()
+                            }
+                            
+                            SofraTextField(
+                                label: "نسبة الخصم (%)",
+                                text: $discountText,
+                                icon: "tag.fill",
+                                placeholder: "10",
+                                keyboardType: .numberPad
+                            )
+                            
+                            // Preview discounted price
+                            if let price = Double(priceText), let discount = Double(discountText), discount > 0 && discount <= 100 {
+                                HStack {
+                                    Text("\(String(format: "%.0f", price * (1 - discount/100))) ر.س")
+                                        .font(SofraTypography.headline)
+                                        .foregroundStyle(SofraColors.success)
+                                    
+                                    Spacer()
+                                    
+                                    Text("السعر بعد الخصم:")
+                                        .font(SofraTypography.caption)
+                                        .foregroundStyle(SofraColors.textMuted)
+                                }
+                                .padding(SofraSpacing.sm)
+                                .background(SofraColors.success.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                    }
+                    .padding(SofraSpacing.md)
+                    .background(SofraColors.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
                     // Category
                     VStack(alignment: .trailing, spacing: SofraSpacing.xs) {
                         Text("التصنيف")
@@ -156,6 +228,12 @@ struct EditMenuItemView: View {
         if let img = previewImage {
             compressedData = img.jpegData(compressionQuality: 0.7)
         }
+        
+        // Calculate discount
+        var discount: Double? = nil
+        if hasDiscount, let d = Double(discountText), d > 0 && d <= 100 {
+            discount = d
+        }
 
         let ok = await vm.updateMenuItem(
             itemId: item.id,
@@ -163,6 +241,7 @@ struct EditMenuItemView: View {
             description: description,
             price: price,
             category: category.isEmpty ? "عام" : category,
+            discountPercent: discount,
             imageData: compressedData,
             ownerId: uid,
             token: try? await appState.validToken()
