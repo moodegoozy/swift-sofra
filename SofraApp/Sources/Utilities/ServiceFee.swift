@@ -1,6 +1,6 @@
 // ServiceFee.swift
 // Platform service fee constants — per-item flat fee system
-// Fee is embedded in customer-facing price (invisible to customer)
+// Fee + VAT displayed separately to customer
 
 import Foundation
 
@@ -19,7 +19,10 @@ enum ServiceFee {
 
     /// Platform's share per item when restaurant has NO supervisor (self-registered)
     static let platformShareNoSupervisor: Double = 1.75
-
+    
+    /// VAT rate (15%)
+    static let vatRate: Double = 0.15
+    
     /// Calculate total service fee for a given item quantity
     static func totalFee(itemCount: Int) -> Double {
         perItem * Double(itemCount)
@@ -35,5 +38,22 @@ enum ServiceFee {
     static func supervisorFee(itemCount: Int, hasSupervisor: Bool) -> Double {
         guard hasSupervisor else { return 0 }
         return supervisorShare * Double(itemCount)
+    }
+    
+    /// Calculate VAT on subtotal (product prices + service fee)
+    static func calculateVAT(subtotal: Double) -> Double {
+        subtotal * vatRate
+    }
+    
+    /// Calculate customer price for a single item (price + service fee + VAT)
+    static func customerPrice(basePrice: Double) -> Double {
+        let priceWithFee = basePrice + perItem
+        let vat = priceWithFee * vatRate
+        return priceWithFee + vat
+    }
+    
+    /// Calculate VAT on a single item price (price + service fee)
+    static func itemVAT(basePrice: Double) -> Double {
+        (basePrice + perItem) * vatRate
     }
 }

@@ -66,12 +66,49 @@ struct CartView: View {
 
                         // Summary
                         SofraCard {
+                            // Products subtotal
                             HStack {
                                 Text("\(cartVM.subtotal, specifier: "%.2f") ر.س")
+                                    .font(SofraTypography.body)
+                                Spacer()
+                                Text("سعر المنتجات")
+                                    .font(SofraTypography.body)
+                                    .foregroundStyle(SofraColors.textSecondary)
+                            }
+                            
+                            // Service fee
+                            HStack {
+                                Text("\(cartVM.serviceFeeTotal, specifier: "%.2f") ر.س")
+                                    .font(SofraTypography.body)
+                                Spacer()
+                                Text("رسوم الخدمة")
+                                    .font(SofraTypography.body)
+                                    .foregroundStyle(SofraColors.textSecondary)
+                            }
+                            
+                            // VAT
+                            HStack {
+                                Text("\(cartVM.vatAmount, specifier: "%.2f") ر.س")
+                                    .font(SofraTypography.body)
+                                Spacer()
+                                HStack(spacing: SofraSpacing.xs) {
+                                    Text("ضريبة القيمة المضافة")
+                                    Text("(15%)")
+                                        .font(SofraTypography.caption)
+                                }
+                                .font(SofraTypography.body)
+                                .foregroundStyle(SofraColors.textSecondary)
+                            }
+                            
+                            Divider()
+                            
+                            // Grand Total
+                            HStack {
+                                Text("\(cartVM.grandTotal, specifier: "%.2f") ر.س")
                                     .font(SofraTypography.price)
                                     .foregroundStyle(SofraColors.primaryDark)
                                 Spacer()
-                                Text("المجموع الفرعي")
+                                Text("الإجمالي")
                                     .font(SofraTypography.headline)
                                     .foregroundStyle(SofraColors.textSecondary)
                             }

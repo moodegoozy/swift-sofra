@@ -21,14 +21,25 @@ struct MenuItem: Identifiable {
         return price * (1 - discount / 100)
     }
 
-    /// Customer-facing price: finalPrice + service fee (fee is invisible to customer)
-    var customerPrice: Double {
+    /// Price + service fee (before VAT)
+    var priceWithServiceFee: Double {
         finalPrice + ServiceFee.perItem
     }
+    
+    /// VAT amount on this item
+    var vatAmount: Double {
+        priceWithServiceFee * ServiceFee.vatRate
+    }
+    
+    /// Customer-facing price: finalPrice + service fee + VAT (15%)
+    var customerPrice: Double {
+        priceWithServiceFee + vatAmount
+    }
 
-    /// Original price + service fee (for strikethrough display when discounted)
+    /// Original price + service fee + VAT (for strikethrough display when discounted)
     var customerOriginalPrice: Double {
-        price + ServiceFee.perItem
+        let originalWithFee = price + ServiceFee.perItem
+        return originalWithFee + (originalWithFee * ServiceFee.vatRate)
     }
 
     /// Has active discount

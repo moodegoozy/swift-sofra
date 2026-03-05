@@ -49,6 +49,7 @@ final class CartViewModel {
     private var pendingRestaurantName: String?
     private var pendingMenuItem: MenuItem?
 
+    /// Base subtotal (product prices only, no fees/VAT)
     var subtotal: Double {
         items.reduce(0) { $0 + $1.lineTotal }
     }
@@ -58,7 +59,27 @@ final class CartViewModel {
         items.reduce(0) { $0 + $1.qty }
     }
 
-    /// Total service fee embedded in subtotal
+    /// Total service fee (1.75 SAR per item)
+    var serviceFeeTotal: Double {
+        ServiceFee.totalFee(itemCount: totalItemCount)
+    }
+    
+    /// Subtotal + service fee (before VAT)
+    var subtotalWithServiceFee: Double {
+        subtotal + serviceFeeTotal
+    }
+    
+    /// VAT amount (15% of subtotal + service fee)
+    var vatAmount: Double {
+        subtotalWithServiceFee * ServiceFee.vatRate
+    }
+    
+    /// Grand total (subtotal + service fee + VAT)
+    var grandTotal: Double {
+        subtotalWithServiceFee + vatAmount
+    }
+
+    /// Total service fee embedded in subtotal (legacy - for backward compat)
     var embeddedServiceFee: Double {
         ServiceFee.totalFee(itemCount: totalItemCount)
     }
@@ -85,7 +106,7 @@ final class CartViewModel {
             let cartItem = CartItem(
                 id: menuItem.id,
                 name: menuItem.name,
-                price: menuItem.customerPrice,
+                price: menuItem.finalPrice,  // Base price (without fees/VAT)
                 qty: qty,
                 ownerId: menuItem.ownerId
             )
@@ -120,7 +141,7 @@ final class CartViewModel {
         items = []
         restaurantName = pendingRestaurantName ?? ""
         let cartItem = CartItem(
-            id: item.id, name: item.name, price: item.customerPrice,
+            id: item.id, name: item.name, price: item.finalPrice,  // Base price (without fees/VAT)
             qty: 1, ownerId: item.ownerId.isEmpty ? "" : item.ownerId
         )
         items.append(cartItem)

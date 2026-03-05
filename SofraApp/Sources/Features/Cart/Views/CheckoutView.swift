@@ -20,18 +20,8 @@ struct CheckoutView: View {
 
     private let deliveryFee: Double = 0 // Set by courier/owner later
 
-    /// Total service fee embedded in prices (per-item flat fee)
-    var serviceFeeTotal: Double {
-        cartVM.embeddedServiceFee
-    }
-
-    /// Total item count across all cart items
-    var totalItemCount: Int {
-        cartVM.totalItemCount
-    }
-
     var total: Double {
-        cartVM.subtotal + deliveryFee
+        cartVM.grandTotal + deliveryFee
     }
 
     var body: some View {
@@ -39,6 +29,7 @@ struct CheckoutView: View {
             VStack(spacing: SofraSpacing.lg) {
                 // Order Summary
                 SofraCard {
+                    // Item count
                     HStack {
                         Text("\(cartVM.items.count)")
                             .font(SofraTypography.headline)
@@ -47,15 +38,44 @@ struct CheckoutView: View {
                             .font(SofraTypography.body)
                             .foregroundStyle(SofraColors.textSecondary)
                     }
+                    
+                    // Subtotal (products only)
                     HStack {
                         Text("\(cartVM.subtotal, specifier: "%.2f") ر.س")
-                            .font(SofraTypography.headline)
+                            .font(SofraTypography.body)
                         Spacer()
-                        Text("المجموع الفرعي")
+                        Text("سعر المنتجات")
                             .font(SofraTypography.body)
                             .foregroundStyle(SofraColors.textSecondary)
                     }
+                    
+                    // Service fee
+                    HStack {
+                        Text("\(cartVM.serviceFeeTotal, specifier: "%.2f") ر.س")
+                            .font(SofraTypography.body)
+                        Spacer()
+                        Text("رسوم الخدمة")
+                            .font(SofraTypography.body)
+                            .foregroundStyle(SofraColors.textSecondary)
+                    }
+                    
+                    // VAT (15%)
+                    HStack {
+                        Text("\(cartVM.vatAmount, specifier: "%.2f") ر.س")
+                            .font(SofraTypography.body)
+                        Spacer()
+                        HStack(spacing: SofraSpacing.xs) {
+                            Text("ضريبة القيمة المضافة")
+                            Text("(15%)")
+                                .font(SofraTypography.caption)
+                        }
+                        .font(SofraTypography.body)
+                        .foregroundStyle(SofraColors.textSecondary)
+                    }
+                    
                     Divider()
+                    
+                    // Grand Total
                     HStack {
                         Text("\(total, specifier: "%.2f") ر.س")
                             .font(SofraTypography.price)
@@ -263,9 +283,12 @@ struct CheckoutView: View {
 
         // Calculate service fee split
         let hasSupervisor = restaurantSupervisorId != nil && !restaurantSupervisorId!.isEmpty
+        let totalItemCount = cartVM.totalItemCount
+        let serviceFeeTotal = cartVM.serviceFeeTotal
+        let vatAmount = cartVM.vatAmount
         let platformFeeAmount = ServiceFee.platformFee(itemCount: totalItemCount, hasSupervisor: hasSupervisor)
         let supervisorFeeAmount = ServiceFee.supervisorFee(itemCount: totalItemCount, hasSupervisor: hasSupervisor)
-        let netAmount = total - serviceFeeTotal
+        let netAmount = cartVM.subtotal  // Restaurant receives product prices only
 
         var orderFields: [String: Any] = [
             "customerId": user.uid,
@@ -281,6 +304,8 @@ struct CheckoutView: View {
             "netAmount": netAmount,
             "serviceFeePerItem": ServiceFee.perItem,
             "serviceFeeTotal": serviceFeeTotal,
+            "vatRate": ServiceFee.vatRate,
+            "vatAmount": vatAmount,
             "platformFee": platformFeeAmount,
             "supervisorFee": supervisorFeeAmount,
             "status": "pending",
