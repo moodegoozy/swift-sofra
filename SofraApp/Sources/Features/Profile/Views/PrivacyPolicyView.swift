@@ -143,7 +143,3 @@ struct PrivacyPolicyView: View {
         }
     }
 }
-                .lineSpacing(6)
-        }
-    }
-}
