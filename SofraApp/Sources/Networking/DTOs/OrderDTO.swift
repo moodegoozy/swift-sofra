@@ -94,10 +94,6 @@ struct Order: Identifiable {
         self.supervisorId = supervisorId
         self.deliveryLocation = deliveryLocation
     }
-        self.platformFee = platformFee
-        self.supervisorFee = supervisorFee
-        self.supervisorId = supervisorId
-    }
 
     // MARK: - Init from Firestore
     init(from doc: FirestoreDocumentResponse) {
