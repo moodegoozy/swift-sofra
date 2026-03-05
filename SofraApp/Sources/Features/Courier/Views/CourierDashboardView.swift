@@ -3,11 +3,14 @@
 
 import SwiftUI
 import MapKit
+import CoreLocation
 
 struct CourierDashboardView: View {
     @Environment(AppState.self) var appState
     @State private var vm = CourierDashboardViewModel()
     @State private var selectedHiringRestaurant: Restaurant?
+    @State private var showMapForOrder: Order?
+    @StateObject private var locationManager = CourierLocationManager()
 
     var body: some View {
         Group {
@@ -30,6 +33,9 @@ struct CourierDashboardView: View {
         .task {
             guard let uid = appState.currentUser?.uid else { return }
             await vm.loadDashboard(courierId: uid, token: try? await appState.validToken())
+        }
+        .sheet(item: $showMapForOrder) { order in
+            CustomerMapView(order: order)
         }
     }
 
@@ -100,21 +106,61 @@ struct CourierDashboardView: View {
                 if let success = vm.successMessage {
                     Text(success).font(SofraTypography.callout).foregroundStyle(SofraColors.success)
                 }
+                
+                // Distance Filter Toggle
+                HStack {
+                    Text("\(Int(vm.maxDistanceKm)) كم")
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textMuted)
+                    
+                    Toggle("", isOn: $vm.showOnlyNearby)
+                        .tint(SofraColors.primary)
+                        .frame(width: 50)
+                    
+                    Spacer()
+                    
+                    HStack(spacing: SofraSpacing.xs) {
+                        Text("القريبة فقط")
+                            .font(SofraTypography.body)
+                        Image(systemName: "location.circle.fill")
+                            .foregroundStyle(SofraColors.primary)
+                    }
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                .padding(.vertical, SofraSpacing.sm)
+                .background(SofraColors.cardBackground.opacity(0.5))
+                .onChange(of: vm.showOnlyNearby) { _, newVal in
+                    if newVal {
+                        vm.courierLocation = locationManager.location
+                    }
+                }
 
                 // Hiring Restaurants List
                 VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
-                    Text("مطاعم تبحث عن مناديب")
-                        .font(SofraTypography.title3)
-                        .padding(.horizontal, SofraSpacing.screenHorizontal)
+                    HStack {
+                        Text("\(vm.nearbyHiringRestaurants.count)")
+                            .font(SofraTypography.caption)
+                            .foregroundStyle(SofraColors.textMuted)
+                            .padding(.horizontal, SofraSpacing.sm)
+                            .padding(.vertical, SofraSpacing.xs)
+                            .background(SofraColors.primary.opacity(0.15))
+                            .clipShape(Capsule())
+                        
+                        Spacer()
+                        
+                        Text("مطاعم تبحث عن مناديب")
+                            .font(SofraTypography.title3)
+                    }
+                    .padding(.horizontal, SofraSpacing.screenHorizontal)
 
-                    if vm.hiringRestaurants.isEmpty {
+                    if vm.nearbyHiringRestaurants.isEmpty {
                         EmptyStateView(
                             icon: "storefront",
                             title: "لا توجد مطاعم تبحث عن مناديب",
-                            message: "تحقق لاحقاً. المطاعم تحدث حالة التوظيف باستمرار"
+                            message: vm.showOnlyNearby ? "جرب زيادة نطاق البحث أو إلغاء الفلتر" : "تحقق لاحقاً. المطاعم تحدث حالة التوظيف باستمرار"
                         )
                     } else {
-                        ForEach(vm.hiringRestaurants) { restaurant in
+                        ForEach(vm.nearbyHiringRestaurants) { restaurant in
                             Button {
                                 selectedHiringRestaurant = restaurant
                             } label: {
@@ -418,8 +464,26 @@ struct CourierDashboardView: View {
                         }
                     }
                 }
+                
+                // Interactive Map Button (if location available)
+                if order.deliveryLocation != nil {
+                    Button {
+                        showMapForOrder = order
+                    } label: {
+                        HStack(spacing: SofraSpacing.xs) {
+                            Text("عرض الموقع على الخريطة")
+                                .font(SofraTypography.calloutSemibold)
+                            Image(systemName: "map.fill")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, SofraSpacing.sm)
+                        .background(SofraColors.info.opacity(0.15))
+                        .foregroundStyle(SofraColors.info)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                }
 
-                // Map preview of customer location
+                // Customer name
                 if let customerName = order.customerName {
                     HStack {
                         Spacer()
@@ -689,6 +753,189 @@ struct CourierDashboardView: View {
         if let url = URL(string: "http://maps.apple.com/?q=\(query)") {
             UIApplication.shared.open(url)
         }
+    }
+    
+    // MARK: - Open Coordinates in Apple Maps
+    private func openInMaps(lat: Double, lng: Double, name: String) {
+        let url = URL(string: "http://maps.apple.com/?ll=\(lat),\(lng)&q=\(name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")")
+        if let url { UIApplication.shared.open(url) }
+    }
+}
+
+// MARK: - Courier Location Manager
+final class CourierLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published var location: CLLocationCoordinate2D?
+    @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    
+    private let manager = CLLocationManager()
+    
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.requestWhenInUseAuthorization()
+        manager.startUpdatingLocation()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        location = locations.last?.coordinate
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        authorizationStatus = status
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            manager.startUpdatingLocation()
+        }
+    }
+}
+
+// MARK: - Interactive Map View for Customer Location
+struct CustomerMapView: View {
+    let order: Order
+    @Environment(\.dismiss) var dismiss
+    @State private var region: MKCoordinateRegion
+    @State private var showDirections = false
+    
+    init(order: Order) {
+        self.order = order
+        let lat = order.deliveryLocation?.lat ?? 24.7136
+        let lng = order.deliveryLocation?.lng ?? 46.6753
+        _region = State(initialValue: MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
+            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        ))
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                // Map
+                Map(coordinateRegion: $region, annotationItems: [order]) { order in
+                    MapAnnotation(coordinate: CLLocationCoordinate2D(
+                        latitude: order.deliveryLocation?.lat ?? 24.7136,
+                        longitude: order.deliveryLocation?.lng ?? 46.6753
+                    )) {
+                        VStack(spacing: SofraSpacing.xs) {
+                            Image(systemName: "house.fill")
+                                .font(.title)
+                                .foregroundStyle(.white)
+                                .padding(12)
+                                .background(SofraColors.primary)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                            
+                            Text(order.customerName ?? "العميل")
+                                .font(SofraTypography.caption)
+                                .padding(.horizontal, SofraSpacing.sm)
+                                .padding(.vertical, SofraSpacing.xs)
+                                .background(.white)
+                                .clipShape(Capsule())
+                                .shadow(radius: 2)
+                        }
+                    }
+                }
+                .ignoresSafeArea(edges: .top)
+                
+                // Bottom Info Card
+                VStack {
+                    Spacer()
+                    
+                    VStack(spacing: SofraSpacing.md) {
+                        // Customer Info
+                        HStack {
+                            VStack(alignment: .leading, spacing: SofraSpacing.xs) {
+                                Text("#\(order.id.prefix(8))")
+                                    .font(SofraTypography.caption)
+                                    .foregroundStyle(SofraColors.textMuted)
+                                Text("\(order.items.count) أصناف • \(order.total, specifier: "%.2f") ر.س")
+                                    .font(SofraTypography.body)
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: SofraSpacing.xs) {
+                                Text(order.customerName ?? "العميل")
+                                    .font(SofraTypography.headline)
+                                if let addr = order.address {
+                                    Text(addr)
+                                        .font(SofraTypography.caption)
+                                        .foregroundStyle(SofraColors.textSecondary)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.trailing)
+                                }
+                            }
+                            
+                            Image(systemName: "person.circle.fill")
+                                .font(.title)
+                                .foregroundStyle(SofraColors.primary)
+                        }
+                        
+                        // Action Buttons
+                        HStack(spacing: SofraSpacing.md) {
+                            // Open in Maps
+                            Button {
+                                openInAppleMaps()
+                            } label: {
+                                HStack(spacing: SofraSpacing.xs) {
+                                    Text("فتح في الخرائط")
+                                        .font(SofraTypography.calloutSemibold)
+                                    Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, SofraSpacing.md)
+                                .background(SofraColors.info)
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            
+                            // Call Customer
+                            if hasPhone {
+                                Button {
+                                    callCustomer()
+                                } label: {
+                                    Image(systemName: "phone.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.white)
+                                        .padding(SofraSpacing.md)
+                                        .background(SofraColors.success)
+                                        .clipShape(Circle())
+                                }
+                            }
+                        }
+                    }
+                    .padding(SofraSpacing.cardPadding)
+                    .background(SofraColors.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
+                    .shadow(color: .black.opacity(0.1), radius: 10, y: -5)
+                    .padding()
+                }
+            }
+            .navigationTitle("موقع العميل")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("إغلاق") { dismiss() }
+                }
+            }
+        }
+    }
+    
+    private var hasPhone: Bool {
+        // Check if order has customer phone (would need to add to Order model)
+        return false // Placeholder - implement based on Order structure
+    }
+    
+    private func openInAppleMaps() {
+        let lat = order.deliveryLocation?.lat ?? 0
+        let lng = order.deliveryLocation?.lng ?? 0
+        let name = order.customerName ?? "العميل"
+        if let url = URL(string: "http://maps.apple.com/?ll=\(lat),\(lng)&q=\(name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&dirflg=d") {
+            UIApplication.shared.open(url)
+        }
+    }
+    
+    private func callCustomer() {
+        // Implement phone call
     }
 }
 

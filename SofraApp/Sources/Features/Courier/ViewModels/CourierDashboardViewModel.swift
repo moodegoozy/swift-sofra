@@ -3,6 +3,7 @@
 
 import Foundation
 import Observation
+import CoreLocation
 
 @Observable
 final class CourierDashboardViewModel {
@@ -11,12 +12,13 @@ final class CourierDashboardViewModel {
     var assignedRestaurantId: String?
     var assignedRestaurantName: String?
     var hiringRestaurants: [Restaurant] = []
+    var allRestaurants: [Restaurant] = []      // All restaurants (for browsing)
     var myApplication: CourierApplication?
 
     // MARK: - Dashboard State (after approval)
     var isAvailable = false
-    var restaurantOrders: [Order] = []       // Orders for the assigned restaurant
-    var activeOrders: [Order] = []           // Orders the courier picked up
+    var restaurantOrders: [Order] = []         // All ready orders (not just assigned restaurant)
+    var activeOrders: [Order] = []             // Orders the courier picked up
     var deliveredOrders: [Order] = []
     var totalDeliveries = 0
     var rating: Double = 0
@@ -25,6 +27,11 @@ final class CourierDashboardViewModel {
     var isLoading = false
     var errorMessage: String?
     var successMessage: String?
+    
+    // MARK: - Location & Filter
+    var courierLocation: CLLocationCoordinate2D?
+    var maxDistanceKm: Double = 25.0            // Default 25km filter
+    var showOnlyNearby: Bool = false            // Filter toggle
 
     private let firestoreService = FirestoreService()
     private var courierId: String = ""
@@ -60,8 +67,8 @@ final class CourierDashboardViewModel {
             // 2. Determine employment status
             if statusRaw == "approved", let restId = assignedRestaurantId, !restId.isEmpty {
                 courierStatus = .approved
-                // Load restaurant orders + my deliveries
-                await loadRestaurantOrders(restaurantId: restId, token: token)
+                // Load ALL ready orders (not just assigned restaurant) + my deliveries
+                await loadAllReadyOrders(token: token)
                 await loadMyDeliveries(token: token)
             } else {
                 // Check if there's a pending application
@@ -95,7 +102,8 @@ final class CourierDashboardViewModel {
                     }
                 }
 
-                // Load hiring restaurants
+                // Load all restaurants (for browsing) + hiring restaurants
+                await loadAllRestaurants(token: token)
                 await loadHiringRestaurants(token: token)
             }
         } catch {
@@ -104,6 +112,50 @@ final class CourierDashboardViewModel {
         }
 
         isLoading = false
+    }
+    
+    // MARK: - Load All Restaurants
+    func loadAllRestaurants(token: String) async {
+        do {
+            let docs = try await firestoreService.query(
+                collection: "restaurants",
+                filters: [QueryFilter(field: "isVerified", op: "EQUAL", value: false)],  // Active restaurants
+                idToken: token
+            )
+            allRestaurants = docs.map { Restaurant(from: $0) }
+        } catch {
+            Logger.log("Load all restaurants error: \(error)", level: .error)
+        }
+    }
+    
+    // MARK: - Filter Restaurants by Distance
+    var nearbyRestaurants: [Restaurant] {
+        guard showOnlyNearby, let courierLoc = courierLocation else {
+            return allRestaurants
+        }
+        return allRestaurants.filter { restaurant in
+            guard let lat = restaurant.latitude, let lng = restaurant.longitude else { return true }
+            let distance = calculateDistance(from: courierLoc, to: CLLocationCoordinate2D(latitude: lat, longitude: lng))
+            return distance <= maxDistanceKm
+        }
+    }
+    
+    var nearbyHiringRestaurants: [Restaurant] {
+        guard showOnlyNearby, let courierLoc = courierLocation else {
+            return hiringRestaurants
+        }
+        return hiringRestaurants.filter { restaurant in
+            guard let lat = restaurant.latitude, let lng = restaurant.longitude else { return true }
+            let distance = calculateDistance(from: courierLoc, to: CLLocationCoordinate2D(latitude: lat, longitude: lng))
+            return distance <= maxDistanceKm
+        }
+    }
+    
+    // Calculate distance in kilometers
+    private func calculateDistance(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
+        let fromLoc = CLLocation(latitude: from.latitude, longitude: from.longitude)
+        let toLoc = CLLocation(latitude: to.latitude, longitude: to.longitude)
+        return fromLoc.distance(from: toLoc) / 1000.0  // Convert to km
     }
 
     // MARK: - Load Hiring Restaurants
@@ -179,7 +231,26 @@ final class CourierDashboardViewModel {
         isLoading = false
     }
 
-    // MARK: - Load Restaurant Orders (for approved courier)
+    // MARK: - Load All Ready Orders (for approved courier)
+    func loadAllReadyOrders(token: String) async {
+        do {
+            // Load all orders with status "ready" - no restaurant filter
+            let readyDocs = try await firestoreService.query(
+                collection: "orders",
+                filters: [
+                    QueryFilter(field: "status", op: "EQUAL", value: "ready")
+                ],
+                idToken: token
+            )
+            restaurantOrders = readyDocs.map { Order(from: $0) }
+                .filter { $0.courierId == nil || $0.courierId?.isEmpty == true }
+                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+        } catch {
+            Logger.log("Load all ready orders error: \(error)", level: .error)
+        }
+    }
+    
+    // MARK: - Load Restaurant Orders (legacy - for specific restaurant)
     func loadRestaurantOrders(restaurantId: String, token: String) async {
         do {
             let readyDocs = try await firestoreService.query(
@@ -188,12 +259,11 @@ final class CourierDashboardViewModel {
                     QueryFilter(field: "restaurantId", op: "EQUAL", value: restaurantId),
                     QueryFilter(field: "status", op: "EQUAL", value: "ready")
                 ],
-                orderBy: "createdAt",
-                descending: true,
                 idToken: token
             )
             restaurantOrders = readyDocs.map { Order(from: $0) }
                 .filter { $0.courierId == nil || $0.courierId?.isEmpty == true }
+                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
         } catch {
             Logger.log("Load restaurant orders error: \(error)", level: .error)
         }

@@ -3,6 +3,12 @@
 
 import Foundation
 
+/// Customer delivery location coordinates
+struct DeliveryLocation: Equatable {
+    let lat: Double
+    let lng: Double
+}
+
 struct Order: Identifiable {
     let id: String
     var customerId: String
@@ -28,6 +34,7 @@ struct Order: Identifiable {
     var platformFee: Double         // platform's share of service fees
     var supervisorFee: Double       // supervisor's share (0 if no supervisor)
     var supervisorId: String?       // supervisor who added the restaurant (nil = self-registered)
+    var deliveryLocation: DeliveryLocation?  // Customer delivery coordinates
     var createdAt: Date?
     var updatedAt: Date?
 
@@ -60,7 +67,8 @@ struct Order: Identifiable {
         serviceFeeTotal: Double = 0,
         platformFee: Double = 0,
         supervisorFee: Double = 0,
-        supervisorId: String? = nil
+        supervisorId: String? = nil,
+        deliveryLocation: DeliveryLocation? = nil
     ) {
         self.id = id
         self.customerId = customerId
@@ -81,6 +89,11 @@ struct Order: Identifiable {
         self.customerName = customerName
         self.serviceFeePerItem = serviceFeePerItem
         self.serviceFeeTotal = serviceFeeTotal
+        self.platformFee = platformFee
+        self.supervisorFee = supervisorFee
+        self.supervisorId = supervisorId
+        self.deliveryLocation = deliveryLocation
+    }
         self.platformFee = platformFee
         self.supervisorFee = supervisorFee
         self.supervisorId = supervisorId
@@ -111,6 +124,16 @@ struct Order: Identifiable {
         self.platformFee = f["platformFee"]?.doubleVal ?? 0
         self.supervisorFee = f["supervisorFee"]?.doubleVal ?? 0
         self.supervisorId = f["supervisorId"]?.stringVal
+        
+        // Parse delivery location
+        if let locMap = f["deliveryLocation"]?.mapVal {
+            let lat = locMap["lat"]?.doubleVal ?? 0
+            let lng = locMap["lng"]?.doubleVal ?? 0
+            self.deliveryLocation = (lat != 0 || lng != 0) ? DeliveryLocation(lat: lat, lng: lng) : nil
+        } else {
+            self.deliveryLocation = nil
+        }
+        
         self.createdAt = f["createdAt"]?.dateVal
         self.updatedAt = f["updatedAt"]?.dateVal
 
