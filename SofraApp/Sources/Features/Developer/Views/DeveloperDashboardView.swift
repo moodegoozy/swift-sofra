@@ -17,6 +17,15 @@ struct DeveloperDashboardView: View {
     @State private var assigningSupervisorTo: Restaurant?
     @State private var selectedSupervisorId: String? = nil
     
+    // Add supervisor
+    @State private var showAddSupervisor = false
+    @State private var newSupervisorEmail = ""
+    @State private var newSupervisorPassword = ""
+    @State private var newSupervisorName = ""
+    @State private var newSupervisorPhone = ""
+    @State private var isCreatingSupervisor = false
+    @State private var createSupervisorError: String?
+    
     // Package management
     @State private var showPriceEditor = false
     @State private var editPremiumMonthly: String = "99"
@@ -690,8 +699,25 @@ extension DeveloperDashboardView {
                 }
                 .padding(.horizontal, SofraSpacing.screenHorizontal)
                 
+                // Add supervisor button
+                Button {
+                    showAddSupervisor = true
+                } label: {
+                    HStack {
+                        Text("إضافة مشرفة جديدة")
+                            .font(SofraTypography.bodyBold)
+                        Image(systemName: "plus.circle.fill")
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SofraSpacing.md)
+                    .background(Color(hex: "#06B6D4"))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                
                 if supervisors.isEmpty {
-                    EmptyStateView(icon: "person.2.badge.gearshape", title: "لا توجد مشرفات", message: "")
+                    EmptyStateView(icon: "person.2.badge.gearshape", title: "لا توجد مشرفات", message: "أضف مشرفة جديدة للبدء")
                         .padding(.top, SofraSpacing.xxxl)
                 } else {
                     ForEach(supervisors, id: \.uid) { supervisor in
@@ -702,6 +728,9 @@ extension DeveloperDashboardView {
             .padding(.top, SofraSpacing.md)
         }
         .ramadanBackground()
+        .sheet(isPresented: $showAddSupervisor) {
+            addSupervisorSheet
+        }
         .sheet(item: $editingUserRole) { user in
             roleEditorSheet(user)
         }
@@ -805,6 +834,115 @@ extension DeveloperDashboardView {
         .clipShape(RoundedRectangle(cornerRadius: SofraSpacing.cardRadius, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
         .padding(.horizontal, SofraSpacing.screenHorizontal)
+    }
+    
+    private var addSupervisorSheet: some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("بيانات المشرفة").font(SofraTypography.headline)) {
+                    TextField("الاسم", text: $newSupervisorName)
+                        .textFieldStyle(.plain)
+                        .textContentType(.name)
+                    
+                    TextField("البريد الإلكتروني", text: $newSupervisorEmail)
+                        .textFieldStyle(.plain)
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                    
+                    SecureField("كلمة المرور", text: $newSupervisorPassword)
+                        .textFieldStyle(.plain)
+                        .textContentType(.newPassword)
+                    
+                    TextField("رقم الجوال", text: $newSupervisorPhone)
+                        .textFieldStyle(.plain)
+                        .textContentType(.telephoneNumber)
+                        .keyboardType(.phonePad)
+                }
+                
+                if let error = createSupervisorError {
+                    Section {
+                        Text(error)
+                            .foregroundStyle(SofraColors.error)
+                            .font(SofraTypography.caption)
+                    }
+                }
+                
+                Section {
+                    Button {
+                        Task {
+                            await createSupervisor()
+                        }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isCreatingSupervisor {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Text("إنشاء حساب المشرفة")
+                                    .font(SofraTypography.bodyBold)
+                            }
+                            Spacer()
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.vertical, SofraSpacing.sm)
+                        .background(canCreateSupervisor ? Color(hex: "#06B6D4") : SofraColors.textMuted)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .disabled(!canCreateSupervisor || isCreatingSupervisor)
+                    .listRowBackground(Color.clear)
+                }
+            }
+            .navigationTitle("إضافة مشرفة جديدة")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("إلغاء") {
+                        resetAddSupervisorForm()
+                        showAddSupervisor = false
+                    }
+                }
+            }
+        }
+    }
+    
+    private var canCreateSupervisor: Bool {
+        !newSupervisorName.isEmpty &&
+        !newSupervisorEmail.isEmpty &&
+        newSupervisorEmail.contains("@") &&
+        newSupervisorPassword.count >= 6 &&
+        !newSupervisorPhone.isEmpty
+    }
+    
+    private func createSupervisor() async {
+        isCreatingSupervisor = true
+        createSupervisorError = nil
+        
+        do {
+            try await vm.createSupervisor(
+                email: newSupervisorEmail.trimmingCharacters(in: .whitespaces),
+                password: newSupervisorPassword,
+                name: newSupervisorName.trimmingCharacters(in: .whitespaces),
+                phone: newSupervisorPhone.trimmingCharacters(in: .whitespaces)
+            )
+            resetAddSupervisorForm()
+            showAddSupervisor = false
+        } catch let error as APIError {
+            createSupervisorError = error.errorDescription
+        } catch {
+            createSupervisorError = "حدث خطأ غير متوقع"
+        }
+        
+        isCreatingSupervisor = false
+    }
+    
+    private func resetAddSupervisorForm() {
+        newSupervisorEmail = ""
+        newSupervisorPassword = ""
+        newSupervisorName = ""
+        newSupervisorPhone = ""
+        createSupervisorError = nil
     }
 }
 

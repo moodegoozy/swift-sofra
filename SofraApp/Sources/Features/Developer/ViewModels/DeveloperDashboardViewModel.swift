@@ -259,6 +259,34 @@ final class DeveloperDashboardViewModel {
         users.filter { $0.role == .supervisor }
     }
 
+    // MARK: - Create Supervisor Account
+    func createSupervisor(email: String, password: String, name: String, phone: String, city: String = "الرياض") async throws {
+        let authService = FirebaseAuthService()
+        
+        // 1. Create Firebase Auth account
+        let authResponse = try await authService.signUp(email: email, password: password)
+        
+        // 2. Create user document with supervisor role
+        let newSupervisor = AppUser(
+            uid: authResponse.localId,
+            email: email,
+            name: name,
+            phone: phone,
+            city: city,
+            role: .supervisor
+        )
+        
+        // Use the new account's token to create its own document
+        try await firestoreService.createUser(newSupervisor, idToken: authResponse.idToken)
+        
+        // 3. Add to local list
+        users.append(newSupervisor)
+        supervisorCount += 1
+        totalUsers += 1
+        
+        Logger.log("Created supervisor account: \(email)", level: .info)
+    }
+
     // MARK: - Helpers
     var deliveredOrders: [Order] { orders.filter { $0.status == .delivered } }
     var pendingOrders: [Order] { orders.filter { $0.status == .pending } }
