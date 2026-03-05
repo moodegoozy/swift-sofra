@@ -37,4 +37,10 @@ enum SofraSpacing {
     static let avatarSmall: CGFloat = 36
     static let avatarMedium: CGFloat = 48
     static let avatarLarge: CGFloat = 72
+    
+    // MARK: - Aliases
+    static let small: CGFloat = sm
+    static let medium: CGFloat = md
+    static let large: CGFloat = lg
+    static let extraLarge: CGFloat = xl
 }
