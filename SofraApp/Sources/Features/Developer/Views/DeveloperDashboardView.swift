@@ -454,18 +454,18 @@ extension DeveloperDashboardView {
             VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
                 HStack {
                     Spacer()
-                    Text("رسوم الخدمة للمطاعم")
+                    Text("رسوم الخدمة للمطاعم (\(vm.restaurants.count))")
                         .font(SofraTypography.calloutSemibold)
                     Image(systemName: "list.bullet.rectangle.fill")
                         .foregroundStyle(SofraColors.info)
                 }
                 
-                // Top restaurants by commission
-                ForEach(topRestaurantsByCommission.prefix(5), id: \.restaurant.id) { item in
+                // All restaurants by commission
+                ForEach(topRestaurantsByCommission, id: \.restaurant.id) { item in
                     HStack {
                         Text("\(String(format: "%.2f", item.commission)) ر.س")
                             .font(SofraTypography.calloutSemibold)
-                            .foregroundStyle(SofraColors.success)
+                            .foregroundStyle(item.commission > 0 ? SofraColors.success : SofraColors.textMuted)
                         
                         Text("(\(item.orderCount) طلب)")
                             .font(SofraTypography.caption)
@@ -475,10 +475,11 @@ extension DeveloperDashboardView {
                         
                         Text(item.restaurant.name)
                             .font(SofraTypography.body)
+                            .lineLimit(1)
                     }
                     .padding(.vertical, SofraSpacing.xs)
                     
-                    if item.restaurant.id != topRestaurantsByCommission.prefix(5).last?.restaurant.id {
+                    if item.restaurant.id != topRestaurantsByCommission.last?.restaurant.id {
                         Divider()
                     }
                 }
