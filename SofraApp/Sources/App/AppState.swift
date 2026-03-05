@@ -198,15 +198,53 @@ final class AppState {
     func deleteAccount() async throws {
         let token = try await validToken()
         guard let uid = currentUser?.uid else { throw APIError.unauthorized }
+        let userRole = role
 
-        // 1. Delete user document from Firestore
+        // 1. Delete user's notifications
+        await deleteUserCollection(collection: "notifications", field: "userId", value: uid, token: token)
+        
+        // 2. Delete user's orders (as customer)
+        await deleteUserCollection(collection: "orders", field: "customerId", value: uid, token: token)
+        
+        // 3. Delete courier applications
+        await deleteUserCollection(collection: "courierApplications", field: "courierId", value: uid, token: token)
+        
+        // 4. If owner, delete restaurant and menu items
+        if userRole == .owner {
+            // Delete menu items
+            await deleteUserCollection(collection: "menuItems", field: "ownerId", value: uid, token: token)
+            // Delete restaurant
+            try? await firestoreService.deleteDocument(collection: "restaurants", id: uid, idToken: token)
+        }
+        
+        // 5. Delete chat messages sent by user
+        await deleteUserCollection(collection: "chatMessages", field: "senderId", value: uid, token: token)
+
+        // 6. Delete user document from Firestore
         try await firestoreService.deleteDocument(collection: "users", id: uid, idToken: token)
 
-        // 2. Delete Firebase Auth account
+        // 7. Delete Firebase Auth account
         try await authService.deleteAccount(idToken: token)
 
-        // 3. Clear local state
+        // 8. Clear local state
         logout()
+    }
+    
+    /// Helper to delete all documents in a collection matching a field value
+    private func deleteUserCollection(collection: String, field: String, value: String, token: String) async {
+        do {
+            let docs = try await firestoreService.query(
+                collection: collection,
+                filters: [QueryFilter(field: field, op: "EQUAL", value: value)],
+                idToken: token
+            )
+            for doc in docs {
+                guard let docId = doc.documentId else { continue }
+                try? await firestoreService.deleteDocument(collection: collection, id: docId, idToken: token)
+            }
+        } catch {
+            Logger.log("Error deleting \(collection): \(error)", level: .warning)
+        }
     }
 
     // MARK: - Logout
