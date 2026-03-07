@@ -52,6 +52,10 @@ final class CourierDashboardViewModel {
         isLoading = true
         errorMessage = nil
 
+        // Always load restaurants first (moved outside main try-catch)
+        await loadAllRestaurants(token: token)
+        await loadHiringRestaurants(token: token)
+
         do {
             // 1. Load courier profile to check employment status
             let profileDoc = try await firestoreService.getDocument(
@@ -71,43 +75,48 @@ final class CourierDashboardViewModel {
                 await loadAllReadyOrders(token: token)
                 await loadMyDeliveries(token: token)
             } else {
-                // Check if there's a pending application (single filter to avoid composite index)
-                let apps = try await firestoreService.query(
-                    collection: "courierApplications",
-                    filters: [
-                        QueryFilter(field: "courierId", op: "EQUAL", value: courierId)
-                    ],
-                    limit: 10,
-                    idToken: token
-                )
-                
-                // Filter locally for pending
-                let pendingApp = apps.first { doc in
-                    doc.stringField("status") == "pending"
-                }
-                
-                if let appDoc = pendingApp {
-                    myApplication = CourierApplication(from: appDoc)
-                    courierStatus = .pending
-                } else {
-                    // Check for rejected locally
-                    let hasRejected = apps.contains { doc in
-                        doc.stringField("status") == "rejected"
+                // Check if there's a pending application
+                do {
+                    let apps = try await firestoreService.query(
+                        collection: "courierApplications",
+                        filters: [
+                            QueryFilter(field: "courierId", op: "EQUAL", value: courierId)
+                        ],
+                        limit: 10,
+                        idToken: token
+                    )
+                    
+                    // Filter locally for pending
+                    let pendingApp = apps.first { doc in
+                        doc.stringField("status") == "pending"
                     }
-                    if hasRejected {
-                        courierStatus = .rejected
+                    
+                    if let appDoc = pendingApp {
+                        myApplication = CourierApplication(from: appDoc)
+                        courierStatus = .pending
                     } else {
-                        courierStatus = .notApplied
+                        // Check for rejected locally
+                        let hasRejected = apps.contains { doc in
+                            doc.stringField("status") == "rejected"
+                        }
+                        if hasRejected {
+                            courierStatus = .rejected
+                        } else {
+                            courierStatus = .notApplied
+                        }
                     }
+                } catch {
+                    // If applications query fails, default to notApplied
+                    Logger.log("Applications query error: \(error)", level: .error)
+                    courierStatus = .notApplied
                 }
-
-                // Load all restaurants (for browsing) + hiring restaurants
-                await loadAllRestaurants(token: token)
-                await loadHiringRestaurants(token: token)
             }
         } catch {
             Logger.log("Courier dashboard error: \(error)", level: .error)
-            errorMessage = "تعذر تحميل البيانات"
+            // Don't set error message if restaurants loaded successfully
+            if allRestaurants.isEmpty {
+                errorMessage = "تعذر تحميل البيانات"
+            }
         }
 
         isLoading = false
@@ -116,10 +125,9 @@ final class CourierDashboardViewModel {
     // MARK: - Load All Restaurants
     func loadAllRestaurants(token: String) async {
         do {
-            // تحميل جميع المطاعم بدون فلتر
-            let docs = try await firestoreService.listDocuments(
+            // تحميل جميع المطاعم بدون توثيق (القراءة عامة)
+            let docs = try await firestoreService.listDocumentsPublic(
                 collection: "restaurants",
-                idToken: token,
                 pageSize: 100
             )
             allRestaurants = docs.map { Restaurant(from: $0) }
@@ -128,6 +136,7 @@ final class CourierDashboardViewModel {
                     if a.isHiring != b.isHiring { return a.isHiring && !b.isHiring }
                     return a.name < b.name
                 }
+            Logger.log("Loaded \(allRestaurants.count) restaurants", level: .debug)
         } catch {
             Logger.log("Load all restaurants error: \(error)", level: .error)
             errorMessage = "تعذر تحميل المطاعم"
@@ -167,10 +176,11 @@ final class CourierDashboardViewModel {
     // MARK: - Load Hiring Restaurants
     func loadHiringRestaurants(token: String) async {
         do {
-            let docs = try await firestoreService.query(
+            // استخدام queryPublic لأن المطاعم قراءة عامة
+            let docs = try await firestoreService.queryPublic(
                 collection: "restaurants",
                 filters: [QueryFilter(field: "isHiring", op: "EQUAL", value: true)],
-                idToken: token
+                limit: 100
             )
             hiringRestaurants = docs.map { Restaurant(from: $0) }
         } catch {
