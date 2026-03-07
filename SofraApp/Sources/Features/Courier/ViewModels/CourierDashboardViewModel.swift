@@ -71,31 +71,30 @@ final class CourierDashboardViewModel {
                 await loadAllReadyOrders(token: token)
                 await loadMyDeliveries(token: token)
             } else {
-                // Check if there's a pending application
+                // Check if there's a pending application (single filter to avoid composite index)
                 let apps = try await firestoreService.query(
                     collection: "courierApplications",
                     filters: [
-                        QueryFilter(field: "courierId", op: "EQUAL", value: courierId),
-                        QueryFilter(field: "status", op: "EQUAL", value: "pending")
+                        QueryFilter(field: "courierId", op: "EQUAL", value: courierId)
                     ],
-                    limit: 1,
+                    limit: 10,
                     idToken: token
                 )
-                if let appDoc = apps.first {
+                
+                // Filter locally for pending
+                let pendingApp = apps.first { doc in
+                    doc.stringField("status") == "pending"
+                }
+                
+                if let appDoc = pendingApp {
                     myApplication = CourierApplication(from: appDoc)
                     courierStatus = .pending
                 } else {
-                    // Check for rejected
-                    let rejected = try await firestoreService.query(
-                        collection: "courierApplications",
-                        filters: [
-                            QueryFilter(field: "courierId", op: "EQUAL", value: courierId),
-                            QueryFilter(field: "status", op: "EQUAL", value: "rejected")
-                        ],
-                        limit: 1,
-                        idToken: token
-                    )
-                    if !rejected.isEmpty {
+                    // Check for rejected locally
+                    let hasRejected = apps.contains { doc in
+                        doc.stringField("status") == "rejected"
+                    }
+                    if hasRejected {
                         courierStatus = .rejected
                     } else {
                         courierStatus = .notApplied
