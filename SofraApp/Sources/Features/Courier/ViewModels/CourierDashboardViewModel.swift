@@ -117,14 +117,21 @@ final class CourierDashboardViewModel {
     // MARK: - Load All Restaurants
     func loadAllRestaurants(token: String) async {
         do {
-            let docs = try await firestoreService.query(
+            // تحميل جميع المطاعم بدون فلتر
+            let docs = try await firestoreService.listDocuments(
                 collection: "restaurants",
-                filters: [QueryFilter(field: "isVerified", op: "EQUAL", value: false)],  // Active restaurants
-                idToken: token
+                idToken: token,
+                pageSize: 100
             )
             allRestaurants = docs.map { Restaurant(from: $0) }
+                .sorted { a, b in
+                    // ترتيب: المطاعم التي توظف أولاً
+                    if a.isHiring != b.isHiring { return a.isHiring && !b.isHiring }
+                    return a.name < b.name
+                }
         } catch {
             Logger.log("Load all restaurants error: \(error)", level: .error)
+            errorMessage = "تعذر تحميل المطاعم"
         }
     }
     

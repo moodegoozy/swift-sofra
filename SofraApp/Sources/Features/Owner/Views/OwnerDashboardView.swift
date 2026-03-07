@@ -2045,26 +2045,92 @@ struct OwnerDashboardView: View {
     }
 
     private func approveHiringApp(_ app: CourierApplication) async {
-        guard let token = try? await appState.validToken() else { return }
+        guard let token = try? await appState.validToken(),
+              let uid = appState.currentUser?.uid else { return }
         let service = FirestoreService()
+        
+        // 1. Update application status
         try? await service.updateDocument(
             collection: "courierApplications", id: app.id,
             fields: ["status": "approved"],
             idToken: token
         )
+        
+        // 2. Update courier's user document with assignment
+        try? await service.updateDocument(
+            collection: "users", id: app.courierId,
+            fields: [
+                "courierStatus": "approved",
+                "assignedRestaurantId": uid,
+                "assignedRestaurantName": vm.restaurant?.name ?? app.restaurantName
+            ],
+            idToken: token
+        )
+        
+        // 3. Send notification to courier
+        let notificationId = UUID().uuidString
+        try? await service.createDocument(
+            collection: "notifications",
+            id: notificationId,
+            fields: [
+                "userId": app.courierId,
+                "title": "تم قبول طلبك! 🎉",
+                "body": "مبروك! تم قبولك كمندوب توصيل في \(vm.restaurant?.name ?? app.restaurantName). يمكنك الآن استلام الطلبات.",
+                "type": "courier_approved",
+                "read": false,
+                "createdAt": Date(),
+                "senderId": uid,
+                "senderName": vm.restaurant?.name ?? "المطعم"
+            ],
+            idToken: token
+        )
+        
         if let idx = vm.hiringApplications.firstIndex(where: { $0.id == app.id }) {
             vm.hiringApplications[idx].status = .approved
         }
     }
 
     private func rejectHiringApp(_ app: CourierApplication) async {
-        guard let token = try? await appState.validToken() else { return }
+        guard let token = try? await appState.validToken(),
+              let uid = appState.currentUser?.uid else { return }
         let service = FirestoreService()
+        
+        // 1. Update application status
         try? await service.updateDocument(
             collection: "courierApplications", id: app.id,
             fields: ["status": "rejected"],
             idToken: token
         )
+        
+        // 2. Clear any existing assignment from courier (if any)
+        try? await service.updateDocument(
+            collection: "users", id: app.courierId,
+            fields: [
+                "courierStatus": "rejected",
+                "assignedRestaurantId": "",
+                "assignedRestaurantName": ""
+            ],
+            idToken: token
+        )
+        
+        // 3. Send notification to courier
+        let notificationId = UUID().uuidString
+        try? await service.createDocument(
+            collection: "notifications",
+            id: notificationId,
+            fields: [
+                "userId": app.courierId,
+                "title": "تحديث طلب التوظيف",
+                "body": "للأسف لم يتم قبول طلبك في \(vm.restaurant?.name ?? app.restaurantName). يمكنك التقديم في مطعم آخر.",
+                "type": "courier_rejected",
+                "read": false,
+                "createdAt": Date(),
+                "senderId": uid,
+                "senderName": vm.restaurant?.name ?? "المطعم"
+            ],
+            idToken: token
+        )
+        
         if let idx = vm.hiringApplications.firstIndex(where: { $0.id == app.id }) {
             vm.hiringApplications[idx].status = .rejected
         }

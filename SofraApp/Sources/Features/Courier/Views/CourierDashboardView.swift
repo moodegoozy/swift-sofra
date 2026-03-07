@@ -136,10 +136,10 @@ struct CourierDashboardView: View {
                     }
                 }
 
-                // Hiring Restaurants List
+                // All Restaurants List (with hiring status)
                 VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
                     HStack {
-                        Text("\(vm.nearbyHiringRestaurants.count)")
+                        Text("\(vm.nearbyRestaurants.count)")
                             .font(SofraTypography.caption)
                             .foregroundStyle(SofraColors.textMuted)
                             .padding(.horizontal, SofraSpacing.sm)
@@ -149,26 +149,33 @@ struct CourierDashboardView: View {
                         
                         Spacer()
                         
-                        Text("مطاعم تبحث عن مناديب")
+                        Text("كل المطاعم")
                             .font(SofraTypography.title3)
                     }
                     .padding(.horizontal, SofraSpacing.screenHorizontal)
 
-                    if vm.nearbyHiringRestaurants.isEmpty {
+                    if vm.nearbyRestaurants.isEmpty {
                         EmptyStateView(
                             icon: "storefront",
-                            title: "لا توجد مطاعم تبحث عن مناديب",
-                            message: vm.showOnlyNearby ? "جرب زيادة نطاق البحث أو إلغاء الفلتر" : "تحقق لاحقاً. المطاعم تحدث حالة التوظيف باستمرار"
+                            title: "لا توجد مطاعم",
+                            message: vm.showOnlyNearby ? "جرب زيادة نطاق البحث أو إلغاء الفلتر" : "لا توجد مطاعم مسجلة حالياً"
                         )
                     } else {
-                        ForEach(vm.nearbyHiringRestaurants) { restaurant in
-                            Button {
-                                selectedHiringRestaurant = restaurant
-                            } label: {
-                                hiringRestaurantCard(restaurant)
+                        ForEach(vm.nearbyRestaurants) { restaurant in
+                            if restaurant.isHiring {
+                                // مطعم يوظف - يمكن الضغط للتقديم
+                                Button {
+                                    selectedHiringRestaurant = restaurant
+                                } label: {
+                                    restaurantCardWithStatus(restaurant)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, SofraSpacing.screenHorizontal)
+                            } else {
+                                // مطعم لا يوظف - للعرض فقط
+                                restaurantCardWithStatus(restaurant)
+                                    .padding(.horizontal, SofraSpacing.screenHorizontal)
                             }
-                            .buttonStyle(.plain)
-                            .padding(.horizontal, SofraSpacing.screenHorizontal)
                         }
                     }
                 }
@@ -226,6 +233,56 @@ struct CourierDashboardView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Restaurant Card with Hiring Status
+    private func restaurantCardWithStatus(_ restaurant: Restaurant) -> some View {
+        SofraCard {
+            VStack(alignment: .trailing, spacing: SofraSpacing.sm) {
+                HStack {
+                    if restaurant.isHiring {
+                        Image(systemName: "chevron.left")
+                            .foregroundStyle(SofraColors.textMuted)
+                    }
+
+                    StatusBadge(
+                        text: restaurant.isHiring ? "متاح التوظيف" : "غير متاح",
+                        color: restaurant.isHiring ? SofraColors.success : SofraColors.textMuted
+                    )
+
+                    Spacer()
+
+                    VStack(alignment: .trailing) {
+                        Text(restaurant.name)
+                            .font(SofraTypography.headline)
+                            .foregroundStyle(SofraColors.textPrimary)
+                        if let city = restaurant.city {
+                            Label(city, systemImage: "location.fill")
+                                .font(SofraTypography.caption)
+                                .foregroundStyle(SofraColors.textSecondary)
+                        }
+                    }
+
+                    // Restaurant icon
+                    ZStack {
+                        Circle()
+                            .fill(restaurant.isHiring ? SofraColors.success.opacity(0.15) : SofraColors.sky100)
+                            .frame(width: 48, height: 48)
+                        Image(systemName: "storefront.fill")
+                            .foregroundStyle(restaurant.isHiring ? SofraColors.success : SofraColors.textMuted)
+                    }
+                }
+
+                if restaurant.isHiring, let desc = restaurant.hiringDescription, !desc.isEmpty {
+                    Text(desc)
+                        .font(SofraTypography.caption)
+                        .foregroundStyle(SofraColors.textSecondary)
+                        .multilineTextAlignment(.trailing)
+                        .lineLimit(2)
+                }
+            }
+        }
+        .opacity(restaurant.isHiring ? 1 : 0.7)
     }
 
     // MARK: - Pending Application View
@@ -551,8 +608,26 @@ struct CourierDashboardView: View {
                             .foregroundStyle(SofraColors.primary)
                     }
                 }
-
-                // Open in Maps button
+            }
+            
+            // Interactive Map Button (if location available)
+            if order.deliveryLocation != nil {
+                Button {
+                    showMapForOrder = order
+                } label: {
+                    HStack(spacing: SofraSpacing.xs) {
+                        Text("عرض موقع العميل على الخريطة")
+                            .font(SofraTypography.calloutSemibold)
+                        Image(systemName: "map.fill")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SofraSpacing.sm)
+                    .background(SofraColors.info)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+            } else if let addr = order.address, !addr.isEmpty {
+                // Fallback: Open in Maps using address
                 Button {
                     openInMaps(address: addr)
                 } label: {

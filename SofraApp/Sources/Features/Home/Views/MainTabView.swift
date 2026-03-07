@@ -76,23 +76,15 @@ struct MainTabView: View {
         ownerOrdersVM.orders.filter { $0.status == .pending }.count
     }
 
-    // MARK: - Courier Tabs (5 tabs)
+    // MARK: - Courier Tabs (3 tabs — delivery only, no customer features)
     private var courierTabs: some View {
         TabView(selection: Bindable(appState).selectedMainTab) {
-            Tab("الرئيسية", systemImage: "house.fill", value: 0) {
-                NavigationStack { HomeView() }
-            }
-
-            Tab("المطاعم", systemImage: "storefront.fill", value: 1) {
-                NavigationStack { RestaurantsListView() }
-            }
-
-            Tab("التوصيل", systemImage: "car.fill", value: 2) {
+            Tab("التوصيل", systemImage: "car.fill", value: 0) {
                 NavigationStack { CourierDashboardView() }
             }
 
-            Tab("طلباتي", systemImage: "bag.fill", value: 3) {
-                NavigationStack { OrdersView() }
+            Tab("الإشعارات", systemImage: "bell.fill", value: 1) {
+                NavigationStack { NotificationsView() }
             }
 
             Tab("حسابي", systemImage: "person.fill", value: 9) {
